@@ -4,7 +4,6 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "postinstall": "node scripts/write-app-icon.mjs",
     "start": "expo start",
     "android": "expo start --android",
     "web": "expo start --web",
