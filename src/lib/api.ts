@@ -12,6 +12,10 @@ export type AuthResponse = {
   user: User;
 };
 
+type MessageResponse = {
+  message: string;
+};
+
 type ApiError = {
   code?: string;
   message?: string;
@@ -87,6 +91,20 @@ export function register(displayName: string, email: string, password: string) {
   return request<AuthResponse>('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify({ displayName, email, password }),
+  });
+}
+
+export function requestPasswordReset(email: string) {
+  return request<MessageResponse>('/api/auth/password-reset/request', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function confirmPasswordReset(email: string, code: string, newPassword: string) {
+  return request<MessageResponse>('/api/auth/password-reset/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ email, code, newPassword }),
   });
 }
 
