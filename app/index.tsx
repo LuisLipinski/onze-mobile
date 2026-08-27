@@ -1,14 +1,15 @@
-import { Link, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native';
 import { Button, Input, Text, YStack } from 'tamagui';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { ApiRequestError, getCurrentUser, login } from '../src/lib/api';
-import { clearAccessToken, getAccessToken, saveAccessToken } from '../src/lib/auth-storage';
+import { clearSession, getAccessToken, saveCurrentUser, saveSession } from '../src/lib/auth-storage';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ registered?: string }>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -24,11 +25,18 @@ export default function LoginScreen() {
       const token = await getAccessToken();
       if (!token) return;
 
-      await getCurrentUser(token);
+      const user = await getCurrentUser(token);
+      await saveCurrentUser(user);
       router.replace('/home');
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
-        await clearAccessToken();
+        await clearSession();
+      } else {
+        setError(
+          exception instanceof Error
+            ? exception.message
+            : 'Não foi possível restaurar sua sessão. Tente entrar novamente.',
+        );
       }
     } finally {
       setRestoringSession(false);
@@ -42,11 +50,10 @@ export default function LoginScreen() {
 
     try {
       const response = await login(email, password);
-      await saveAccessToken(response.accessToken);
+      await saveSession(response.accessToken, response.user);
       router.replace('/home');
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível entrar.');
-    } finally {
       setLoading(false);
     }
   }
@@ -55,7 +62,7 @@ export default function LoginScreen() {
     return (
       <ServerLoadingScreen
         title="Carregando sua sessão..."
-        message="Se o servidor estiver iniciando, isso pode levar alguns segundos."
+        message="Estamos validando seu acesso com o servidor."
       />
     );
   }
@@ -64,7 +71,7 @@ export default function LoginScreen() {
     return (
       <ServerLoadingScreen
         title="Conectando ao Onze..."
-        message="Se o servidor estiver iniciando, isso pode levar alguns segundos."
+        message="Assim que a API confirmar o login, você entra no aplicativo."
       />
     );
   }
@@ -97,6 +104,12 @@ export default function LoginScreen() {
               Entre para organizar sua próxima partida.
             </Text>
           </YStack>
+
+          {params.registered === '1' ? (
+            <Text color="$onzeGreen" fontSize={14} fontWeight="700">
+              Conta criada com sucesso. Faça login para continuar.
+            </Text>
+          ) : null}
 
           <Input
             autoCapitalize="none"
