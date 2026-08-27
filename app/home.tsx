@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Image, SafeAreaView, ScrollView } from 'react-native';
+import { Image, Pressable, SafeAreaView, ScrollView } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
@@ -274,7 +274,15 @@ export default function HomeScreen() {
                   </Button>
                 </YStack>
               ) : (
-                groups.map((group) => <GroupCard key={group.id} group={group} />)
+                groups.map((group) => (
+                  <GroupCard
+                    key={group.id}
+                    group={group}
+                    onPress={() =>
+                      router.push({ pathname: '/group', params: { groupId: group.id } })
+                    }
+                  />
+                ))
               )}
             </YStack>
           ) : null}
@@ -339,41 +347,48 @@ export default function HomeScreen() {
   );
 }
 
-function GroupCard({ group }: { group: Group }) {
+function GroupCard({ group, onPress }: { group: Group; onPress: () => void }) {
   const scheduleLabel = group.schedules.length
     ? `${group.schedules.length} horário${group.schedules.length > 1 ? 's' : ''} configurado${group.schedules.length > 1 ? 's' : ''}`
     : 'Horários ainda não configurados';
 
   return (
-    <XStack
-      alignItems="center"
-      backgroundColor="$onzeSurface"
-      borderColor="$onzeBorder"
-      borderRadius="$5"
-      borderWidth={1}
-      gap="$3"
-      padding="$4"
-    >
-      <Image
-        source={group.photoUrl ? { uri: group.photoUrl } : require('../assets/icon.png')}
-        style={{ width: 58, height: 58, borderRadius: 15 }}
-      />
-      <YStack flex={1} gap="$1">
-        <Text color="$onzeInk" fontSize={17} fontWeight="800">
-          {group.name}
-        </Text>
-        <Text color="$onzeMuted" fontSize={13} numberOfLines={1}>
-          {group.city || group.venue || 'Local ainda não configurado'}
-        </Text>
-        <Text color="$onzeMuted" fontSize={12}>
-          {scheduleLabel}
-        </Text>
-      </YStack>
-      {group.role === 'ADMIN' ? (
-        <Text color="$onzeGreen" fontSize={11} fontWeight="800">
-          ADMIN
-        </Text>
-      ) : null}
-    </XStack>
+    <Pressable onPress={onPress}>
+      <XStack
+        alignItems="center"
+        backgroundColor="$onzeSurface"
+        borderColor="$onzeBorder"
+        borderRadius="$5"
+        borderWidth={1}
+        gap="$3"
+        padding="$4"
+      >
+        <Image
+          source={group.photoUrl ? { uri: group.photoUrl } : require('../assets/icon.png')}
+          style={{ width: 58, height: 58, borderRadius: 15 }}
+        />
+        <YStack flex={1} gap="$1">
+          <Text color="$onzeInk" fontSize={17} fontWeight="800">
+            {group.name}
+          </Text>
+          <Text color="$onzeMuted" fontSize={13} numberOfLines={1}>
+            {group.city || group.venue || 'Local ainda não configurado'}
+          </Text>
+          <Text color="$onzeMuted" fontSize={12}>
+            {scheduleLabel}
+          </Text>
+        </YStack>
+        <YStack alignItems="flex-end" gap="$1">
+          {group.role === 'ADMIN' ? (
+            <Text color="$onzeGreen" fontSize={11} fontWeight="800">
+              ADMIN
+            </Text>
+          ) : null}
+          <Text color="$onzeMuted" fontSize={22} fontWeight="700">
+            ›
+          </Text>
+        </YStack>
+      </XStack>
+    </Pressable>
   );
 }
