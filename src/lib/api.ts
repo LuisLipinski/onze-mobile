@@ -40,6 +40,12 @@ export type Group = {
   createdAt: string;
 };
 
+export type GroupInvite = {
+  groupId: string;
+  code: string;
+  deepLink: string;
+};
+
 type MessageResponse = {
   message: string;
 };
@@ -185,6 +191,13 @@ export function updateGroupDetails(
 
 export function listGroups(accessToken: string) {
   return request<Group[]>('/api/groups', {
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function createGroupInvite(accessToken: string, groupId: string) {
+  return request<GroupInvite>(`/api/groups/${groupId}/invite`, {
+    method: 'POST',
     headers: authenticatedHeaders(accessToken),
   });
 }
