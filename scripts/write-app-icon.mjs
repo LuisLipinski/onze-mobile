@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
-const EXPECTED_BYTES = 14563;
-const EXPECTED_SHA256 = '0bfad60513e7d23025d7c2a14e487237c62bfb9ec6a5fde2830e0d441d32993d';
+const EXPECTED_BYTES = 5736;
+const EXPECTED_SHA256 = '3ce8fd4ffbc6801ee3a91beb6a2c34c6b146b339d434f3380d58fd3c196aa158';
 
 const encoded = readFileSync('assets/onze-icon.b64', 'utf8').trim();
 const icon = Buffer.from(encoded, 'base64');
