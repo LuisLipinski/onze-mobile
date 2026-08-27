@@ -5,10 +5,15 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "onze",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "android": {
-      "package": "com.onze.organizadordepelada"
+      "package": "com.onze.organizadordepelada",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#148A4A"
+      }
     },
     "plugins": ["expo-router", "expo-secure-store", "expo-system-ui"],
     "experiments": {
