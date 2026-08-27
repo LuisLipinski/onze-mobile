@@ -5,7 +5,6 @@ import { Button, Input, Text, YStack } from 'tamagui';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { register } from '../src/lib/api';
-import { saveAccessToken } from '../src/lib/auth-storage';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -21,12 +20,10 @@ export default function RegisterScreen() {
     setLoading(true);
 
     try {
-      const response = await register(displayName, email, password);
-      await saveAccessToken(response.accessToken);
-      router.replace('/home');
+      await register(displayName, email, password);
+      router.replace({ pathname: '/', params: { registered: '1' } });
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível criar a conta.');
-    } finally {
       setLoading(false);
     }
   }
@@ -35,7 +32,7 @@ export default function RegisterScreen() {
     return (
       <ServerLoadingScreen
         title="Criando sua conta..."
-        message="Se o servidor estiver iniciando, isso pode levar alguns segundos."
+        message="Assim que a API confirmar o cadastro, você volta automaticamente para o login."
       />
     );
   }
