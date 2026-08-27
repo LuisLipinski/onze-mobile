@@ -1,14 +1,7 @@
 import { Link, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, SafeAreaView } from 'react-native';
+import { Button, Input, Text, YStack } from 'tamagui';
 
 import { ApiRequestError, getCurrentUser, login } from '../src/lib/api';
 import { clearAccessToken, getAccessToken, saveAccessToken } from '../src/lib/auth-storage';
@@ -59,71 +52,104 @@ export default function LoginScreen() {
 
   if (restoringSession) {
     return (
-      <SafeAreaView style={styles.centered}>
-        <ActivityIndicator />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+        <YStack flex={1} alignItems="center" justifyContent="center">
+          <ActivityIndicator color="#148A4A" />
+        </YStack>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.brand}>ONZE</Text>
-          <Text style={styles.subtitle}>Organizador de Pelada</Text>
-        </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+      <YStack flex={1} justifyContent="center" padding="$5" gap="$7" backgroundColor="$onzeCanvas">
+        <YStack alignItems="center" gap="$2">
+          <Text color="$onzeGreen" fontSize={44} fontWeight="900" letterSpacing={2}>
+            ONZE
+          </Text>
+          <Text color="$onzeMuted" fontSize={16} fontWeight="600">
+            Organizador de Pelada
+          </Text>
+        </YStack>
 
-        <View style={styles.form}>
-          <Text style={styles.title}>Entrar</Text>
-          <TextInput
+        <YStack
+          backgroundColor="$onzeSurface"
+          borderColor="$onzeBorder"
+          borderRadius="$6"
+          borderWidth={1}
+          gap="$4"
+          padding="$5"
+        >
+          <YStack gap="$1">
+            <Text color="$onzeInk" fontSize={28} fontWeight="800">
+              Entrar
+            </Text>
+            <Text color="$onzeMuted" fontSize={14}>
+              Entre para organizar sua próxima partida.
+            </Text>
+          </YStack>
+
+          <Input
             autoCapitalize="none"
             autoComplete="email"
+            backgroundColor="$onzeSurface"
+            borderColor="$onzeBorder"
+            borderRadius="$4"
+            color="$onzeInk"
+            focusStyle={{ borderColor: '$onzeGreen' }}
+            height={52}
             keyboardType="email-address"
             onChangeText={setEmail}
             placeholder="E-mail"
-            style={styles.input}
+            placeholderTextColor="#87958E"
             value={email}
           />
-          <TextInput
+          <Input
             autoComplete="password"
+            backgroundColor="$onzeSurface"
+            borderColor="$onzeBorder"
+            borderRadius="$4"
+            color="$onzeInk"
+            focusStyle={{ borderColor: '$onzeGreen' }}
+            height={52}
             onChangeText={setPassword}
             placeholder="Senha"
+            placeholderTextColor="#87958E"
             secureTextEntry
-            style={styles.input}
             value={password}
           />
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <Text color="$onzeDanger" fontSize={14}>
+              {error}
+            </Text>
+          ) : null}
 
-          <Pressable disabled={loading} onPress={submit} style={styles.primaryButton}>
-            {loading ? <ActivityIndicator /> : <Text style={styles.primaryButtonText}>Entrar</Text>}
-          </Pressable>
+          <Button
+            backgroundColor="$onzeGreen"
+            borderRadius="$4"
+            disabled={loading}
+            height={52}
+            onPress={submit}
+            pressStyle={{ backgroundColor: '$onzeGreenPress' }}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text color="$onzeSurface" fontSize={16} fontWeight="800">
+                Entrar
+              </Text>
+            )}
+          </Button>
 
-          <Text style={styles.helper}>
+          <Text color="$onzeMuted" fontSize={14} textAlign="center">
             Ainda não tem conta?{' '}
-            <Link href="/register" style={styles.link}>
+            <Link href="/register" style={{ color: '#148A4A', fontWeight: '700' }}>
               Criar conta
             </Link>
           </Text>
-        </View>
-      </View>
+        </YStack>
+      </YStack>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  container: { flex: 1, justifyContent: 'center', padding: 24, gap: 40 },
-  header: { alignItems: 'center' },
-  brand: { fontSize: 40, fontWeight: '800' },
-  subtitle: { marginTop: 6, fontSize: 17, fontWeight: '600' },
-  form: { gap: 14 },
-  title: { fontSize: 28, fontWeight: '700', marginBottom: 6 },
-  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16 },
-  primaryButton: { minHeight: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111111' },
-  primaryButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
-  helper: { textAlign: 'center', marginTop: 4 },
-  link: { fontWeight: '700', textDecorationLine: 'underline' },
-  error: { fontSize: 14 },
-});
