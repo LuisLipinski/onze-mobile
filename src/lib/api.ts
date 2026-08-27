@@ -12,7 +12,7 @@ export type AuthResponse = {
   user: User;
 };
 
-export type GroupRole = 'ADMIN' | 'MEMBER';
+export type GroupRole = 'PRIMARY_ADMIN' | 'ADMIN' | 'MEMBER';
 export type GroupDayOfWeek =
   | 'MONDAY'
   | 'TUESDAY'
@@ -38,6 +38,14 @@ export type Group = {
   schedules: GroupSchedule[];
   role: GroupRole;
   createdAt: string;
+};
+
+export type GroupMember = {
+  membershipId: string;
+  userId: string;
+  displayName: string;
+  role: GroupRole;
+  currentUser: boolean;
 };
 
 export type GroupInvite = {
@@ -200,6 +208,38 @@ export function updateGroupDetails(
 export function listGroups(accessToken: string) {
   return request<Group[]>('/api/groups', {
     headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function listGroupMembers(accessToken: string, groupId: string) {
+  return request<GroupMember[]>(`/api/groups/${groupId}/members`, {
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function promoteGroupMember(accessToken: string, groupId: string, membershipId: string) {
+  return request<GroupMember>(`/api/groups/${groupId}/members/${membershipId}/promote`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function demoteGroupAdmin(accessToken: string, groupId: string, membershipId: string) {
+  return request<GroupMember>(`/api/groups/${groupId}/members/${membershipId}/demote`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function transferPrimaryAdmin(
+  accessToken: string,
+  groupId: string,
+  replacementMemberId: string,
+) {
+  return request<GroupMember[]>(`/api/groups/${groupId}/primary-admin`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ replacementMemberId }),
   });
 }
 
