@@ -51,7 +51,7 @@ export default function GroupInviteScreen() {
     if (!invite) return;
     const groupLabel = params.groupName?.trim() || 'meu grupo';
     await Share.share({
-      message: `Entre no ${groupLabel} pelo Onze.\n\nCódigo: ${invite.code}\nLink: ${invite.deepLink}`,
+      message: `Entre no ${groupLabel} pelo Onze ⚽\n\n${invite.shareUrl}\n\nCódigo: ${invite.code}`,
       title: `Convite para ${groupLabel}`,
     });
   }
@@ -114,7 +114,7 @@ export default function GroupInviteScreen() {
               Compartilhe o convite
             </Text>
             <Text color="$onzeMuted" fontSize={15} lineHeight={22}>
-              O mesmo link pode ser usado por várias pessoas. Compartilhe no grupo do WhatsApp ou passe o código manualmente.
+              O mesmo link pode ser usado por várias pessoas. O endereço abaixo é clicável no WhatsApp e abre a página de convite do Onze.
             </Text>
           </YStack>
 
@@ -140,8 +140,8 @@ export default function GroupInviteScreen() {
               >
                 {invite.code}
               </Text>
-              <Text color="$onzeMuted" fontSize={12} textAlign="center">
-                {invite.deepLink}
+              <Text color="$onzeMuted" fontSize={12} lineHeight={18} textAlign="center">
+                {invite.shareUrl}
               </Text>
 
               <Button
