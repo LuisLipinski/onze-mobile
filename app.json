@@ -7,6 +7,9 @@
     "scheme": "onze",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "android": {
+      "package": "com.onze.organizadordepelada"
+    },
     "plugins": ["expo-router", "expo-secure-store"],
     "experiments": {
       "typedRoutes": true
