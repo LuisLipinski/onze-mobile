@@ -4,7 +4,7 @@ import { Image, SafeAreaView, ScrollView } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
-import { ApiRequestError, Group, GroupDayOfWeek, listGroups } from '../src/lib/api';
+import { ApiRequestError, Group, GroupDayOfWeek, GroupRole, listGroups } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
 
 const DAY_LABELS: Record<GroupDayOfWeek, string> = {
@@ -15,6 +15,12 @@ const DAY_LABELS: Record<GroupDayOfWeek, string> = {
   FRIDAY: 'Sexta-feira',
   SATURDAY: 'Sábado',
   SUNDAY: 'Domingo',
+};
+
+const ROLE_LABELS: Record<GroupRole, string> = {
+  PRIMARY_ADMIN: 'ADMINISTRADOR PRINCIPAL',
+  ADMIN: 'ADMINISTRADOR',
+  MEMBER: 'MEMBRO',
 };
 
 export default function GroupScreen() {
@@ -70,6 +76,8 @@ export default function GroupScreen() {
     return <ServerLoadingScreen title="Carregando grupo..." message="Buscando as informações da sua pelada." />;
   }
 
+  const isAdmin = group?.role === 'ADMIN' || group?.role === 'PRIMARY_ADMIN';
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
@@ -88,8 +96,8 @@ export default function GroupScreen() {
                 <Text color="$onzeInk" fontSize={28} fontWeight="900" textAlign="center">
                   {group.name}
                 </Text>
-                <Text color={group.role === 'ADMIN' ? '$onzeGreen' : '$onzeMuted'} fontSize={12} fontWeight="800">
-                  {group.role === 'ADMIN' ? 'ADMINISTRADOR' : 'MEMBRO'}
+                <Text color={isAdmin ? '$onzeGreen' : '$onzeMuted'} fontSize={12} fontWeight="800">
+                  {ROLE_LABELS[group.role]}
                 </Text>
                 {group.description ? (
                   <Text color="$onzeMuted" fontSize={14} lineHeight={20} textAlign="center">
@@ -128,7 +136,7 @@ export default function GroupScreen() {
                 </YStack>
               </YStack>
 
-              {group.role === 'ADMIN' ? (
+              {isAdmin ? (
                 <YStack gap="$3">
                   <Text color="$onzeInk" fontSize={18} fontWeight="800">Administrar grupo</Text>
                   <Button
@@ -137,6 +145,15 @@ export default function GroupScreen() {
                     onPress={() => router.push({ pathname: '/group-invite', params: { groupId: group.id, groupName: group.name } })}
                   >
                     <Text color="$onzeSurface" fontWeight="800">Jogadores e convites</Text>
+                  </Button>
+                  <Button
+                    backgroundColor="$onzeSurface"
+                    borderColor="$onzeGreen"
+                    borderWidth={1}
+                    height={52}
+                    onPress={() => router.push({ pathname: '/group-admins', params: { groupId: group.id, groupName: group.name } })}
+                  >
+                    <Text color="$onzeGreen" fontWeight="800">Administradores</Text>
                   </Button>
                   <Button
                     backgroundColor="$onzeSurface"
