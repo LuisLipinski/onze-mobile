@@ -11,12 +11,23 @@
     "android": {
       "package": "com.onze.organizadordepelada",
       "icon": "./assets/icon.png",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#148A4A"
       }
     },
-    "plugins": ["expo-router", "expo-secure-store", "expo-system-ui"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-system-ui",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permitir que o Onze use a biometria para entrar na sua conta."
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     }

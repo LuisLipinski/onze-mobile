@@ -6,19 +6,39 @@ import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { ApiRequestError, getCurrentUser, User } from '../src/lib/api';
 import {
   clearSession,
+  disableBiometricLogin,
+  enableBiometricLogin,
   getAccessToken,
   getStoredCurrentUser,
+  isBiometricLoginEnabled,
   saveCurrentUser,
 } from '../src/lib/auth-storage';
+import { authenticateWithBiometrics, isBiometricAvailable } from '../src/lib/biometrics';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricMessage, setBiometricMessage] = useState<string | null>(null);
+  const [biometricLoading, setBiometricLoading] = useState(false);
 
   useEffect(() => {
     void loadUser();
+    void loadBiometricState();
   }, []);
+
+  async function loadBiometricState() {
+    try {
+      const available = await isBiometricAvailable();
+      setBiometricAvailable(available);
+      setBiometricEnabled(available && (await isBiometricLoginEnabled()));
+    } catch {
+      setBiometricAvailable(false);
+      setBiometricEnabled(false);
+    }
+  }
 
   async function loadUser() {
     setError(null);
@@ -50,6 +70,43 @@ export default function HomeScreen() {
         exception instanceof Error ? exception.message : 'Sua sessão não pôde ser carregada.',
       );
     }
+  }
+
+  async function activateBiometricLogin() {
+    if (biometricLoading) return;
+    setBiometricMessage(null);
+    setBiometricLoading(true);
+
+    try {
+      if (!(await isBiometricAvailable())) {
+        setBiometricAvailable(false);
+        setBiometricMessage('Não encontramos uma biometria cadastrada neste aparelho.');
+        return;
+      }
+
+      if (!(await authenticateWithBiometrics())) {
+        setBiometricMessage('Biometria não confirmada. A opção continua desativada.');
+        return;
+      }
+
+      await enableBiometricLogin();
+      setBiometricEnabled(true);
+      setBiometricMessage('Login com biometria ativado.');
+    } catch (exception) {
+      setBiometricMessage(
+        exception instanceof Error
+          ? exception.message
+          : 'Não foi possível ativar o login com biometria.',
+      );
+    } finally {
+      setBiometricLoading(false);
+    }
+  }
+
+  async function deactivateBiometricLogin() {
+    await disableBiometricLogin();
+    setBiometricEnabled(false);
+    setBiometricMessage('Login com biometria desativado.');
   }
 
   async function logout() {
@@ -85,6 +142,36 @@ export default function HomeScreen() {
           </>
         )}
 
+        {user && biometricAvailable ? (
+          <View style={styles.biometricCard}>
+            <Text style={styles.biometricTitle}>Login com biometria</Text>
+            <Text style={styles.biometricDescription}>
+              {biometricEnabled
+                ? 'Ativado neste aparelho. Na próxima abertura você poderá entrar com sua biometria.'
+                : 'Use a biometria cadastrada no aparelho para entrar sem digitar sua senha.'}
+            </Text>
+
+            <Pressable
+              onPress={() =>
+                void (biometricEnabled ? deactivateBiometricLogin() : activateBiometricLogin())
+              }
+              style={styles.biometricButton}
+            >
+              <Text style={styles.biometricButtonText}>
+                {biometricLoading
+                  ? 'Validando...'
+                  : biometricEnabled
+                    ? 'Desativar biometria'
+                    : 'Ativar login com biometria'}
+              </Text>
+            </Pressable>
+
+            {biometricMessage ? (
+              <Text style={styles.biometricMessage}>{biometricMessage}</Text>
+            ) : null}
+          </View>
+        ) : null}
+
         <Pressable onPress={logout} style={styles.secondaryButton}>
           <Text style={styles.secondaryButtonText}>Sair</Text>
         </Pressable>
@@ -108,6 +195,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#148A4A',
   },
   primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  biometricCard: {
+    marginTop: 28,
+    padding: 18,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DDE6E1',
+    backgroundColor: '#FFFFFF',
+  },
+  biometricTitle: { color: '#10231A', fontSize: 17, fontWeight: '800' },
+  biometricDescription: { color: '#65756D', fontSize: 14, lineHeight: 20, marginTop: 6 },
+  biometricButton: {
+    minHeight: 46,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: '#148A4A',
+    backgroundColor: '#FFFFFF',
+  },
+  biometricButtonText: { color: '#148A4A', fontSize: 14, fontWeight: '700' },
+  biometricMessage: { color: '#65756D', fontSize: 13, lineHeight: 18, marginTop: 10 },
   secondaryButton: {
     minHeight: 50,
     borderWidth: 1,
