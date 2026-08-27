@@ -1,5 +1,5 @@
 import { Link, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -10,8 +10,8 @@ import {
   View,
 } from 'react-native';
 
-import { login } from '../src/lib/api';
-import { saveAccessToken } from '../src/lib/auth-storage';
+import { ApiRequestError, getCurrentUser, login } from '../src/lib/api';
+import { clearAccessToken, getAccessToken, saveAccessToken } from '../src/lib/auth-storage';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -19,6 +19,27 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [restoringSession, setRestoringSession] = useState(true);
+
+  useEffect(() => {
+    void restoreSession();
+  }, []);
+
+  async function restoreSession() {
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+
+      await getCurrentUser(token);
+      router.replace('/home');
+    } catch (exception) {
+      if (exception instanceof ApiRequestError && exception.status === 401) {
+        await clearAccessToken();
+      }
+    } finally {
+      setRestoringSession(false);
+    }
+  }
 
   async function submit() {
     if (loading) return;
@@ -34,6 +55,14 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (restoringSession) {
+    return (
+      <SafeAreaView style={styles.centered}>
+        <ActivityIndicator />
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -84,6 +113,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   container: { flex: 1, justifyContent: 'center', padding: 24, gap: 40 },
   header: { alignItems: 'center' },
   brand: { fontSize: 40, fontWeight: '800' },
