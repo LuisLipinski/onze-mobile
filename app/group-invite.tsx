@@ -1,10 +1,14 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { SafeAreaView, Share } from 'react-native';
+import { Alert, SafeAreaView, Share } from 'react-native';
 import { Button, Text, YStack } from 'tamagui';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
-import { createGroupInvite, GroupInvite } from '../src/lib/api';
+import {
+  createGroupInvite,
+  GroupInvite,
+  regenerateGroupInvite,
+} from '../src/lib/api';
 import { getAccessToken } from '../src/lib/auth-storage';
 
 export default function GroupInviteScreen() {
@@ -12,7 +16,9 @@ export default function GroupInviteScreen() {
   const params = useLocalSearchParams<{ groupId: string; groupName?: string }>();
   const [invite, setInvite] = useState<GroupInvite | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     void loadInvite();
@@ -50,6 +56,43 @@ export default function GroupInviteScreen() {
     });
   }
 
+  function confirmRegenerate() {
+    if (regenerating) return;
+    Alert.alert(
+      'Gerar novo convite?',
+      'O link e o código atuais deixarão de funcionar. Quem já entrou no grupo continuará normalmente.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Gerar novo convite', style: 'destructive', onPress: () => void regenerateInvite() },
+      ],
+    );
+  }
+
+  async function regenerateInvite() {
+    if (!params.groupId || regenerating) return;
+    setRegenerating(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        router.replace('/');
+        return;
+      }
+      setInvite(await regenerateGroupInvite(token, params.groupId));
+      setMessage('Novo convite gerado. O link e o código anteriores não funcionam mais.');
+    } catch (exception) {
+      setError(
+        exception instanceof Error
+          ? exception.message
+          : 'Não foi possível gerar um novo convite.',
+      );
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
   if (loading) {
     return (
       <ServerLoadingScreen
@@ -71,7 +114,7 @@ export default function GroupInviteScreen() {
               Compartilhe o convite
             </Text>
             <Text color="$onzeMuted" fontSize={15} lineHeight={22}>
-              Envie o link ou passe o código para quem você quer adicionar ao grupo.
+              O mesmo link pode ser usado por várias pessoas. Compartilhe no grupo do WhatsApp ou passe o código manualmente.
             </Text>
           </YStack>
 
@@ -113,6 +156,24 @@ export default function GroupInviteScreen() {
                   Compartilhar convite
                 </Text>
               </Button>
+
+              <Button
+                alignSelf="stretch"
+                backgroundColor="$onzeSurface"
+                borderColor="$onzeBorder"
+                borderWidth={1}
+                disabled={regenerating}
+                height={48}
+                onPress={confirmRegenerate}
+              >
+                <Text color="$onzeInk" fontSize={14} fontWeight="700">
+                  {regenerating ? 'Gerando...' : 'Gerar novo convite'}
+                </Text>
+              </Button>
+
+              <Text color="$onzeMuted" fontSize={12} lineHeight={18} textAlign="center">
+                Gere outro somente se quiser invalidar o link que já foi compartilhado.
+              </Text>
             </YStack>
           ) : (
             <YStack
@@ -126,16 +187,25 @@ export default function GroupInviteScreen() {
               <Text color="$onzeDanger" fontSize={14} lineHeight={20}>
                 {error ?? 'Não foi possível gerar o convite.'}
               </Text>
-              <Button
-                backgroundColor="$onzeGreen"
-                onPress={() => void loadInvite()}
-              >
+              <Button backgroundColor="$onzeGreen" onPress={() => void loadInvite()}>
                 <Text color="$onzeSurface" fontWeight="800">
                   Tentar novamente
                 </Text>
               </Button>
             </YStack>
           )}
+
+          {message ? (
+            <Text color="$onzeGreen" fontSize={13} fontWeight="700" lineHeight={19}>
+              {message}
+            </Text>
+          ) : null}
+
+          {error && invite ? (
+            <Text color="$onzeDanger" fontSize={13} lineHeight={19}>
+              {error}
+            </Text>
+          ) : null}
 
           <Button
             backgroundColor="$onzeSurface"
