@@ -17,6 +17,17 @@ type ApiError = {
   message?: string;
 };
 
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = 'ApiRequestError';
+  }
+}
+
 function getApiUrl() {
   const value = process.env.EXPO_PUBLIC_API_URL;
   if (!value) {
@@ -41,7 +52,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     } catch {
       // The API may return no JSON for infrastructure-level errors.
     }
-    throw new Error(payload.message ?? 'Não foi possível concluir a operação.');
+    throw new ApiRequestError(
+      payload.message ?? 'Não foi possível concluir a operação.',
+      response.status,
+      payload.code,
+    );
   }
 
   return (await response.json()) as T;
