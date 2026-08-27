@@ -101,7 +101,7 @@ export default function LoginScreen() {
             keyboardType="email-address"
             onChangeText={setEmail}
             placeholder="E-mail"
-            placeholderTextColor="#87958E"
+            placeholderTextColor="$onzeMuted"
             value={email}
           />
           <Input
@@ -114,7 +114,7 @@ export default function LoginScreen() {
             height={52}
             onChangeText={setPassword}
             placeholder="Senha"
-            placeholderTextColor="#87958E"
+            placeholderTextColor="$onzeMuted"
             secureTextEntry
             value={password}
           />
