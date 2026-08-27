@@ -1,8 +1,9 @@
 import { Link, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, SafeAreaView } from 'react-native';
+import { SafeAreaView } from 'react-native';
 import { Button, Input, Text, YStack } from 'tamagui';
 
+import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { ApiRequestError, getCurrentUser, login } from '../src/lib/api';
 import { clearAccessToken, getAccessToken, saveAccessToken } from '../src/lib/auth-storage';
 
@@ -52,11 +53,19 @@ export default function LoginScreen() {
 
   if (restoringSession) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
-        <YStack flex={1} alignItems="center" justifyContent="center">
-          <ActivityIndicator color="#148A4A" />
-        </YStack>
-      </SafeAreaView>
+      <ServerLoadingScreen
+        title="Carregando sua sessão..."
+        message="Se o servidor estiver iniciando, isso pode levar alguns segundos."
+      />
+    );
+  }
+
+  if (loading) {
+    return (
+      <ServerLoadingScreen
+        title="Conectando ao Onze..."
+        message="Se o servidor estiver iniciando, isso pode levar alguns segundos."
+      />
     );
   }
 
@@ -128,18 +137,13 @@ export default function LoginScreen() {
           <Button
             backgroundColor="$onzeGreen"
             borderRadius="$4"
-            disabled={loading}
             height={52}
             onPress={submit}
             pressStyle={{ backgroundColor: '$onzeGreenPress' }}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text color="$onzeSurface" fontSize={16} fontWeight="800">
-                Entrar
-              </Text>
-            )}
+            <Text color="$onzeSurface" fontSize={16} fontWeight="800">
+              Entrar
+            </Text>
           </Button>
 
           <Text color="$onzeMuted" fontSize={14} textAlign="center">
