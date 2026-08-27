@@ -49,7 +49,7 @@ export type GroupInvite = {
 export type JoinGroupResponse = {
   groupId: string;
   groupName: string;
-  role: 'MEMBER';
+  role: GroupRole;
   alreadyMember: boolean;
 };
 
@@ -204,6 +204,13 @@ export function listGroups(accessToken: string) {
 
 export function createGroupInvite(accessToken: string, groupId: string) {
   return request<GroupInvite>(`/api/groups/${groupId}/invite`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function regenerateGroupInvite(accessToken: string, groupId: string) {
+  return request<GroupInvite>(`/api/groups/${groupId}/invite/regenerate`, {
     method: 'POST',
     headers: authenticatedHeaders(accessToken),
   });
