@@ -28,11 +28,10 @@ export class ApiRequestError extends Error {
   }
 }
 
+const DEFAULT_API_URL = 'https://onze-organizador-de-pelada.onrender.com';
+
 function getApiUrl() {
-  const value = process.env.EXPO_PUBLIC_API_URL;
-  if (!value) {
-    throw new Error('API do Onze ainda não está configurada neste build.');
-  }
+  const value = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;
   return value.replace(/\/$/, '');
 }
 
