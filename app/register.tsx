@@ -1,15 +1,9 @@
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { SafeAreaView } from 'react-native';
+import { Button, Input, Text, YStack } from 'tamagui';
 
+import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { register } from '../src/lib/api';
 import { saveAccessToken } from '../src/lib/auth-storage';
 
@@ -37,60 +31,104 @@ export default function RegisterScreen() {
     }
   }
 
+  if (loading) {
+    return (
+      <ServerLoadingScreen
+        title="Criando sua conta..."
+        message="Se o servidor estiver iniciando, isso pode levar alguns segundos."
+      />
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Criar conta</Text>
-        <TextInput
-          autoCapitalize="words"
-          onChangeText={setDisplayName}
-          placeholder="Seu nome"
-          style={styles.input}
-          value={displayName}
-        />
-        <TextInput
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          onChangeText={setEmail}
-          placeholder="E-mail"
-          style={styles.input}
-          value={email}
-        />
-        <TextInput
-          autoComplete="new-password"
-          onChangeText={setPassword}
-          placeholder="Senha (mínimo 8 caracteres)"
-          secureTextEntry
-          style={styles.input}
-          value={password}
-        />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+      <YStack flex={1} justifyContent="center" padding="$5" gap="$7" backgroundColor="$onzeCanvas">
+        <YStack
+          backgroundColor="$onzeSurface"
+          borderColor="$onzeBorder"
+          borderRadius="$6"
+          borderWidth={1}
+          gap="$4"
+          padding="$5"
+        >
+          <YStack gap="$1">
+            <Text color="$onzeInk" fontSize={28} fontWeight="800">
+              Criar conta
+            </Text>
+            <Text color="$onzeMuted" fontSize={14}>
+              Crie seu acesso para começar a organizar suas partidas.
+            </Text>
+          </YStack>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Input
+            autoCapitalize="words"
+            backgroundColor="$onzeSurface"
+            borderColor="$onzeBorder"
+            borderRadius="$4"
+            color="$onzeInk"
+            focusStyle={{ borderColor: '$onzeGreen' }}
+            height={52}
+            onChangeText={setDisplayName}
+            placeholder="Seu nome"
+            placeholderTextColor="$onzeMuted"
+            value={displayName}
+          />
+          <Input
+            autoCapitalize="none"
+            autoComplete="email"
+            backgroundColor="$onzeSurface"
+            borderColor="$onzeBorder"
+            borderRadius="$4"
+            color="$onzeInk"
+            focusStyle={{ borderColor: '$onzeGreen' }}
+            height={52}
+            keyboardType="email-address"
+            onChangeText={setEmail}
+            placeholder="E-mail"
+            placeholderTextColor="$onzeMuted"
+            value={email}
+          />
+          <Input
+            autoComplete="new-password"
+            backgroundColor="$onzeSurface"
+            borderColor="$onzeBorder"
+            borderRadius="$4"
+            color="$onzeInk"
+            focusStyle={{ borderColor: '$onzeGreen' }}
+            height={52}
+            onChangeText={setPassword}
+            placeholder="Senha (mínimo 8 caracteres)"
+            placeholderTextColor="$onzeMuted"
+            secureTextEntry
+            value={password}
+          />
 
-        <Pressable disabled={loading} onPress={submit} style={styles.primaryButton}>
-          {loading ? <ActivityIndicator /> : <Text style={styles.primaryButtonText}>Criar conta</Text>}
-        </Pressable>
+          {error ? (
+            <Text color="$onzeDanger" fontSize={14}>
+              {error}
+            </Text>
+          ) : null}
 
-        <Text style={styles.helper}>
-          Já tem conta?{' '}
-          <Link href="/" style={styles.link}>
-            Entrar
-          </Link>
-        </Text>
-      </View>
+          <Button
+            backgroundColor="$onzeGreen"
+            borderRadius="$4"
+            height={52}
+            onPress={submit}
+            pressStyle={{ backgroundColor: '$onzeGreenPress' }}
+          >
+            <Text color="$onzeSurface" fontSize={16} fontWeight="800">
+              Criar conta
+            </Text>
+          </Button>
+
+          <Text color="$onzeMuted" fontSize={14} textAlign="center">
+            Já tem conta?{' '}
+            <Link href="/" style={{ color: '#148A4A', fontWeight: '700' }}>
+              Entrar
+            </Link>
+          </Text>
+        </YStack>
+      </YStack>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  container: { flex: 1, justifyContent: 'center', padding: 24, gap: 14 },
-  title: { fontSize: 30, fontWeight: '800', marginBottom: 8 },
-  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16 },
-  primaryButton: { minHeight: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111111', marginTop: 4 },
-  primaryButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
-  helper: { textAlign: 'center', marginTop: 4 },
-  link: { fontWeight: '700', textDecorationLine: 'underline' },
-  error: { fontSize: 14 },
-});
