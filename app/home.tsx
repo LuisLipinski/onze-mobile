@@ -1,9 +1,15 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
-import { getCurrentUser, User } from '../src/lib/api';
-import { clearAccessToken, getAccessToken } from '../src/lib/auth-storage';
+import { ServerLoadingScreen } from '../src/components/server-loading-screen';
+import { ApiRequestError, getCurrentUser, User } from '../src/lib/api';
+import {
+  clearSession,
+  getAccessToken,
+  getStoredCurrentUser,
+  saveCurrentUser,
+} from '../src/lib/auth-storage';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -15,29 +21,48 @@ export default function HomeScreen() {
   }, []);
 
   async function loadUser() {
+    setError(null);
+
     try {
+      const storedUser = await getStoredCurrentUser();
+      if (storedUser) {
+        setUser(storedUser);
+        return;
+      }
+
       const token = await getAccessToken();
       if (!token) {
         router.replace('/');
         return;
       }
-      setUser(await getCurrentUser(token));
+
+      const currentUser = await getCurrentUser(token);
+      await saveCurrentUser(currentUser);
+      setUser(currentUser);
     } catch (exception) {
-      await clearAccessToken();
-      setError(exception instanceof Error ? exception.message : 'Sua sessão não pôde ser carregada.');
+      if (exception instanceof ApiRequestError && exception.status === 401) {
+        await clearSession();
+        router.replace('/');
+        return;
+      }
+
+      setError(
+        exception instanceof Error ? exception.message : 'Sua sessão não pôde ser carregada.',
+      );
     }
   }
 
   async function logout() {
-    await clearAccessToken();
+    await clearSession();
     router.replace('/');
   }
 
   if (!user && !error) {
     return (
-      <SafeAreaView style={styles.centered}>
-        <ActivityIndicator />
-      </SafeAreaView>
+      <ServerLoadingScreen
+        title="Carregando o Onze..."
+        message="Estamos preparando sua sessão."
+      />
     );
   }
 
@@ -48,10 +73,16 @@ export default function HomeScreen() {
         {user ? (
           <>
             <Text style={styles.title}>Olá, {user.displayName}</Text>
-            <Text style={styles.subtitle}>Sua conta já está conectada à API do Onze.</Text>
+            <Text style={styles.subtitle}>Sua conta está conectada à API do Onze.</Text>
           </>
         ) : (
-          <Text style={styles.subtitle}>{error}</Text>
+          <>
+            <Text style={styles.title}>Não foi possível carregar sua sessão</Text>
+            <Text style={styles.subtitle}>{error}</Text>
+            <Pressable onPress={() => void loadUser()} style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Tentar novamente</Text>
+            </Pressable>
+          </>
         )}
 
         <Pressable onPress={logout} style={styles.secondaryButton}>
@@ -63,12 +94,29 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  safeArea: { flex: 1, backgroundColor: '#F4F7F5' },
   container: { flex: 1, justifyContent: 'center', padding: 24 },
-  brand: { fontSize: 18, fontWeight: '800', marginBottom: 18 },
-  title: { fontSize: 30, fontWeight: '800' },
-  subtitle: { fontSize: 16, marginTop: 8, lineHeight: 23 },
-  secondaryButton: { minHeight: 50, borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 32 },
-  secondaryButtonText: { fontSize: 16, fontWeight: '700' },
+  brand: { color: '#148A4A', fontSize: 18, fontWeight: '800', marginBottom: 18 },
+  title: { color: '#10231A', fontSize: 30, fontWeight: '800' },
+  subtitle: { color: '#65756D', fontSize: 16, marginTop: 8, lineHeight: 23 },
+  primaryButton: {
+    minHeight: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+    backgroundColor: '#148A4A',
+  },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  secondaryButton: {
+    minHeight: 50,
+    borderWidth: 1,
+    borderColor: '#DDE6E1',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  secondaryButtonText: { color: '#10231A', fontSize: 16, fontWeight: '700' },
 });

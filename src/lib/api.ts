@@ -29,36 +29,51 @@ export class ApiRequestError extends Error {
 }
 
 const DEFAULT_API_URL = 'https://onze-organizador-de-pelada.onrender.com';
+const REQUEST_TIMEOUT_MS = 60_000;
 
 function getApiUrl() {
-  const value = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;
+  const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+  const value = configuredUrl || DEFAULT_API_URL;
   return value.replace(/\/$/, '');
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${getApiUrl()}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  if (!response.ok) {
-    let payload: ApiError = {};
-    try {
-      payload = (await response.json()) as ApiError;
-    } catch {
-      // The API may return no JSON for infrastructure-level errors.
+  try {
+    const response = await fetch(`${getApiUrl()}${path}`, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      let payload: ApiError = {};
+      try {
+        payload = (await response.json()) as ApiError;
+      } catch {
+        // The API may return no JSON for infrastructure-level errors.
+      }
+      throw new ApiRequestError(
+        payload.message ?? 'Não foi possível concluir a operação.',
+        response.status,
+        payload.code,
+      );
     }
-    throw new ApiRequestError(
-      payload.message ?? 'Não foi possível concluir a operação.',
-      response.status,
-      payload.code,
-    );
-  }
 
-  return (await response.json()) as T;
+    return (await response.json()) as T;
+  } catch (exception) {
+    if (controller.signal.aborted) {
+      throw new Error('O servidor demorou mais que o esperado para responder. Tente novamente.');
+    }
+    throw exception;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export function login(email: string, password: string) {

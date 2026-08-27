@@ -7,3 +7,5 @@ web-build/
 !.env.example
 *.log
 .DS_Store
+assets/icon.png
+assets/adaptive-icon.png

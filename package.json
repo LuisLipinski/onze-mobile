@@ -4,12 +4,14 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "postinstall": "node scripts/write-app-icon.mjs",
     "start": "expo start",
     "android": "expo start --android",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tamagui/config": "2.7.7",
     "expo": "~57.0.9",
     "expo-router": "~57.0.9",
     "expo-secure-store": "~57.0.1",
@@ -20,7 +22,8 @@
     "react-native-reanimated": "4.5.1",
     "react-native-worklets": "0.10.1",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-screens": "4.26.0"
+    "react-native-screens": "4.26.0",
+    "tamagui": "2.7.7"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
