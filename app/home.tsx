@@ -197,13 +197,25 @@ export default function HomeScreen() {
 
           {user ? (
             <YStack gap="$3">
-              <XStack alignItems="center" justifyContent="space-between">
-                <Text color="$onzeInk" fontSize={20} fontWeight="800">
-                  Seus grupos
-                </Text>
+              <Text color="$onzeInk" fontSize={20} fontWeight="800">
+                Seus grupos
+              </Text>
+
+              <XStack gap="$2">
+                <Button
+                  backgroundColor="$onzeSurface"
+                  borderColor="$onzeGreen"
+                  borderWidth={1}
+                  flex={1}
+                  onPress={() => router.push('/join-group')}
+                >
+                  <Text color="$onzeGreen" fontWeight="800">
+                    Entrar em grupo
+                  </Text>
+                </Button>
                 <Button
                   backgroundColor="$onzeGreen"
-                  size="$3"
+                  flex={1}
                   onPress={() => router.push('/create-group')}
                 >
                   <Text color="$onzeSurface" fontWeight="800">
