@@ -31,7 +31,8 @@ export class ApiRequestError extends Error {
 const DEFAULT_API_URL = 'https://onze-organizador-de-pelada.onrender.com';
 
 function getApiUrl() {
-  const value = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;
+  const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+  const value = configuredUrl || DEFAULT_API_URL;
   return value.replace(/\/$/, '');
 }
 
