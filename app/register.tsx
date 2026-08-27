@@ -1,4 +1,4 @@
-import { Link, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -13,6 +13,7 @@ import { register } from '../src/lib/api';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ joinCode?: string }>();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,7 +27,13 @@ export default function RegisterScreen() {
 
     try {
       await register(displayName, email, password);
-      router.replace({ pathname: '/', params: { registered: '1' } });
+      router.replace({
+        pathname: '/',
+        params: {
+          registered: '1',
+          ...(params.joinCode ? { joinCode: params.joinCode } : {}),
+        },
+      });
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível criar a conta.');
       setLoading(false);
@@ -71,7 +78,9 @@ export default function RegisterScreen() {
                   Criar conta
                 </Text>
                 <Text color="$onzeMuted" fontSize={14}>
-                  Crie seu acesso para começar a organizar suas partidas.
+                  {params.joinCode
+                    ? 'Crie seu acesso para aceitar o convite da pelada.'
+                    : 'Crie seu acesso para começar a organizar suas partidas.'}
                 </Text>
               </YStack>
 
@@ -142,7 +151,14 @@ export default function RegisterScreen() {
 
               <Text color="$onzeMuted" fontSize={14} textAlign="center">
                 Já tem conta?{' '}
-                <Link href="/" style={{ color: '#148A4A', fontWeight: '700' }}>
+                <Link
+                  href={
+                    params.joinCode
+                      ? { pathname: '/', params: { joinCode: params.joinCode } }
+                      : '/'
+                  }
+                  style={{ color: '#148A4A', fontWeight: '700' }}
+                >
                   Entrar
                 </Link>
               </Text>

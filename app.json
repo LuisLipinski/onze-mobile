@@ -26,6 +26,13 @@
         {
           "faceIDPermission": "Permitir que o Onze use a biometria para entrar na sua conta."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permitir que o Onze acesse suas fotos para escolher a imagem do grupo.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

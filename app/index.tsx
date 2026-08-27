@@ -21,7 +21,11 @@ import { authenticateWithBiometrics, isBiometricAvailable } from '../src/lib/bio
 
 export default function LoginScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ registered?: string; passwordReset?: string }>();
+  const params = useLocalSearchParams<{
+    registered?: string;
+    passwordReset?: string;
+    joinCode?: string;
+  }>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +37,17 @@ export default function LoginScreen() {
   useEffect(() => {
     void restoreSession();
   }, []);
+
+  function goAfterAuthentication() {
+    if (typeof params.joinCode === 'string' && params.joinCode.trim()) {
+      router.replace({
+        pathname: '/join-group',
+        params: { code: params.joinCode.trim().toUpperCase() },
+      });
+      return;
+    }
+    router.replace('/home');
+  }
 
   async function restoreSession() {
     try {
@@ -52,7 +67,7 @@ export default function LoginScreen() {
 
       const user = await getCurrentUser(token);
       await saveCurrentUser(user);
-      router.replace('/home');
+      goAfterAuthentication();
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
         await clearSession();
@@ -76,7 +91,7 @@ export default function LoginScreen() {
     try {
       const response = await login(email, password);
       await saveSession(response.accessToken, response.user);
-      router.replace('/home');
+      goAfterAuthentication();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível entrar.');
       setLoading(false);
@@ -112,7 +127,7 @@ export default function LoginScreen() {
 
       const user = await getCurrentUser(token);
       await saveCurrentUser(user);
-      router.replace('/home');
+      goAfterAuthentication();
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
         await clearSession();
@@ -187,7 +202,9 @@ export default function LoginScreen() {
                   Entrar
                 </Text>
                 <Text color="$onzeMuted" fontSize={14}>
-                  Entre para organizar sua próxima partida.
+                  {params.joinCode
+                    ? 'Entre na sua conta para aceitar o convite da pelada.'
+                    : 'Entre para organizar sua próxima partida.'}
                 </Text>
               </YStack>
 
@@ -284,7 +301,14 @@ export default function LoginScreen() {
 
               <Text color="$onzeMuted" fontSize={14} textAlign="center">
                 Ainda não tem conta?{' '}
-                <Link href="/register" style={{ color: '#148A4A', fontWeight: '700' }}>
+                <Link
+                  href={
+                    params.joinCode
+                      ? { pathname: '/register', params: { joinCode: params.joinCode } }
+                      : '/register'
+                  }
+                  style={{ color: '#148A4A', fontWeight: '700' }}
+                >
                   Criar conta
                 </Link>
               </Text>

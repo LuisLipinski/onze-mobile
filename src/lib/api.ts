@@ -12,6 +12,48 @@ export type AuthResponse = {
   user: User;
 };
 
+export type GroupRole = 'ADMIN' | 'MEMBER';
+export type GroupDayOfWeek =
+  | 'MONDAY'
+  | 'TUESDAY'
+  | 'WEDNESDAY'
+  | 'THURSDAY'
+  | 'FRIDAY'
+  | 'SATURDAY'
+  | 'SUNDAY';
+
+export type GroupSchedule = {
+  dayOfWeek: GroupDayOfWeek;
+  startTime: string;
+};
+
+export type Group = {
+  id: string;
+  name: string;
+  description: string | null;
+  photoUrl: string | null;
+  city: string | null;
+  mascot: string | null;
+  venue: string | null;
+  schedules: GroupSchedule[];
+  role: GroupRole;
+  createdAt: string;
+};
+
+export type GroupInvite = {
+  groupId: string;
+  code: string;
+  deepLink: string;
+  shareUrl: string;
+};
+
+export type JoinGroupResponse = {
+  groupId: string;
+  groupName: string;
+  role: GroupRole;
+  alreadyMember: boolean;
+};
+
 type MessageResponse = {
   message: string;
 };
@@ -44,13 +86,14 @@ function getApiUrl() {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const isMultipart = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
   try {
     const response = await fetch(`${getApiUrl()}${path}`, {
       ...options,
       signal: controller.signal,
       headers: {
-        'Content-Type': 'application/json',
+        ...(isMultipart ? {} : { 'Content-Type': 'application/json' }),
         ...options.headers,
       },
     });
@@ -78,6 +121,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+function authenticatedHeaders(accessToken: string) {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+  };
 }
 
 export function login(email: string, password: string) {
@@ -110,8 +159,90 @@ export function confirmPasswordReset(email: string, code: string, newPassword: s
 
 export function getCurrentUser(accessToken: string) {
   return request<User>('/api/auth/me', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function createGroup(
+  accessToken: string,
+  name: string,
+  description?: string,
+) {
+  return request<Group>('/api/groups', {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ name, description: description || null }),
+  });
+}
+
+export function updateGroupDetails(
+  accessToken: string,
+  groupId: string,
+  details: {
+    city?: string;
+    mascot?: string;
+    venue?: string;
+    schedules: GroupSchedule[];
+  },
+) {
+  return request<Group>(`/api/groups/${groupId}/details`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({
+      city: details.city || null,
+      mascot: details.mascot || null,
+      venue: details.venue || null,
+      schedules: details.schedules,
+    }),
+  });
+}
+
+export function listGroups(accessToken: string) {
+  return request<Group[]>('/api/groups', {
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function createGroupInvite(accessToken: string, groupId: string) {
+  return request<GroupInvite>(`/api/groups/${groupId}/invite`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function regenerateGroupInvite(accessToken: string, groupId: string) {
+  return request<GroupInvite>(`/api/groups/${groupId}/invite/regenerate`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function joinGroup(accessToken: string, code: string) {
+  return request<JoinGroupResponse>('/api/groups/join', {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ code: code.trim().toUpperCase() }),
+  });
+}
+
+export function uploadGroupPhoto(
+  accessToken: string,
+  groupId: string,
+  photo: { uri: string; fileName?: string | null; mimeType?: string | null },
+) {
+  const form = new FormData();
+  form.append(
+    'photo',
+    {
+      uri: photo.uri,
+      name: photo.fileName || 'group-photo.jpg',
+      type: photo.mimeType || 'image/jpeg',
+    } as unknown as Blob,
+  );
+
+  return request<Group>(`/api/groups/${groupId}/photo`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    body: form,
   });
 }

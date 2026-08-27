@@ -1,9 +1,10 @@
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Image, Pressable, SafeAreaView, ScrollView } from 'react-native';
+import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
-import { ApiRequestError, getCurrentUser, User } from '../src/lib/api';
+import { ApiRequestError, getCurrentUser, Group, listGroups, User } from '../src/lib/api';
 import {
   clearSession,
   disableBiometricLogin,
@@ -19,6 +20,9 @@ export default function HomeScreen() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [groupsError, setGroupsError] = useState<string | null>(null);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricMessage, setBiometricMessage] = useState<string | null>(null);
@@ -28,6 +32,14 @@ export default function HomeScreen() {
     void loadUser();
     void loadBiometricState();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        void loadGroups();
+      }
+    }, [user]),
+  );
 
   async function loadBiometricState() {
     try {
@@ -69,6 +81,32 @@ export default function HomeScreen() {
       setError(
         exception instanceof Error ? exception.message : 'Sua sessão não pôde ser carregada.',
       );
+    }
+  }
+
+  async function loadGroups() {
+    if (groupsLoading) return;
+    setGroupsLoading(true);
+    setGroupsError(null);
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        router.replace('/');
+        return;
+      }
+      setGroups(await listGroups(token));
+    } catch (exception) {
+      if (exception instanceof ApiRequestError && exception.status === 401) {
+        await clearSession();
+        router.replace('/');
+        return;
+      }
+      setGroupsError(
+        exception instanceof Error ? exception.message : 'Não foi possível carregar seus grupos.',
+      );
+    } finally {
+      setGroupsLoading(false);
     }
   }
 
@@ -124,108 +162,233 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.brand}>ONZE</Text>
-        {user ? (
-          <>
-            <Text style={styles.title}>Olá, {user.displayName}</Text>
-            <Text style={styles.subtitle}>Sua conta está conectada à API do Onze.</Text>
-          </>
-        ) : (
-          <>
-            <Text style={styles.title}>Não foi possível carregar sua sessão</Text>
-            <Text style={styles.subtitle}>{error}</Text>
-            <Pressable onPress={() => void loadUser()} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Tentar novamente</Text>
-            </Pressable>
-          </>
-        )}
-
-        {user && biometricAvailable ? (
-          <View style={styles.biometricCard}>
-            <Text style={styles.biometricTitle}>Login com biometria</Text>
-            <Text style={styles.biometricDescription}>
-              {biometricEnabled
-                ? 'Ativado neste aparelho. Na próxima abertura você poderá entrar com sua biometria.'
-                : 'Use a biometria cadastrada no aparelho para entrar sem digitar sua senha.'}
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+        <YStack gap="$5" paddingVertical="$3">
+          <YStack gap="$1">
+            <Text color="$onzeGreen" fontSize={18} fontWeight="900">
+              ONZE
             </Text>
+            {user ? (
+              <>
+                <Text color="$onzeInk" fontSize={30} fontWeight="800">
+                  Olá, {user.displayName}
+                </Text>
+                <Text color="$onzeMuted" fontSize={15}>
+                  Organize suas peladas em um só lugar.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text color="$onzeInk" fontSize={26} fontWeight="800">
+                  Não foi possível carregar sua sessão
+                </Text>
+                <Text color="$onzeMuted" fontSize={14}>
+                  {error}
+                </Text>
+                <Button backgroundColor="$onzeGreen" onPress={() => void loadUser()}>
+                  <Text color="$onzeSurface" fontWeight="800">
+                    Tentar novamente
+                  </Text>
+                </Button>
+              </>
+            )}
+          </YStack>
 
-            <Pressable
-              onPress={() =>
-                void (biometricEnabled ? deactivateBiometricLogin() : activateBiometricLogin())
-              }
-              style={styles.biometricButton}
-            >
-              <Text style={styles.biometricButtonText}>
-                {biometricLoading
-                  ? 'Validando...'
-                  : biometricEnabled
-                    ? 'Desativar biometria'
-                    : 'Ativar login com biometria'}
+          {user ? (
+            <YStack gap="$3">
+              <Text color="$onzeInk" fontSize={20} fontWeight="800">
+                Seus grupos
               </Text>
-            </Pressable>
 
-            {biometricMessage ? (
-              <Text style={styles.biometricMessage}>{biometricMessage}</Text>
-            ) : null}
-          </View>
-        ) : null}
+              <XStack gap="$2">
+                <Button
+                  backgroundColor="$onzeSurface"
+                  borderColor="$onzeGreen"
+                  borderWidth={1}
+                  flex={1}
+                  onPress={() => router.push('/join-group')}
+                >
+                  <Text color="$onzeGreen" fontWeight="800">
+                    Entrar em grupo
+                  </Text>
+                </Button>
+                <Button
+                  backgroundColor="$onzeGreen"
+                  flex={1}
+                  onPress={() => router.push('/create-group')}
+                >
+                  <Text color="$onzeSurface" fontWeight="800">
+                    + Criar grupo
+                  </Text>
+                </Button>
+              </XStack>
 
-        <Pressable onPress={logout} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Sair</Text>
-        </Pressable>
-      </View>
+              {groupsLoading ? (
+                <Text color="$onzeMuted">Carregando grupos...</Text>
+              ) : groupsError ? (
+                <YStack
+                  backgroundColor="$onzeSurface"
+                  borderColor="$onzeBorder"
+                  borderRadius="$5"
+                  borderWidth={1}
+                  gap="$3"
+                  padding="$4"
+                >
+                  <Text color="$onzeDanger" fontSize={14}>
+                    {groupsError}
+                  </Text>
+                  <Button onPress={() => void loadGroups()}>
+                    <Text fontWeight="700">Tentar novamente</Text>
+                  </Button>
+                </YStack>
+              ) : groups.length === 0 ? (
+                <YStack
+                  alignItems="center"
+                  backgroundColor="$onzeSurface"
+                  borderColor="$onzeBorder"
+                  borderRadius="$6"
+                  borderWidth={1}
+                  gap="$3"
+                  padding="$6"
+                >
+                  <Image
+                    source={require('../assets/icon.png')}
+                    style={{ width: 82, height: 82, borderRadius: 20 }}
+                  />
+                  <Text color="$onzeInk" fontSize={18} fontWeight="800" textAlign="center">
+                    Crie sua primeira pelada
+                  </Text>
+                  <Text color="$onzeMuted" fontSize={14} lineHeight={20} textAlign="center">
+                    Dê um nome ao grupo, configure os dias e depois convide seus jogadores.
+                  </Text>
+                  <Button
+                    alignSelf="stretch"
+                    backgroundColor="$onzeGreen"
+                    height={50}
+                    onPress={() => router.push('/create-group')}
+                  >
+                    <Text color="$onzeSurface" fontWeight="800">
+                      Criar meu primeiro grupo
+                    </Text>
+                  </Button>
+                </YStack>
+              ) : (
+                groups.map((group) => (
+                  <GroupCard
+                    key={group.id}
+                    group={group}
+                    onPress={() =>
+                      router.push({ pathname: '/group', params: { groupId: group.id } })
+                    }
+                  />
+                ))
+              )}
+            </YStack>
+          ) : null}
+
+          {user && biometricAvailable ? (
+            <YStack
+              backgroundColor="$onzeSurface"
+              borderColor="$onzeBorder"
+              borderRadius="$5"
+              borderWidth={1}
+              gap="$2"
+              padding="$4"
+            >
+              <Text color="$onzeInk" fontSize={16} fontWeight="800">
+                Login com biometria
+              </Text>
+              <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                {biometricEnabled
+                  ? 'Ativado neste aparelho. Na próxima abertura você poderá entrar com sua biometria.'
+                  : 'Use a biometria cadastrada no aparelho para entrar sem digitar sua senha.'}
+              </Text>
+              <Button
+                backgroundColor="$onzeSurface"
+                borderColor="$onzeGreen"
+                borderWidth={1}
+                marginTop="$2"
+                onPress={() =>
+                  void (biometricEnabled ? deactivateBiometricLogin() : activateBiometricLogin())
+                }
+              >
+                <Text color="$onzeGreen" fontWeight="700">
+                  {biometricLoading
+                    ? 'Validando...'
+                    : biometricEnabled
+                      ? 'Desativar biometria'
+                      : 'Ativar login com biometria'}
+                </Text>
+              </Button>
+              {biometricMessage ? (
+                <Text color="$onzeMuted" fontSize={12}>
+                  {biometricMessage}
+                </Text>
+              ) : null}
+            </YStack>
+          ) : null}
+
+          {user ? (
+            <Button
+              backgroundColor="$onzeSurface"
+              borderColor="$onzeBorder"
+              borderWidth={1}
+              onPress={() => void logout()}
+            >
+              <Text color="$onzeInk" fontWeight="700">
+                Sair
+              </Text>
+            </Button>
+          ) : null}
+        </YStack>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F4F7F5' },
-  container: { flex: 1, justifyContent: 'center', padding: 24 },
-  brand: { color: '#148A4A', fontSize: 18, fontWeight: '800', marginBottom: 18 },
-  title: { color: '#10231A', fontSize: 30, fontWeight: '800' },
-  subtitle: { color: '#65756D', fontSize: 16, marginTop: 8, lineHeight: 23 },
-  primaryButton: {
-    minHeight: 50,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 24,
-    backgroundColor: '#148A4A',
-  },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  biometricCard: {
-    marginTop: 28,
-    padding: 18,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#DDE6E1',
-    backgroundColor: '#FFFFFF',
-  },
-  biometricTitle: { color: '#10231A', fontSize: 17, fontWeight: '800' },
-  biometricDescription: { color: '#65756D', fontSize: 14, lineHeight: 20, marginTop: 6 },
-  biometricButton: {
-    minHeight: 46,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: '#148A4A',
-    backgroundColor: '#FFFFFF',
-  },
-  biometricButtonText: { color: '#148A4A', fontSize: 14, fontWeight: '700' },
-  biometricMessage: { color: '#65756D', fontSize: 13, lineHeight: 18, marginTop: 10 },
-  secondaryButton: {
-    minHeight: 50,
-    borderWidth: 1,
-    borderColor: '#DDE6E1',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  secondaryButtonText: { color: '#10231A', fontSize: 16, fontWeight: '700' },
-});
+function GroupCard({ group, onPress }: { group: Group; onPress: () => void }) {
+  const scheduleLabel = group.schedules.length
+    ? `${group.schedules.length} horário${group.schedules.length > 1 ? 's' : ''} configurado${group.schedules.length > 1 ? 's' : ''}`
+    : 'Horários ainda não configurados';
+
+  return (
+    <Pressable onPress={onPress}>
+      <XStack
+        alignItems="center"
+        backgroundColor="$onzeSurface"
+        borderColor="$onzeBorder"
+        borderRadius="$5"
+        borderWidth={1}
+        gap="$3"
+        padding="$4"
+      >
+        <Image
+          source={group.photoUrl ? { uri: group.photoUrl } : require('../assets/icon.png')}
+          style={{ width: 58, height: 58, borderRadius: 15 }}
+        />
+        <YStack flex={1} gap="$1">
+          <Text color="$onzeInk" fontSize={17} fontWeight="800">
+            {group.name}
+          </Text>
+          <Text color="$onzeMuted" fontSize={13} numberOfLines={1}>
+            {group.city || group.venue || 'Local ainda não configurado'}
+          </Text>
+          <Text color="$onzeMuted" fontSize={12}>
+            {scheduleLabel}
+          </Text>
+        </YStack>
+        <YStack alignItems="flex-end" gap="$1">
+          {group.role === 'ADMIN' ? (
+            <Text color="$onzeGreen" fontSize={11} fontWeight="800">
+              ADMIN
+            </Text>
+          ) : null}
+          <Text color="$onzeMuted" fontSize={22} fontWeight="700">
+            ›
+          </Text>
+        </YStack>
+      </XStack>
+    </Pressable>
+  );
+}
