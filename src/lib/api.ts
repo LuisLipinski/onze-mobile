@@ -44,6 +44,7 @@ export type GroupInvite = {
   groupId: string;
   code: string;
   deepLink: string;
+  shareUrl: string;
 };
 
 export type JoinGroupResponse = {
