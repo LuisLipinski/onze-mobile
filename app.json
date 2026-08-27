@@ -5,14 +5,14 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "onze",
-    "icon": "./assets/onze-icon.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "android": {
       "package": "com.onze.organizadordepelada",
-      "icon": "./assets/onze-icon.png",
+      "icon": "./assets/icon.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/onze-icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#148A4A"
       }
     },
