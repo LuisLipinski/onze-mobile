@@ -46,6 +46,13 @@ export type GroupInvite = {
   deepLink: string;
 };
 
+export type JoinGroupResponse = {
+  groupId: string;
+  groupName: string;
+  role: 'MEMBER';
+  alreadyMember: boolean;
+};
+
 type MessageResponse = {
   message: string;
 };
@@ -199,6 +206,14 @@ export function createGroupInvite(accessToken: string, groupId: string) {
   return request<GroupInvite>(`/api/groups/${groupId}/invite`, {
     method: 'POST',
     headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function joinGroup(accessToken: string, code: string) {
+  return request<JoinGroupResponse>('/api/groups/join', {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ code: code.trim().toUpperCase() }),
   });
 }
 
