@@ -3,10 +3,13 @@ import { createTamagui } from 'tamagui';
 
 export const tamaguiConfig = createTamagui({
   ...defaultConfig,
+  settings: {
+    ...defaultConfig.settings,
+    onlyAllowShorthands: false,
+  },
   tokens: {
     ...defaultConfig.tokens,
     color: {
-      ...defaultConfig.tokens.color,
       onzeCanvas: '#F4F7F5',
       onzeSurface: '#FFFFFF',
       onzeInk: '#10231A',
