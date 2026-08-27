@@ -21,6 +21,8 @@ export default function HomeScreen() {
   }, []);
 
   async function loadUser() {
+    setError(null);
+
     try {
       const storedUser = await getStoredCurrentUser();
       if (storedUser) {
@@ -77,6 +79,9 @@ export default function HomeScreen() {
           <>
             <Text style={styles.title}>Não foi possível carregar sua sessão</Text>
             <Text style={styles.subtitle}>{error}</Text>
+            <Pressable onPress={() => void loadUser()} style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Tentar novamente</Text>
+            </Pressable>
           </>
         )}
 
@@ -94,6 +99,15 @@ const styles = StyleSheet.create({
   brand: { color: '#148A4A', fontSize: 18, fontWeight: '800', marginBottom: 18 },
   title: { color: '#10231A', fontSize: 30, fontWeight: '800' },
   subtitle: { color: '#65756D', fontSize: 16, marginTop: 8, lineHeight: 23 },
+  primaryButton: {
+    minHeight: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+    backgroundColor: '#148A4A',
+  },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   secondaryButton: {
     minHeight: 50,
     borderWidth: 1,
@@ -101,7 +115,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 32,
+    marginTop: 16,
     backgroundColor: '#FFFFFF',
   },
   secondaryButtonText: { color: '#10231A', fontSize: 16, fontWeight: '700' },
