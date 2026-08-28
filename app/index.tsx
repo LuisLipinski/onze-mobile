@@ -12,8 +12,9 @@ import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { ApiRequestError, getCurrentUser, login } from '../src/lib/api';
 import {
   clearSession,
+  confirmBiometricLoginAfterPassword,
   getAccessToken,
-  isBiometricLoginEnabled,
+  isBiometricLoginReady,
   saveCurrentUser,
   saveSession,
 } from '../src/lib/auth-storage';
@@ -25,6 +26,7 @@ export default function LoginScreen() {
     registered?: string;
     passwordReset?: string;
     joinCode?: string;
+    biometricSetup?: string;
   }>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -54,7 +56,7 @@ export default function LoginScreen() {
       const token = await getAccessToken();
       if (!token) return;
 
-      if (await isBiometricLoginEnabled()) {
+      if (await isBiometricLoginReady()) {
         if (await isBiometricAvailable()) {
           setBiometricLoginAvailable(true);
           return;
@@ -91,6 +93,7 @@ export default function LoginScreen() {
     try {
       const response = await login(email, password);
       await saveSession(response.accessToken, response.user);
+      await confirmBiometricLoginAfterPassword();
       goAfterAuthentication();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível entrar.');
@@ -201,10 +204,12 @@ export default function LoginScreen() {
                 <Text color="$onzeInk" fontSize={28} fontWeight="800">
                   Entrar
                 </Text>
-                <Text color="$onzeMuted" fontSize={14}>
-                  {params.joinCode
-                    ? 'Entre na sua conta para aceitar o convite da pelada.'
-                    : 'Entre para organizar sua próxima partida.'}
+                <Text color="$onzeMuted" fontSize={14} lineHeight={20}>
+                  {params.biometricSetup === '1'
+                    ? 'Digite sua senha uma vez para concluir a ativação do login com biometria.'
+                    : params.joinCode
+                      ? 'Entre na sua conta para aceitar o convite da pelada.'
+                      : 'Entre para organizar sua próxima partida.'}
                 </Text>
               </YStack>
 
