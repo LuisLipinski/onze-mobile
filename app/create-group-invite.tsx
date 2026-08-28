@@ -9,8 +9,8 @@ export default function CreateGroupInviteScreen() {
   function skip() {
     Alert.alert(
       'Você pode convidar depois',
-      'Novos jogadores podem ser adicionados a qualquer momento em Grupo > Jogadores/Convites.',
-      [{ text: 'Ir para meus grupos', onPress: () => router.replace('/home') }],
+      'Novos jogadores podem ser adicionados a qualquer momento no menu do grupo > Jogadores e convites.',
+      [{ text: 'Ir para meus grupos', onPress: () => router.replace('/groups') }],
     );
   }
 
