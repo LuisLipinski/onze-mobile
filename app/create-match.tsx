@@ -51,6 +51,19 @@ function parseTime(value: string) {
   return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`;
 }
 
+function formatDateInput(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+function formatTimeInput(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+
 export default function CreateMatchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -151,7 +164,7 @@ export default function CreateMatchScreen() {
                     color="$onzeInk"
                     keyboardType="numeric"
                     maxLength={10}
-                    onChangeText={setDate}
+                    onChangeText={(value) => setDate(formatDateInput(value))}
                     placeholder="DD/MM/AAAA"
                     placeholderTextColor="$onzeMuted"
                     value={date}
@@ -164,7 +177,7 @@ export default function CreateMatchScreen() {
                     color="$onzeInk"
                     keyboardType="numeric"
                     maxLength={5}
-                    onChangeText={setTime}
+                    onChangeText={(value) => setTime(formatTimeInput(value))}
                     placeholder="20:00"
                     placeholderTextColor="$onzeMuted"
                     value={time}

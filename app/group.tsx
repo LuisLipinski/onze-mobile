@@ -61,6 +61,7 @@ export default function GroupScreen() {
 
     setLoading(true);
     setError(null);
+    setMatches([]);
     try {
       const token = await getAccessToken();
       if (!token) {
