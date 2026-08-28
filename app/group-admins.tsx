@@ -1,8 +1,9 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import { Alert, SafeAreaView, ScrollView } from 'react-native';
+import { useCallback, useState } from 'react';
+import { SafeAreaView, ScrollView } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
+import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
@@ -17,9 +18,14 @@ import { clearSession, getAccessToken } from '../src/lib/auth-storage';
 
 const ROLE_LABELS: Record<GroupRole, string> = {
   PRIMARY_ADMIN: 'Administrador principal',
-  ADMIN: 'Administrador',
+  ADMIN: 'Admin',
   MEMBER: 'Membro',
 };
+
+type PendingAction = {
+  type: 'promote' | 'demote' | 'transfer';
+  member: GroupMember;
+} | null;
 
 export default function GroupAdminsScreen() {
   const router = useRouter();
@@ -27,6 +33,7 @@ export default function GroupAdminsScreen() {
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [error, setError] = useState<string | null>(null);
 
   useFocusEffect(
@@ -37,10 +44,6 @@ export default function GroupAdminsScreen() {
 
   const currentMember = members.find((member) => member.currentUser) ?? null;
   const isPrimaryAdmin = currentMember?.role === 'PRIMARY_ADMIN';
-  const replacementAdmins = useMemo(
-    () => members.filter((member) => member.role === 'ADMIN' && !member.currentUser),
-    [members],
-  );
 
   async function loadMembers() {
     if (!params.groupId) {
@@ -74,108 +77,55 @@ export default function GroupAdminsScreen() {
     }
   }
 
-  function confirmPromote(member: GroupMember) {
-    Alert.alert(
-      'Tornar administrador?',
-      `${member.displayName} poderá administrar o grupo e promover outros membros.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Promover', onPress: () => void promote(member) },
-      ],
-    );
-  }
-
-  async function promote(member: GroupMember) {
-    if (!params.groupId || actionId) return;
+  async function runPendingAction() {
+    if (!pendingAction || !params.groupId || actionId) return;
+    const { member, type } = pendingAction;
     setActionId(member.membershipId);
     setError(null);
+
     try {
       const token = await getAccessToken();
       if (!token) {
         router.replace('/');
         return;
       }
-      await promoteGroupMember(token, params.groupId, member.membershipId);
-      await loadMembers();
-    } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível promover este jogador.');
-    } finally {
-      setActionId(null);
-    }
-  }
 
-  function confirmDemote(member: GroupMember) {
-    Alert.alert(
-      'Rebaixar administrador?',
-      `${member.displayName} voltará a ser membro do grupo e perderá as permissões administrativas.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Rebaixar', style: 'destructive', onPress: () => void demote(member) },
-      ],
-    );
-  }
-
-  async function demote(member: GroupMember) {
-    if (!params.groupId || actionId) return;
-    setActionId(member.membershipId);
-    setError(null);
-    try {
-      const token = await getAccessToken();
-      if (!token) {
-        router.replace('/');
+      if (type === 'promote') {
+        await promoteGroupMember(token, params.groupId, member.membershipId);
+        setPendingAction(null);
+        await loadMembers();
         return;
       }
-      await demoteGroupAdmin(token, params.groupId, member.membershipId);
-      await loadMembers();
-    } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível rebaixar este administrador.');
-    } finally {
-      setActionId(null);
-    }
-  }
 
-  function confirmTransfer(member: GroupMember) {
-    Alert.alert(
-      'Transferir administração principal?',
-      `${member.displayName} passará a ser o administrador principal. Você deixará de ser administrador e continuará no grupo como membro.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Transferir e sair da administração', style: 'destructive', onPress: () => void transfer(member) },
-      ],
-    );
-  }
-
-  async function transfer(member: GroupMember) {
-    if (!params.groupId || actionId) return;
-    setActionId(member.membershipId);
-    setError(null);
-    try {
-      const token = await getAccessToken();
-      if (!token) {
-        router.replace('/');
+      if (type === 'demote') {
+        await demoteGroupAdmin(token, params.groupId, member.membershipId);
+        setPendingAction(null);
+        await loadMembers();
         return;
       }
+
       await transferPrimaryAdmin(token, params.groupId, member.membershipId);
-      Alert.alert(
-        'Administração transferida',
-        `${member.displayName} agora é o administrador principal. Você continua no grupo como membro.`,
-        [
-          {
-            text: 'OK',
-            onPress: () => router.replace({ pathname: '/group', params: { groupId: params.groupId } }),
-          },
-        ],
-      );
+      setPendingAction(null);
+      router.replace({ pathname: '/group', params: { groupId: params.groupId } });
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível transferir a administração principal.');
+      setPendingAction(null);
+      setError(
+        exception instanceof Error
+          ? exception.message
+          : type === 'transfer'
+            ? 'Não foi possível transferir a administração principal.'
+            : 'Não foi possível alterar a permissão deste jogador.',
+      );
     } finally {
       setActionId(null);
     }
   }
 
   if (loading) {
-    return <ServerLoadingScreen title="Carregando administradores..." message="Buscando os jogadores e permissões do grupo." />;
+    return <ServerLoadingScreen title="Carregando membros..." message="Buscando os jogadores e permissões do grupo." />;
   }
+
+  const modalCopy = getModalCopy(pendingAction);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
@@ -186,12 +136,12 @@ export default function GroupAdminsScreen() {
           </Button>
 
           <YStack gap="$1">
-            <Text color="$onzeGreen" fontSize={14} fontWeight="800">ADMINISTRADORES</Text>
+            <Text color="$onzeGreen" fontSize={14} fontWeight="800">MEMBROS</Text>
             <Text color="$onzeInk" fontSize={28} fontWeight="900">
               {params.groupName?.trim() || 'Seu grupo'}
             </Text>
             <Text color="$onzeMuted" fontSize={14} lineHeight={21}>
-              Todos os administradores podem promover membros. Somente o administrador principal pode rebaixar outros administradores.
+              Administradores podem promover membros. O Administrador Principal também pode rebaixar admins ou transferir o cargo principal.
             </Text>
           </YStack>
 
@@ -208,64 +158,70 @@ export default function GroupAdminsScreen() {
                 member={member}
                 isPrimaryAdmin={isPrimaryAdmin}
                 busy={actionId === member.membershipId}
-                onPromote={() => confirmPromote(member)}
-                onDemote={() => confirmDemote(member)}
+                onPromoteMember={() => setPendingAction({ type: 'promote', member })}
+                onPromoteToPrimary={() => setPendingAction({ type: 'transfer', member })}
+                onDemote={() => setPendingAction({ type: 'demote', member })}
               />
             ))}
           </YStack>
-
-          {isPrimaryAdmin ? (
-            <YStack
-              backgroundColor="$onzeSurface"
-              borderColor="$onzeBorder"
-              borderRadius="$6"
-              borderWidth={1}
-              gap="$3"
-              padding="$5"
-            >
-              <Text color="$onzeInk" fontSize={18} fontWeight="800">Deixar a administração</Text>
-              <Text color="$onzeMuted" fontSize={13} lineHeight={20}>
-                Para deixar o cargo de administrador principal, escolha primeiro outro administrador para assumir. Depois da transferência você continuará no grupo como membro.
-              </Text>
-
-              {replacementAdmins.length ? (
-                replacementAdmins.map((member) => (
-                  <Button
-                    key={member.membershipId}
-                    backgroundColor="$onzeSurface"
-                    borderColor="$onzeGreen"
-                    borderWidth={1}
-                    disabled={Boolean(actionId)}
-                    minHeight={48}
-                    onPress={() => confirmTransfer(member)}
-                  >
-                    <Text color="$onzeGreen" fontWeight="800">Transferir para {member.displayName}</Text>
-                  </Button>
-                ))
-              ) : (
-                <Text color="$onzeMuted" fontSize={13} fontWeight="700" lineHeight={19}>
-                  Primeiro promova pelo menos um membro a administrador para poder transferir o cargo.
-                </Text>
-              )}
-            </YStack>
-          ) : null}
         </YStack>
       </ScrollView>
+
+      <ConfirmActionModal
+        visible={Boolean(pendingAction)}
+        title={modalCopy.title}
+        message={modalCopy.message}
+        confirmLabel={modalCopy.confirmLabel}
+        destructive={pendingAction?.type === 'demote' || pendingAction?.type === 'transfer'}
+        loading={Boolean(actionId)}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={() => void runPendingAction()}
+      />
     </SafeAreaView>
   );
+}
+
+function getModalCopy(action: PendingAction) {
+  if (!action) {
+    return { title: '', message: '', confirmLabel: 'Confirmar' };
+  }
+
+  if (action.type === 'promote') {
+    return {
+      title: 'Promover para administrador?',
+      message: `${action.member.displayName} poderá administrar o grupo e também promover outros membros.`,
+      confirmLabel: 'Promover',
+    };
+  }
+
+  if (action.type === 'demote') {
+    return {
+      title: 'Rebaixar para membro?',
+      message: `${action.member.displayName} perderá as permissões administrativas e continuará no grupo como membro normal.`,
+      confirmLabel: 'Rebaixar',
+    };
+  }
+
+  return {
+    title: 'Tornar Administrador Principal?',
+    message: `${action.member.displayName} assumirá o controle principal do grupo. Você deixará a administração e passará a ser membro normal.`,
+    confirmLabel: 'Transferir cargo',
+  };
 }
 
 function MemberCard({
   member,
   isPrimaryAdmin,
   busy,
-  onPromote,
+  onPromoteMember,
+  onPromoteToPrimary,
   onDemote,
 }: {
   member: GroupMember;
   isPrimaryAdmin: boolean;
   busy: boolean;
-  onPromote: () => void;
+  onPromoteMember: () => void;
+  onPromoteToPrimary: () => void;
   onDemote: () => void;
 }) {
   return (
@@ -284,41 +240,42 @@ function MemberCard({
           </Text>
           <Text
             color={member.role === 'MEMBER' ? '$onzeMuted' : '$onzeGreen'}
-            fontSize={12}
-            fontWeight="800"
+            fontSize={11}
+            fontWeight="900"
           >
             {ROLE_LABELS[member.role].toUpperCase()}
           </Text>
         </YStack>
       </XStack>
 
-      {member.role === 'MEMBER' ? (
-        <Button
-          backgroundColor="$onzeGreen"
-          disabled={busy}
-          height={44}
-          onPress={onPromote}
-        >
-          <Text color="$onzeSurface" fontWeight="800">{busy ? 'Salvando...' : 'Tornar administrador'}</Text>
+      {member.role === 'MEMBER' && !member.currentUser ? (
+        <Button backgroundColor="$onzeGreen" disabled={busy} height={42} onPress={onPromoteMember}>
+          <Text color="$onzeSurface" fontWeight="800">{busy ? 'Salvando...' : 'Promover'}</Text>
         </Button>
       ) : null}
 
       {member.role === 'ADMIN' && isPrimaryAdmin ? (
-        <Button
-          backgroundColor="$onzeSurface"
-          borderColor="$onzeDanger"
-          borderWidth={1}
-          disabled={busy}
-          height={44}
-          onPress={onDemote}
-        >
-          <Text color="$onzeDanger" fontWeight="800">{busy ? 'Salvando...' : 'Rebaixar para membro'}</Text>
-        </Button>
+        <XStack gap="$2">
+          <Button backgroundColor="$onzeGreen" disabled={busy} flex={1} height={42} onPress={onPromoteToPrimary}>
+            <Text color="$onzeSurface" fontSize={13} fontWeight="800">Promover</Text>
+          </Button>
+          <Button
+            backgroundColor="$onzeSurface"
+            borderColor="$onzeDanger"
+            borderWidth={1}
+            disabled={busy}
+            flex={1}
+            height={42}
+            onPress={onDemote}
+          >
+            <Text color="$onzeDanger" fontSize={13} fontWeight="800">Rebaixar</Text>
+          </Button>
+        </XStack>
       ) : null}
 
       {member.role === 'ADMIN' && !isPrimaryAdmin ? (
         <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-          Apenas o administrador principal pode rebaixar administradores.
+          Admin do grupo
         </Text>
       ) : null}
     </YStack>
