@@ -21,6 +21,7 @@
       "expo-router",
       "expo-secure-store",
       "expo-system-ui",
+      "expo-notifications",
       [
         "expo-local-authentication",
         {

@@ -8,10 +8,12 @@ import {
   clearSession,
   disableBiometricLogin,
   enableBiometricLogin,
+  getAccessToken,
   getBiometricCredential,
   getStoredCurrentUser,
 } from '../src/lib/auth-storage';
 import { isBiometricAvailable } from '../src/lib/biometrics';
+import { unregisterNotificationsForSession } from '../src/lib/notifications';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -85,6 +87,10 @@ export default function SettingsScreen() {
   }
 
   async function logout() {
+    const token = await getAccessToken();
+    if (token) {
+      await unregisterNotificationsForSession(token).catch(() => undefined);
+    }
     await clearSession();
     router.replace('/');
   }
