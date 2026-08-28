@@ -17,6 +17,7 @@ import {
   Group,
   GroupDayOfWeek,
   GroupSchedule,
+  hasGroupPermission,
   listGroups,
   updateGroupDetails,
   uploadGroupPhoto,
@@ -76,8 +77,8 @@ export default function GroupSettingsScreen() {
         setError('Grupo não encontrado.');
         return;
       }
-      if (selected.role !== 'ADMIN' && selected.role !== 'PRIMARY_ADMIN') {
-        setError('Somente administradores podem alterar as configurações do grupo.');
+      if (!hasGroupPermission(selected, 'EDIT_GROUP')) {
+        setError('O Administrador Principal não liberou a edição do grupo para sua conta.');
         return;
       }
 

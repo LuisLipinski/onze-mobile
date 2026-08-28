@@ -13,6 +13,12 @@ export type AuthResponse = {
 };
 
 export type GroupRole = 'PRIMARY_ADMIN' | 'ADMIN' | 'MEMBER';
+export type GroupAdminPermission =
+  | 'ADD_MEMBERS'
+  | 'REMOVE_MEMBERS'
+  | 'PROMOTE_MEMBERS'
+  | 'EDIT_GROUP'
+  | 'SCHEDULE_GAMES';
 export type GroupDayOfWeek =
   | 'MONDAY'
   | 'TUESDAY'
@@ -37,6 +43,7 @@ export type Group = {
   venue: string | null;
   schedules: GroupSchedule[];
   role: GroupRole;
+  permissions: GroupAdminPermission[];
   createdAt: string;
 };
 
@@ -45,6 +52,7 @@ export type GroupMember = {
   userId: string;
   displayName: string;
   role: GroupRole;
+  permissions: GroupAdminPermission[];
   currentUser: boolean;
 };
 
@@ -235,6 +243,26 @@ export function demoteGroupAdmin(accessToken: string, groupId: string, membershi
   });
 }
 
+export function updateGroupAdminPermissions(
+  accessToken: string,
+  groupId: string,
+  membershipId: string,
+  permissions: GroupAdminPermission[],
+) {
+  return request<GroupMember>(`/api/groups/${groupId}/members/${membershipId}/permissions`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ permissions }),
+  });
+}
+
+export function removeGroupMember(accessToken: string, groupId: string, membershipId: string) {
+  return request<void>(`/api/groups/${groupId}/members/${membershipId}`, {
+    method: 'DELETE',
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
 export function transferPrimaryAdmin(
   accessToken: string,
   groupId: string,
@@ -299,4 +327,12 @@ export function uploadGroupPhoto(
     headers: authenticatedHeaders(accessToken),
     body: form,
   });
+}
+
+export function hasGroupPermission(
+  membership: Pick<Group, 'role' | 'permissions'> | Pick<GroupMember, 'role' | 'permissions'>,
+  permission: GroupAdminPermission,
+) {
+  return membership.role === 'PRIMARY_ADMIN'
+    || (membership.role === 'ADMIN' && (membership.permissions ?? []).includes(permission));
 }

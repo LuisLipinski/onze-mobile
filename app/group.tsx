@@ -10,6 +10,7 @@ import {
   Group,
   GroupDayOfWeek,
   GroupRole,
+  hasGroupPermission,
   leaveGroup,
   listGroups,
 } from '../src/lib/api';
@@ -121,6 +122,9 @@ export default function GroupScreen() {
   }
 
   const isAdmin = group?.role === 'ADMIN' || group?.role === 'PRIMARY_ADMIN';
+  const canAddMembers = group ? hasGroupPermission(group, 'ADD_MEMBERS') : false;
+  const canEditGroup = group ? hasGroupPermission(group, 'EDIT_GROUP') : false;
+  const canScheduleGames = group ? hasGroupPermission(group, 'SCHEDULE_GAMES') : false;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
@@ -247,25 +251,34 @@ export default function GroupScreen() {
                   }} />
                 ) : null}
 
-                {isAdmin ? (
+                {canAddMembers ? (
                   <MenuButton label="Jogadores e convites" onPress={() => {
                     setMenuVisible(false);
                     router.push({ pathname: '/group-invite', params: { groupId: group.id, groupName: group.name } });
                   }} />
                 ) : null}
 
-                {isAdmin ? (
+                {canScheduleGames ? (
                   <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" opacity={0.62} padding="$4">
                     <Text color="$onzeInk" fontWeight="800">Marcar jogo</Text>
                     <Text color="$onzeMuted" fontSize={11}>Em breve nesta etapa</Text>
                   </YStack>
                 ) : null}
 
-                {isAdmin ? (
+                {canEditGroup ? (
                   <MenuButton label="Configurações do grupo" onPress={() => {
                     setMenuVisible(false);
                     router.push({ pathname: '/group-settings', params: { groupId: group.id } });
                   }} />
+                ) : null}
+
+                {group.role === 'ADMIN' && !(group.permissions ?? []).length ? (
+                  <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$4">
+                    <Text color="$onzeInk" fontWeight="800">Administrador sem funções liberadas</Text>
+                    <Text color="$onzeMuted" fontSize={11} lineHeight={17}>
+                      O Administrador Principal ainda não liberou ações para sua conta.
+                    </Text>
+                  </YStack>
                 ) : null}
 
                 <YStack flex={1} />
