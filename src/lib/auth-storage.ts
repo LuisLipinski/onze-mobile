@@ -5,6 +5,7 @@ import type { User } from './api';
 const ACCESS_TOKEN_KEY = 'onze.accessToken';
 const CURRENT_USER_KEY = 'onze.currentUser';
 const BIOMETRIC_LOGIN_KEY = 'onze.biometricLoginEnabled';
+const BIOMETRIC_READY_KEY = 'onze.biometricLoginReady';
 
 export function saveAccessToken(accessToken: string) {
   return SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
@@ -38,16 +39,33 @@ export function clearCurrentUser() {
   return SecureStore.deleteItemAsync(CURRENT_USER_KEY);
 }
 
-export function enableBiometricLogin() {
-  return SecureStore.setItemAsync(BIOMETRIC_LOGIN_KEY, '1');
+export async function enableBiometricLogin() {
+  await SecureStore.setItemAsync(BIOMETRIC_LOGIN_KEY, '1');
+  await SecureStore.deleteItemAsync(BIOMETRIC_READY_KEY);
 }
 
-export function disableBiometricLogin() {
-  return SecureStore.deleteItemAsync(BIOMETRIC_LOGIN_KEY);
+export async function confirmBiometricLoginAfterPassword() {
+  if (await isBiometricLoginEnabled()) {
+    await SecureStore.setItemAsync(BIOMETRIC_READY_KEY, '1');
+  }
+}
+
+export async function disableBiometricLogin() {
+  await Promise.all([
+    SecureStore.deleteItemAsync(BIOMETRIC_LOGIN_KEY),
+    SecureStore.deleteItemAsync(BIOMETRIC_READY_KEY),
+  ]);
 }
 
 export async function isBiometricLoginEnabled() {
   return (await SecureStore.getItemAsync(BIOMETRIC_LOGIN_KEY)) === '1';
+}
+
+export async function isBiometricLoginReady() {
+  return (
+    (await isBiometricLoginEnabled()) &&
+    (await SecureStore.getItemAsync(BIOMETRIC_READY_KEY)) === '1'
+  );
 }
 
 export async function saveSession(accessToken: string, user: User) {
@@ -55,5 +73,5 @@ export async function saveSession(accessToken: string, user: User) {
 }
 
 export async function clearSession() {
-  await Promise.all([clearAccessToken(), clearCurrentUser(), disableBiometricLogin()]);
+  await Promise.all([clearAccessToken(), clearCurrentUser()]);
 }
