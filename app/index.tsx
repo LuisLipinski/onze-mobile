@@ -42,6 +42,7 @@ export default function LoginScreen() {
     registered?: string;
     passwordReset?: string;
     joinCode?: string;
+    matchId?: string;
   }>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -92,6 +93,13 @@ export default function LoginScreen() {
       router.replace({
         pathname: '/join-group',
         params: { code: params.joinCode.trim().toUpperCase() },
+      });
+      return;
+    }
+    if (typeof params.matchId === 'string' && params.matchId.trim()) {
+      router.replace({
+        pathname: '/match',
+        params: { matchId: params.matchId.trim() },
       });
       return;
     }

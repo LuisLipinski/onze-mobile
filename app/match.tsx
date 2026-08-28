@@ -53,6 +53,13 @@ export default function MatchScreen() {
   const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function goToLogin() {
+    router.replace({
+      pathname: '/',
+      params: params.matchId ? { matchId: params.matchId } : {},
+    });
+  }
+
   useFocusEffect(
     useCallback(() => {
       void loadMatch();
@@ -71,14 +78,14 @@ export default function MatchScreen() {
     try {
       const token = await getAccessToken();
       if (!token) {
-        router.replace('/');
+        goToLogin();
         return;
       }
       setMatch(await getMatch(token, params.matchId));
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
         await clearSession();
-        router.replace('/');
+        goToLogin();
         return;
       }
       setError(exception instanceof Error ? exception.message : 'Não foi possível carregar o jogo.');
@@ -94,7 +101,7 @@ export default function MatchScreen() {
     try {
       const token = await getAccessToken();
       if (!token) {
-        router.replace('/');
+        goToLogin();
         return;
       }
       setMatch(await updateMatchAttendance(token, match.id, status));
@@ -112,7 +119,7 @@ export default function MatchScreen() {
     try {
       const token = await getAccessToken();
       if (!token) {
-        router.replace('/');
+        goToLogin();
         return;
       }
       if (managementAction === 'end-series' && match.seriesId) {
