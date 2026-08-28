@@ -76,7 +76,7 @@ export default function GroupSettingsScreen() {
         setError('Grupo não encontrado.');
         return;
       }
-      if (selected.role !== 'ADMIN') {
+      if (selected.role !== 'ADMIN' && selected.role !== 'PRIMARY_ADMIN') {
         setError('Somente administradores podem alterar as configurações do grupo.');
         return;
       }

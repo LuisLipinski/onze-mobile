@@ -88,7 +88,7 @@ export default function JoinGroupScreen() {
                 ? 'Esse grupo já estava vinculado à sua conta.'
                 : 'O grupo foi adicionado à sua conta. Agora ele aparecerá junto das suas peladas.'}
             </Text>
-            <Button backgroundColor="$onzeGreen" height={50} onPress={() => router.replace('/home')}>
+            <Button backgroundColor="$onzeGreen" height={50} onPress={() => router.replace('/groups')}>
               <Text color="$onzeSurface" fontWeight="800">
                 Ir para meus grupos
               </Text>
@@ -172,7 +172,7 @@ export default function JoinGroupScreen() {
                 backgroundColor="$onzeSurface"
                 borderColor="$onzeBorder"
                 borderWidth={1}
-                onPress={() => router.replace('/home')}
+                onPress={() => router.replace('/groups')}
               >
                 <Text color="$onzeInk" fontWeight="700">
                   Voltar

@@ -93,6 +93,14 @@ export default function GroupInviteScreen() {
     }
   }
 
+  function finish() {
+    if (params.groupId) {
+      router.replace({ pathname: '/group', params: { groupId: params.groupId } });
+      return;
+    }
+    router.replace('/groups');
+  }
+
   if (loading) {
     return (
       <ServerLoadingScreen
@@ -212,10 +220,10 @@ export default function GroupInviteScreen() {
             borderColor="$onzeBorder"
             borderWidth={1}
             height={50}
-            onPress={() => router.replace('/home')}
+            onPress={finish}
           >
             <Text color="$onzeInk" fontSize={15} fontWeight="700">
-              Concluir
+              Voltar ao grupo
             </Text>
           </Button>
         </YStack>

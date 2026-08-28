@@ -68,9 +68,13 @@ export default function CreateGroupScreen() {
           if (!uploadedGroup.photoUrl) {
             throw new Error('A API não confirmou a foto do grupo.');
           }
-        } catch {
+        } catch (exception) {
+          const reason =
+            exception instanceof Error && exception.message.trim()
+              ? ` Motivo informado: ${exception.message}`
+              : '';
           setError(
-            'O grupo já foi criado, mas a foto ainda não foi enviada. Toque em Continuar novamente para tentar somente o envio da foto.',
+            `O grupo já foi criado, mas a foto ainda não foi enviada. Toque em Continuar novamente para tentar somente o envio da foto.${reason}`,
           );
           setLoading(false);
           return;
@@ -155,6 +159,7 @@ export default function CreateGroupScreen() {
                   backgroundColor="$onzeSurface"
                   borderColor="$onzeBorder"
                   color="$onzeInk"
+                  disabled={Boolean(createdGroup)}
                   focusStyle={{ borderColor: '$onzeGreen' }}
                   height={52}
                   maxLength={120}
@@ -175,6 +180,7 @@ export default function CreateGroupScreen() {
                   backgroundColor="$onzeSurface"
                   borderColor="$onzeBorder"
                   color="$onzeInk"
+                  disabled={Boolean(createdGroup)}
                   focusStyle={{ borderColor: '$onzeGreen' }}
                   maxLength={500}
                   minHeight={110}
