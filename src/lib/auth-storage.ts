@@ -9,9 +9,11 @@ const BIOMETRIC_LOGIN_KEY = 'onze.biometricLoginEnabled';
 const BIOMETRIC_READY_KEY = 'onze.biometricLoginReady';
 const BIOMETRIC_ACCESS_TOKEN_KEY = 'onze.biometricAccessToken';
 const BIOMETRIC_ACCOUNT_EMAIL_KEY = 'onze.biometricAccountEmail';
+const BIOMETRIC_ACCOUNT_NAME_KEY = 'onze.biometricAccountName';
 
 export type BiometricCredential = {
   accessToken: string;
+  displayName: string;
   email: string;
 };
 
@@ -19,17 +21,29 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-async function saveBiometricCredential(accessToken: string, email: string) {
+async function saveBiometricCredential(
+  accessToken: string,
+  email: string,
+  displayName: string,
+) {
   const normalizedEmail = normalizeEmail(email);
+  const normalizedDisplayName = displayName.trim();
   await Promise.all([
     SecureStore.setItemAsync(BIOMETRIC_LOGIN_KEY, '1'),
     SecureStore.setItemAsync(BIOMETRIC_READY_KEY, '1'),
     SecureStore.setItemAsync(BIOMETRIC_ACCESS_TOKEN_KEY, accessToken),
     SecureStore.setItemAsync(BIOMETRIC_ACCOUNT_EMAIL_KEY, normalizedEmail),
+    normalizedDisplayName
+      ? SecureStore.setItemAsync(BIOMETRIC_ACCOUNT_NAME_KEY, normalizedDisplayName)
+      : SecureStore.deleteItemAsync(BIOMETRIC_ACCOUNT_NAME_KEY),
     saveLastLoginEmail(email),
   ]);
 
-  return { accessToken, email: normalizedEmail } satisfies BiometricCredential;
+  return {
+    accessToken,
+    displayName: normalizedDisplayName,
+    email: normalizedEmail,
+  } satisfies BiometricCredential;
 }
 
 export function saveAccessToken(accessToken: string) {
@@ -84,21 +98,35 @@ export async function enableBiometricLogin() {
     throw new Error('Entre na sua conta antes de ativar a biometria.');
   }
 
-  return saveBiometricCredential(accessToken, currentUser.email);
+  return saveBiometricCredential(accessToken, currentUser.email, currentUser.displayName);
 }
 
 export async function getBiometricCredential(): Promise<BiometricCredential | null> {
-  const [enabled, ready, accessToken, accountEmail] = await Promise.all([
+  const [enabled, ready, accessToken, accountEmail, accountName] = await Promise.all([
     SecureStore.getItemAsync(BIOMETRIC_LOGIN_KEY),
     SecureStore.getItemAsync(BIOMETRIC_READY_KEY),
     SecureStore.getItemAsync(BIOMETRIC_ACCESS_TOKEN_KEY),
     SecureStore.getItemAsync(BIOMETRIC_ACCOUNT_EMAIL_KEY),
+    SecureStore.getItemAsync(BIOMETRIC_ACCOUNT_NAME_KEY),
   ]);
 
   if (enabled !== '1' || ready !== '1') return null;
 
   if (accessToken && accountEmail) {
-    return { accessToken, email: normalizeEmail(accountEmail) };
+    const normalizedAccountEmail = normalizeEmail(accountEmail);
+    let displayName = accountName?.trim() ?? '';
+
+    if (!displayName) {
+      const currentUser = await getStoredCurrentUser();
+      if (currentUser && normalizeEmail(currentUser.email) === normalizedAccountEmail) {
+        displayName = currentUser.displayName.trim();
+        if (displayName) {
+          await SecureStore.setItemAsync(BIOMETRIC_ACCOUNT_NAME_KEY, displayName);
+        }
+      }
+    }
+
+    return { accessToken, displayName, email: normalizedAccountEmail };
   }
 
   // Migra a configuração criada pelas versões anteriores, que reutilizavam
@@ -111,7 +139,11 @@ export async function getBiometricCredential(): Promise<BiometricCredential | nu
   const legacyEmail = currentUser?.email ?? lastLoginEmail;
   if (!legacyAccessToken || !legacyEmail) return null;
 
-  return saveBiometricCredential(legacyAccessToken, legacyEmail);
+  return saveBiometricCredential(
+    legacyAccessToken,
+    legacyEmail,
+    currentUser?.displayName ?? '',
+  );
 }
 
 export async function refreshBiometricCredentialAfterPassword(
@@ -120,8 +152,17 @@ export async function refreshBiometricCredentialAfterPassword(
 ) {
   const credential = await getBiometricCredential();
   if (credential && normalizeEmail(credential.email) === normalizeEmail(user.email)) {
-    await saveBiometricCredential(accessToken, user.email);
+    await saveBiometricCredential(accessToken, user.email, user.displayName);
   }
+}
+
+export async function saveBiometricAccountProfile(user: User) {
+  const credential = await getBiometricCredential();
+  if (!credential || normalizeEmail(credential.email) !== normalizeEmail(user.email)) {
+    return credential;
+  }
+
+  return saveBiometricCredential(credential.accessToken, user.email, user.displayName);
 }
 
 export async function disableBiometricLogin() {
@@ -130,6 +171,7 @@ export async function disableBiometricLogin() {
     SecureStore.deleteItemAsync(BIOMETRIC_READY_KEY),
     SecureStore.deleteItemAsync(BIOMETRIC_ACCESS_TOKEN_KEY),
     SecureStore.deleteItemAsync(BIOMETRIC_ACCOUNT_EMAIL_KEY),
+    SecureStore.deleteItemAsync(BIOMETRIC_ACCOUNT_NAME_KEY),
   ]);
 }
 

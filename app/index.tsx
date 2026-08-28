@@ -6,7 +6,7 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { Button, Input, Text, YStack } from 'tamagui';
+import { Button, Input, Text, XStack, YStack } from 'tamagui';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { ApiRequestError, getCurrentUser, login } from '../src/lib/api';
@@ -18,6 +18,7 @@ import {
   getLastLoginEmail,
   getStoredCurrentUser,
   refreshBiometricCredentialAfterPassword,
+  saveBiometricAccountProfile,
   saveSession,
 } from '../src/lib/auth-storage';
 import type { BiometricCredential } from '../src/lib/auth-storage';
@@ -25,6 +26,14 @@ import { authenticateWithBiometrics, isBiometricAvailable } from '../src/lib/bio
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
+}
+
+function getAccountInitials(displayName: string, email: string) {
+  const accountName = displayName.trim() || email.split('@')[0] || 'ON';
+  const parts = accountName.split(/\s+/).filter(Boolean);
+  const firstInitial = parts[0]?.[0] ?? 'O';
+  const lastInitial = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? '' : '';
+  return `${firstInitial}${lastInitial}`.toUpperCase();
 }
 
 export default function LoginScreen() {
@@ -55,6 +64,28 @@ export default function LoginScreen() {
   useEffect(() => {
     void restoreSession();
   }, []);
+
+  useEffect(() => {
+    const credential = biometricCredential;
+    if (!credential || credential.displayName) return;
+
+    let active = true;
+    void (async () => {
+      try {
+        const user = await getCurrentUser(credential.accessToken);
+        if (normalizeEmail(user.email) !== normalizeEmail(credential.email)) return;
+
+        const updatedCredential = await saveBiometricAccountProfile(user);
+        if (active && updatedCredential) setBiometricCredential(updatedCredential);
+      } catch {
+        // A conta continua disponível; o nome será atualizado no próximo login válido.
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [biometricCredential?.accessToken, biometricCredential?.displayName]);
 
   function goAfterAuthentication() {
     if (typeof params.joinCode === 'string' && params.joinCode.trim()) {
@@ -170,6 +201,7 @@ export default function LoginScreen() {
       }
 
       await saveSession(credential.accessToken, user);
+      await saveBiometricAccountProfile(user);
       goAfterAuthentication();
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
@@ -280,128 +312,160 @@ export default function LoginScreen() {
               ) : null}
 
               {biometricLoginAvailable ? (
-                <YStack gap="$2">
+                <YStack gap="$3">
                   <Button
-                    backgroundColor="$onzeSurface"
+                    accessibilityHint="Solicita sua digital para entrar nesta conta"
+                    accessibilityLabel={`Entrar como ${biometricCredential?.displayName || biometricCredential?.email}`}
+                    backgroundColor="$onzeCanvas"
                     borderColor="$onzeGreen"
-                    borderRadius="$4"
+                    borderRadius="$5"
                     borderWidth={1}
                     disabled={biometricLoading}
-                    height={52}
+                    height="auto"
+                    minHeight={96}
                     onPress={submitBiometricLogin}
+                    padding="$4"
+                    pressStyle={{ backgroundColor: '$onzeSurface' }}
                   >
-                    <Text color="$onzeGreen" fontSize={16} fontWeight="800">
-                      {biometricLoading ? 'Validando biometria...' : 'Entrar com biometria'}
-                    </Text>
+                    <XStack alignItems="center" gap="$3" width="100%">
+                      <YStack
+                        alignItems="center"
+                        backgroundColor="$onzeGreen"
+                        borderRadius={999}
+                        height={52}
+                        justifyContent="center"
+                        width={52}
+                      >
+                        <Text color="$onzeSurface" fontSize={17} fontWeight="900">
+                          {getAccountInitials(
+                            biometricCredential?.displayName ?? '',
+                            biometricCredential?.email ?? '',
+                          )}
+                        </Text>
+                      </YStack>
+                      <YStack alignItems="flex-start" flex={1} gap="$1">
+                        <Text color="$onzeInk" fontSize={17} fontWeight="900" numberOfLines={1}>
+                          {biometricCredential?.displayName || 'Conta salva'}
+                        </Text>
+                        <Text color="$onzeMuted" fontSize={13} numberOfLines={1}>
+                          {biometricCredential?.email}
+                        </Text>
+                        <Text color="$onzeGreen" fontSize={12} fontWeight="700">
+                          {biometricLoading
+                            ? 'Validando sua digital...'
+                            : 'Toque para entrar com sua digital'}
+                        </Text>
+                      </YStack>
+                      <Text color="$onzeGreen" fontSize={24} fontWeight="800">›</Text>
+                    </XStack>
                   </Button>
-                  <Text color="$onzeMuted" fontSize={12} textAlign="center">
-                    Conta vinculada: {biometricCredential?.email}
-                  </Text>
                   <Button
-                    backgroundColor="transparent"
-                    height={36}
+                    backgroundColor="$onzeSurface"
+                    borderColor="$onzeBorder"
+                    borderRadius="$4"
+                    borderWidth={1}
+                    height={46}
                     onPress={() => usePasswordLogin(false)}
                   >
-                    <Text color="$onzeGreen" fontSize={13} fontWeight="700">Usar senha</Text>
+                    <Text color="$onzeInk" fontSize={14} fontWeight="800">
+                      Entrar com senha
+                    </Text>
                   </Button>
                   <Button
                     backgroundColor="transparent"
-                    height={36}
+                    height={42}
                     onPress={() => usePasswordLogin(true)}
                   >
-                    <Text color="$onzeGreen" fontSize={13} fontWeight="700">
+                    <Text color="$onzeGreen" fontSize={14} fontWeight="800">
                       Entrar com outra conta
                     </Text>
                   </Button>
                 </YStack>
-              ) : null}
+              ) : (
+                <>
+                  {biometricCredential && biometricHardwareAvailable ? (
+                    <Button backgroundColor="transparent" height={40} onPress={useBiometricAccount}>
+                      <Text color="$onzeGreen" fontSize={13} fontWeight="700">
+                        Voltar para {biometricCredential.displayName || biometricCredential.email}
+                      </Text>
+                    </Button>
+                  ) : null}
 
-              {biometricCredential && biometricHardwareAvailable && !biometricLoginAvailable ? (
-                <Button backgroundColor="transparent" height={40} onPress={useBiometricAccount}>
-                  <Text color="$onzeGreen" fontSize={13} fontWeight="700">
-                    Usar biometria de {biometricCredential.email}
+                  <Input
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    backgroundColor="$onzeSurface"
+                    borderColor="$onzeBorder"
+                    borderRadius="$4"
+                    color="$onzeInk"
+                    focusStyle={{ borderColor: '$onzeGreen' }}
+                    height={52}
+                    keyboardType="email-address"
+                    onChangeText={(value) => {
+                      setEmail(value);
+                      setError(null);
+                    }}
+                    placeholder="E-mail"
+                    placeholderTextColor="$onzeMuted"
+                    returnKeyType="next"
+                    value={email}
+                  />
+                  <Input
+                    autoComplete="password"
+                    backgroundColor="$onzeSurface"
+                    borderColor="$onzeBorder"
+                    borderRadius="$4"
+                    color="$onzeInk"
+                    focusStyle={{ borderColor: '$onzeGreen' }}
+                    height={52}
+                    onChangeText={setPassword}
+                    onSubmitEditing={submit}
+                    placeholder="Senha"
+                    placeholderTextColor="$onzeMuted"
+                    returnKeyType="done"
+                    secureTextEntry
+                    value={password}
+                  />
+
+                  <Text color="$onzeMuted" fontSize={14} textAlign="right">
+                    <Link href="/forgot-password" style={{ color: '#148A4A', fontWeight: '700' }}>
+                      Esqueci minha senha
+                    </Link>
                   </Text>
-                </Button>
-              ) : null}
 
-              <Input
-                autoCapitalize="none"
-                autoComplete="email"
-                backgroundColor="$onzeSurface"
-                borderColor="$onzeBorder"
-                borderRadius="$4"
-                color="$onzeInk"
-                focusStyle={{ borderColor: '$onzeGreen' }}
-                height={52}
-                keyboardType="email-address"
-                onChangeText={(value) => {
-                  setEmail(value);
-                  setError(null);
-                }}
-                placeholder="E-mail"
-                placeholderTextColor="$onzeMuted"
-                returnKeyType="next"
-                value={email}
-              />
-              <Input
-                autoComplete="password"
-                backgroundColor="$onzeSurface"
-                borderColor="$onzeBorder"
-                borderRadius="$4"
-                color="$onzeInk"
-                focusStyle={{ borderColor: '$onzeGreen' }}
-                height={52}
-                onChangeText={setPassword}
-                onFocus={() => {
-                  if (biometricLoginAvailable && !biometricLoading) {
-                    void submitBiometricLogin();
-                  }
-                }}
-                onSubmitEditing={submit}
-                placeholder={biometricLoginAvailable ? 'Toque para entrar com biometria' : 'Senha'}
-                placeholderTextColor="$onzeMuted"
-                returnKeyType="done"
-                secureTextEntry
-                value={password}
-              />
+                  {error ? (
+                    <Text color="$onzeDanger" fontSize={14}>
+                      {error}
+                    </Text>
+                  ) : null}
 
-              <Text color="$onzeMuted" fontSize={14} textAlign="right">
-                <Link href="/forgot-password" style={{ color: '#148A4A', fontWeight: '700' }}>
-                  Esqueci minha senha
-                </Link>
-              </Text>
+                  <Button
+                    backgroundColor="$onzeGreen"
+                    borderRadius="$4"
+                    height={52}
+                    onPress={submit}
+                    pressStyle={{ backgroundColor: '$onzeGreenPress' }}
+                  >
+                    <Text color="$onzeSurface" fontSize={16} fontWeight="800">
+                      Entrar
+                    </Text>
+                  </Button>
 
-              {error ? (
-                <Text color="$onzeDanger" fontSize={14}>
-                  {error}
-                </Text>
-              ) : null}
-
-              <Button
-                backgroundColor="$onzeGreen"
-                borderRadius="$4"
-                height={52}
-                onPress={submit}
-                pressStyle={{ backgroundColor: '$onzeGreenPress' }}
-              >
-                <Text color="$onzeSurface" fontSize={16} fontWeight="800">
-                  Entrar
-                </Text>
-              </Button>
-
-              <Text color="$onzeMuted" fontSize={14} textAlign="center">
-                Ainda não tem conta?{' '}
-                <Link
-                  href={
-                    params.joinCode
-                      ? { pathname: '/register', params: { joinCode: params.joinCode } }
-                      : '/register'
-                  }
-                  style={{ color: '#148A4A', fontWeight: '700' }}
-                >
-                  Criar conta
-                </Link>
-              </Text>
+                  <Text color="$onzeMuted" fontSize={14} textAlign="center">
+                    Ainda não tem conta?{' '}
+                    <Link
+                      href={
+                        params.joinCode
+                          ? { pathname: '/register', params: { joinCode: params.joinCode } }
+                          : '/register'
+                      }
+                      style={{ color: '#148A4A', fontWeight: '700' }}
+                    >
+                      Criar conta
+                    </Link>
+                  </Text>
+                </>
+              )}
             </YStack>
           </YStack>
         </ScrollView>
