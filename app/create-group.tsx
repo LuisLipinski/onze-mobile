@@ -155,7 +155,6 @@ export default function CreateGroupScreen() {
                   backgroundColor="$onzeSurface"
                   borderColor="$onzeBorder"
                   color="$onzeInk"
-                  editable={!createdGroup}
                   focusStyle={{ borderColor: '$onzeGreen' }}
                   height={52}
                   maxLength={120}
@@ -176,7 +175,6 @@ export default function CreateGroupScreen() {
                   backgroundColor="$onzeSurface"
                   borderColor="$onzeBorder"
                   color="$onzeInk"
-                  editable={!createdGroup}
                   focusStyle={{ borderColor: '$onzeGreen' }}
                   maxLength={500}
                   minHeight={110}
