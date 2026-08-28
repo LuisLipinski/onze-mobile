@@ -120,6 +120,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       );
     }
 
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     return (await response.json()) as T;
   } catch (exception) {
     if (controller.signal.aborted) {
@@ -243,6 +247,13 @@ export function transferPrimaryAdmin(
   });
 }
 
+export function leaveGroup(accessToken: string, groupId: string) {
+  return request<void>(`/api/groups/${groupId}/members/me`, {
+    method: 'DELETE',
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
 export function createGroupInvite(accessToken: string, groupId: string) {
   return request<GroupInvite>(`/api/groups/${groupId}/invite`, {
     method: 'POST',
@@ -270,13 +281,16 @@ export function uploadGroupPhoto(
   groupId: string,
   photo: { uri: string; fileName?: string | null; mimeType?: string | null },
 ) {
+  const mimeType = photo.mimeType?.startsWith('image/') ? photo.mimeType : 'image/jpeg';
+  const extension = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+  const fileName = photo.fileName?.trim() || `group-photo.${extension}`;
   const form = new FormData();
   form.append(
     'photo',
     {
       uri: photo.uri,
-      name: photo.fileName || 'group-photo.jpg',
-      type: photo.mimeType || 'image/jpeg',
+      name: fileName,
+      type: mimeType,
     } as unknown as Blob,
   );
 
