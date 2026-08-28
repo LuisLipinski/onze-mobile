@@ -4,13 +4,14 @@ import { SafeAreaView, ScrollView, Switch } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
-import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import {
   clearSession,
   disableBiometricLogin,
   enableBiometricLogin,
   getStoredCurrentUser,
   isBiometricLoginEnabled,
+  isBiometricLoginReady,
+  lockSessionForBiometricLogin,
 } from '../src/lib/auth-storage';
 import { isBiometricAvailable } from '../src/lib/biometrics';
 
@@ -20,8 +21,7 @@ export default function SettingsScreen() {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [showEnableModal, setShowEnableModal] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [updatingBiometric, setUpdatingBiometric] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -40,10 +40,11 @@ export default function SettingsScreen() {
     setBiometricEnabled(enabled);
   }
 
-  function onBiometricToggle(value: boolean) {
+  async function onBiometricToggle(value: boolean) {
+    if (updatingBiometric) return;
     setMessage(null);
     if (!value) {
-      void disableBiometrics();
+      await disableBiometrics();
       return;
     }
 
@@ -52,31 +53,37 @@ export default function SettingsScreen() {
       return;
     }
 
-    setShowEnableModal(true);
-  }
-
-  async function disableBiometrics() {
-    await disableBiometricLogin();
-    setBiometricEnabled(false);
-    setMessage('Login com biometria desativado neste aparelho.');
-  }
-
-  async function startBiometricSetup() {
-    if (saving) return;
-    setSaving(true);
+    setUpdatingBiometric(true);
     try {
       await enableBiometricLogin();
       setBiometricEnabled(true);
-      setShowEnableModal(false);
-      await clearSession();
-      router.replace({ pathname: '/', params: { biometricSetup: '1' } });
+      setMessage('Login com biometria ativado. Você continua conectado.');
+    } catch {
+      setMessage('Não foi possível ativar a biometria. Tente novamente.');
     } finally {
-      setSaving(false);
+      setUpdatingBiometric(false);
+    }
+  }
+
+  async function disableBiometrics() {
+    setUpdatingBiometric(true);
+    try {
+      await disableBiometricLogin();
+      setBiometricEnabled(false);
+      setMessage('Login com biometria desativado neste aparelho.');
+    } catch {
+      setMessage('Não foi possível desativar a biometria. Tente novamente.');
+    } finally {
+      setUpdatingBiometric(false);
     }
   }
 
   async function logout() {
-    await clearSession();
+    if (await isBiometricLoginReady()) {
+      await lockSessionForBiometricLogin();
+    } else {
+      await clearSession();
+    }
     router.replace('/');
   }
 
@@ -107,13 +114,13 @@ export default function SettingsScreen() {
                   <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
                     {biometricEnabled
                       ? 'Ativado. Ele continuará ativo até você desligar esta chave.'
-                      : 'Ative e confirme sua senha uma vez para usar a biometria nos próximos acessos.'}
+                      : 'Ative para usar a biometria nos próximos acessos sem sair da sua conta.'}
                   </Text>
                 </YStack>
                 <Switch
                   accessibilityLabel="Login com biometria"
-                  disabled={!biometricAvailable && !biometricEnabled}
-                  onValueChange={onBiometricToggle}
+                  disabled={updatingBiometric || (!biometricAvailable && !biometricEnabled)}
+                  onValueChange={(value) => void onBiometricToggle(value)}
                   thumbColor="#FFFFFF"
                   trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
                   value={biometricEnabled}
@@ -143,7 +150,7 @@ export default function SettingsScreen() {
             >
               <Text color="$onzeInk" fontSize={17} fontWeight="800">Sessão</Text>
               <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
-                Sair remove sua sessão atual, mas não desativa sua preferência de biometria.
+                Com a biometria ativa, sair bloqueia o aplicativo, mantém seu e-mail preenchido e permite entrar novamente pela biometria.
               </Text>
               <Button
                 backgroundColor="$onzeSurface"
@@ -159,16 +166,6 @@ export default function SettingsScreen() {
         </ScrollView>
         <BottomNavigation active="settings" />
       </YStack>
-
-      <ConfirmActionModal
-        visible={showEnableModal}
-        title="Ativar login com biometria?"
-        message="Para proteger sua conta, vamos pedir sua senha uma única vez agora. Depois disso, a biometria continuará disponível até você desligar esta opção em Configurações."
-        confirmLabel="Continuar"
-        loading={saving}
-        onCancel={() => setShowEnableModal(false)}
-        onConfirm={() => void startBiometricSetup()}
-      />
     </SafeAreaView>
   );
 }

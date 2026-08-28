@@ -4,6 +4,7 @@ import type { User } from './api';
 
 const ACCESS_TOKEN_KEY = 'onze.accessToken';
 const CURRENT_USER_KEY = 'onze.currentUser';
+const LAST_LOGIN_EMAIL_KEY = 'onze.lastLoginEmail';
 const BIOMETRIC_LOGIN_KEY = 'onze.biometricLoginEnabled';
 const BIOMETRIC_READY_KEY = 'onze.biometricLoginReady';
 
@@ -19,8 +20,11 @@ export function clearAccessToken() {
   return SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
 }
 
-export function saveCurrentUser(user: User) {
-  return SecureStore.setItemAsync(CURRENT_USER_KEY, JSON.stringify(user));
+export async function saveCurrentUser(user: User) {
+  await Promise.all([
+    SecureStore.setItemAsync(CURRENT_USER_KEY, JSON.stringify(user)),
+    saveLastLoginEmail(user.email),
+  ]);
 }
 
 export async function getStoredCurrentUser(): Promise<User | null> {
@@ -39,9 +43,21 @@ export function clearCurrentUser() {
   return SecureStore.deleteItemAsync(CURRENT_USER_KEY);
 }
 
+export function saveLastLoginEmail(email: string) {
+  return SecureStore.setItemAsync(LAST_LOGIN_EMAIL_KEY, email.trim());
+}
+
+export function getLastLoginEmail() {
+  return SecureStore.getItemAsync(LAST_LOGIN_EMAIL_KEY);
+}
+
 export async function enableBiometricLogin() {
-  await SecureStore.setItemAsync(BIOMETRIC_LOGIN_KEY, '1');
-  await SecureStore.deleteItemAsync(BIOMETRIC_READY_KEY);
+  const currentUser = await getStoredCurrentUser();
+  await Promise.all([
+    SecureStore.setItemAsync(BIOMETRIC_LOGIN_KEY, '1'),
+    SecureStore.setItemAsync(BIOMETRIC_READY_KEY, '1'),
+    currentUser ? saveLastLoginEmail(currentUser.email) : Promise.resolve(),
+  ]);
 }
 
 export async function confirmBiometricLoginAfterPassword() {
@@ -70,6 +86,10 @@ export async function isBiometricLoginReady() {
 
 export async function saveSession(accessToken: string, user: User) {
   await Promise.all([saveAccessToken(accessToken), saveCurrentUser(user)]);
+}
+
+export function lockSessionForBiometricLogin() {
+  return clearCurrentUser();
 }
 
 export async function clearSession() {

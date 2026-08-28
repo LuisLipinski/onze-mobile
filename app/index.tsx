@@ -14,6 +14,7 @@ import {
   clearSession,
   confirmBiometricLoginAfterPassword,
   getAccessToken,
+  getLastLoginEmail,
   isBiometricLoginReady,
   saveCurrentUser,
   saveSession,
@@ -26,7 +27,6 @@ export default function LoginScreen() {
     registered?: string;
     passwordReset?: string;
     joinCode?: string;
-    biometricSetup?: string;
   }>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,7 +53,13 @@ export default function LoginScreen() {
 
   async function restoreSession() {
     try {
-      const token = await getAccessToken();
+      const [token, lastLoginEmail] = await Promise.all([
+        getAccessToken(),
+        getLastLoginEmail(),
+      ]);
+      if (lastLoginEmail) {
+        setEmail(lastLoginEmail);
+      }
       if (!token) return;
 
       if (await isBiometricLoginReady()) {
@@ -205,11 +211,9 @@ export default function LoginScreen() {
                   Entrar
                 </Text>
                 <Text color="$onzeMuted" fontSize={14} lineHeight={20}>
-                  {params.biometricSetup === '1'
-                    ? 'Digite sua senha uma vez para concluir a ativação do login com biometria.'
-                    : params.joinCode
-                      ? 'Entre na sua conta para aceitar o convite da pelada.'
-                      : 'Entre para organizar sua próxima partida.'}
+                  {params.joinCode
+                    ? 'Entre na sua conta para aceitar o convite da pelada.'
+                    : 'Entre para organizar sua próxima partida.'}
                 </Text>
               </YStack>
 
@@ -272,8 +276,13 @@ export default function LoginScreen() {
                 focusStyle={{ borderColor: '$onzeGreen' }}
                 height={52}
                 onChangeText={setPassword}
+                onFocus={() => {
+                  if (biometricLoginAvailable && !biometricLoading) {
+                    void submitBiometricLogin();
+                  }
+                }}
                 onSubmitEditing={submit}
-                placeholder="Senha"
+                placeholder={biometricLoginAvailable ? 'Toque para entrar com biometria' : 'Senha'}
                 placeholderTextColor="$onzeMuted"
                 returnKeyType="done"
                 secureTextEntry
