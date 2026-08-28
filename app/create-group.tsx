@@ -11,7 +11,7 @@ import {
 import { Button, Input, Text, TextArea, XStack, YStack } from 'tamagui';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
-import { ApiRequestError, createGroup, uploadGroupPhoto } from '../src/lib/api';
+import { createGroup, Group, uploadGroupPhoto } from '../src/lib/api';
 import { getAccessToken } from '../src/lib/auth-storage';
 
 export default function CreateGroupScreen() {
@@ -19,6 +19,7 @@ export default function CreateGroupScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [createdGroup, setCreatedGroup] = useState<Group | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -27,11 +28,12 @@ export default function CreateGroupScreen() {
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.7,
+      quality: 0.4,
     });
 
     if (!result.canceled && result.assets[0]) {
       setPhoto(result.assets[0]);
+      setError(null);
     }
   }
 
@@ -52,22 +54,26 @@ export default function CreateGroupScreen() {
         return;
       }
 
-      const group = await createGroup(token, name, description.trim() || undefined);
-      let photoWarning = '';
+      const group = createdGroup ?? (await createGroup(token, name, description.trim() || undefined));
+      if (!createdGroup) setCreatedGroup(group);
 
       if (photo) {
         try {
-          await uploadGroupPhoto(token, group.id, {
+          const uploadedGroup = await uploadGroupPhoto(token, group.id, {
             uri: photo.uri,
             fileName: photo.fileName,
             mimeType: photo.mimeType,
           });
-        } catch (exception) {
-          photoWarning =
-            exception instanceof ApiRequestError &&
-            exception.code === 'PHOTO_STORAGE_NOT_CONFIGURED'
-              ? 'A foto ficou pendente e o ícone do Onze será usado por enquanto.'
-              : 'Não foi possível enviar a foto agora. O ícone do Onze será usado por enquanto.';
+
+          if (!uploadedGroup.photoUrl) {
+            throw new Error('A API não confirmou a foto do grupo.');
+          }
+        } catch {
+          setError(
+            'O grupo já foi criado, mas a foto ainda não foi enviada. Toque em Continuar novamente para tentar somente o envio da foto.',
+          );
+          setLoading(false);
+          return;
         }
       }
 
@@ -76,7 +82,6 @@ export default function CreateGroupScreen() {
         params: {
           groupId: group.id,
           groupName: group.name,
-          photoWarning,
         },
       });
     } catch (exception) {
@@ -89,7 +94,7 @@ export default function CreateGroupScreen() {
     return (
       <ServerLoadingScreen
         title="Criando seu grupo..."
-        message="Estamos preparando a pelada e seu acesso de administrador."
+        message={createdGroup && photo ? 'Enviando a foto escolhida...' : 'Estamos preparando a pelada e seu acesso de administrador.'}
       />
     );
   }
@@ -107,14 +112,10 @@ export default function CreateGroupScreen() {
         >
           <YStack gap="$5" paddingVertical="$4">
             <YStack gap="$1">
-              <Text color="$onzeGreen" fontSize={14} fontWeight="800">
-                ETAPA 1 DE 3
-              </Text>
-              <Text color="$onzeInk" fontSize={30} fontWeight="800">
-                Crie seu grupo
-              </Text>
+              <Text color="$onzeGreen" fontSize={14} fontWeight="800">ETAPA 1 DE 3</Text>
+              <Text color="$onzeInk" fontSize={30} fontWeight="800">Crie seu grupo</Text>
               <Text color="$onzeMuted" fontSize={15} lineHeight={22}>
-                Comece pelo essencial. Você será administrador automaticamente.
+                Comece pelo essencial. Você será o administrador principal automaticamente.
               </Text>
             </YStack>
 
@@ -143,19 +144,18 @@ export default function CreateGroupScreen() {
                   </Text>
                 </Button>
                 <Text color="$onzeMuted" fontSize={12} textAlign="center">
-                  Se não escolher uma foto, usaremos a imagem do Onze.
+                  Se você escolher uma foto, vamos confirmar o envio antes de avançar.
                 </Text>
               </YStack>
 
               <YStack gap="$2">
-                <Text color="$onzeInk" fontSize={14} fontWeight="700">
-                  Nome do grupo/time *
-                </Text>
+                <Text color="$onzeInk" fontSize={14} fontWeight="700">Nome do grupo/time *</Text>
                 <Input
                   autoCapitalize="words"
                   backgroundColor="$onzeSurface"
                   borderColor="$onzeBorder"
                   color="$onzeInk"
+                  editable={!createdGroup}
                   focusStyle={{ borderColor: '$onzeGreen' }}
                   height={52}
                   maxLength={120}
@@ -169,17 +169,14 @@ export default function CreateGroupScreen() {
 
               <YStack gap="$2">
                 <XStack alignItems="center" justifyContent="space-between">
-                  <Text color="$onzeInk" fontSize={14} fontWeight="700">
-                    Descrição
-                  </Text>
-                  <Text color="$onzeMuted" fontSize={12}>
-                    Opcional
-                  </Text>
+                  <Text color="$onzeInk" fontSize={14} fontWeight="700">Descrição</Text>
+                  <Text color="$onzeMuted" fontSize={12}>Opcional</Text>
                 </XStack>
                 <TextArea
                   backgroundColor="$onzeSurface"
                   borderColor="$onzeBorder"
                   color="$onzeInk"
+                  editable={!createdGroup}
                   focusStyle={{ borderColor: '$onzeGreen' }}
                   maxLength={500}
                   minHeight={110}
@@ -190,11 +187,7 @@ export default function CreateGroupScreen() {
                 />
               </YStack>
 
-              {error ? (
-                <Text color="$onzeDanger" fontSize={14}>
-                  {error}
-                </Text>
-              ) : null}
+              {error ? <Text color="$onzeDanger" fontSize={14} lineHeight={20}>{error}</Text> : null}
 
               <Button
                 backgroundColor="$onzeGreen"
@@ -203,19 +196,13 @@ export default function CreateGroupScreen() {
                 pressStyle={{ backgroundColor: '$onzeGreenPress' }}
               >
                 <Text color="$onzeSurface" fontSize={16} fontWeight="800">
-                  Continuar
+                  {createdGroup && photo ? 'Tentar enviar foto novamente' : 'Continuar'}
                 </Text>
               </Button>
             </YStack>
 
-            <Button
-              backgroundColor="transparent"
-              borderWidth={0}
-              onPress={() => router.back()}
-            >
-              <Text color="$onzeMuted" fontWeight="700">
-                Voltar
-              </Text>
+            <Button backgroundColor="transparent" borderWidth={0} onPress={() => router.back()}>
+              <Text color="$onzeMuted" fontWeight="700">Voltar</Text>
             </Button>
           </YStack>
         </ScrollView>
