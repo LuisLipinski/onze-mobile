@@ -13,6 +13,7 @@ jobs:
     env:
       CI: true
       EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+      EXPO_PUBLIC_EAS_PROJECT_ID: ${{ vars.EXPO_PUBLIC_EAS_PROJECT_ID }}
 
     steps:
       - name: Checkout

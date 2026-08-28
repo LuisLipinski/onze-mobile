@@ -70,6 +70,49 @@ export type JoinGroupResponse = {
   alreadyMember: boolean;
 };
 
+export type MatchRecurrence = 'NONE' | 'WEEKLY';
+export type MatchStatus = 'SCHEDULED' | 'CANCELLED';
+export type AttendanceStatus = 'GOING' | 'NOT_GOING';
+
+export type MatchAttendance = {
+  userId: string;
+  displayName: string;
+  status: AttendanceStatus;
+  currentUser: boolean;
+};
+
+export type FootballMatch = {
+  id: string;
+  groupId: string;
+  groupName: string;
+  seriesId: string | null;
+  recurrence: MatchRecurrence;
+  seriesActive: boolean;
+  startsAt: string;
+  timeZone: string;
+  venue: string;
+  maxPlayers: number;
+  notes: string | null;
+  status: MatchStatus;
+  attendanceOpensAt: string;
+  attendanceOpen: boolean;
+  myAttendance: AttendanceStatus | null;
+  goingCount: number;
+  notGoingCount: number;
+  attendances: MatchAttendance[];
+  canManage: boolean;
+};
+
+export type CreateMatchInput = {
+  date: string;
+  startTime: string;
+  timeZone: string;
+  venue: string;
+  maxPlayers: number;
+  notes?: string;
+  recurrence: MatchRecurrence;
+};
+
 type MessageResponse = {
   message: string;
 };
@@ -326,6 +369,80 @@ export function uploadGroupPhoto(
     method: 'POST',
     headers: authenticatedHeaders(accessToken),
     body: form,
+  });
+}
+
+export function createMatch(
+  accessToken: string,
+  groupId: string,
+  match: CreateMatchInput,
+) {
+  return request<FootballMatch>(`/api/groups/${groupId}/matches`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({
+      ...match,
+      notes: match.notes?.trim() || null,
+    }),
+  });
+}
+
+export function listUpcomingMatches(accessToken: string) {
+  return request<FootballMatch[]>('/api/matches/upcoming', {
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function listGroupMatches(accessToken: string, groupId: string) {
+  return request<FootballMatch[]>(`/api/groups/${groupId}/matches`, {
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function getMatch(accessToken: string, matchId: string) {
+  return request<FootballMatch>(`/api/matches/${matchId}`, {
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function updateMatchAttendance(
+  accessToken: string,
+  matchId: string,
+  status: AttendanceStatus,
+) {
+  return request<FootballMatch>(`/api/matches/${matchId}/attendance`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function cancelMatch(accessToken: string, matchId: string) {
+  return request<void>(`/api/matches/${matchId}`, {
+    method: 'DELETE',
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function endMatchSeries(accessToken: string, seriesId: string) {
+  return request<void>(`/api/match-series/${seriesId}`, {
+    method: 'DELETE',
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function registerPushToken(accessToken: string, token: string) {
+  return request<void>('/api/devices/push-token', {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ token }),
+  });
+}
+
+export function unregisterPushToken(accessToken: string, token: string) {
+  return request<void>(`/api/devices/push-token?token=${encodeURIComponent(token)}`, {
+    method: 'DELETE',
+    headers: authenticatedHeaders(accessToken),
   });
 }
 
