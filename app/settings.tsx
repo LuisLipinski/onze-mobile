@@ -8,16 +8,15 @@ import {
   clearSession,
   disableBiometricLogin,
   enableBiometricLogin,
+  getBiometricCredential,
   getStoredCurrentUser,
-  isBiometricLoginEnabled,
-  isBiometricLoginReady,
-  lockSessionForBiometricLogin,
 } from '../src/lib/auth-storage';
 import { isBiometricAvailable } from '../src/lib/biometrics';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [displayName, setDisplayName] = useState('');
+  const [accountEmail, setAccountEmail] = useState('');
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -30,14 +29,21 @@ export default function SettingsScreen() {
   );
 
   async function loadSettings() {
-    const [user, available, enabled] = await Promise.all([
+    const [user, available, credential] = await Promise.all([
       getStoredCurrentUser(),
       isBiometricAvailable().catch(() => false),
-      isBiometricLoginEnabled(),
+      getBiometricCredential(),
     ]);
     setDisplayName(user?.displayName ?? '');
+    setAccountEmail(user?.email ?? '');
     setBiometricAvailable(available);
-    setBiometricEnabled(enabled);
+    setBiometricEnabled(
+      Boolean(
+        user &&
+          credential &&
+          user.email.trim().toLowerCase() === credential.email.trim().toLowerCase(),
+      ),
+    );
   }
 
   async function onBiometricToggle(value: boolean) {
@@ -57,7 +63,7 @@ export default function SettingsScreen() {
     try {
       await enableBiometricLogin();
       setBiometricEnabled(true);
-      setMessage('Login com biometria ativado. Você continua conectado.');
+      setMessage(`Login com biometria ativado para ${accountEmail}. Você continua conectado.`);
     } catch {
       setMessage('Não foi possível ativar a biometria. Tente novamente.');
     } finally {
@@ -79,11 +85,7 @@ export default function SettingsScreen() {
   }
 
   async function logout() {
-    if (await isBiometricLoginReady()) {
-      await lockSessionForBiometricLogin();
-    } else {
-      await clearSession();
-    }
+    await clearSession();
     router.replace('/');
   }
 
@@ -113,7 +115,7 @@ export default function SettingsScreen() {
                   <Text color="$onzeInk" fontSize={17} fontWeight="800">Login com biometria</Text>
                   <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
                     {biometricEnabled
-                      ? 'Ativado. Ele continuará ativo até você desligar esta chave.'
+                      ? `Ativado para ${accountEmail}. Ele continuará ativo até você desligar esta chave.`
                       : 'Ative para usar a biometria nos próximos acessos sem sair da sua conta.'}
                   </Text>
                 </YStack>
@@ -150,7 +152,7 @@ export default function SettingsScreen() {
             >
               <Text color="$onzeInk" fontSize={17} fontWeight="800">Sessão</Text>
               <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
-                Com a biometria ativa, sair bloqueia o aplicativo, mantém seu e-mail preenchido e permite entrar novamente pela biometria.
+                Ao sair, a sessão é encerrada. Se a biometria estiver ativa, esta conta continua disponível na entrada, mas você também pode escolher outra conta.
               </Text>
               <Button
                 backgroundColor="$onzeSurface"
