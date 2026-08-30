@@ -4,14 +4,17 @@ import { Image, Modal, Pressable, SafeAreaView, ScrollView } from 'react-native'
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
+import { MatchCard } from '../src/components/match-card';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
+  FootballMatch,
   Group,
   GroupDayOfWeek,
   GroupRole,
   hasGroupPermission,
   leaveGroup,
+  listGroupMatches,
   listGroups,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
@@ -36,6 +39,7 @@ export default function GroupScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ groupId: string }>();
   const [group, setGroup] = useState<Group | null>(null);
+  const [matches, setMatches] = useState<FootballMatch[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -57,6 +61,7 @@ export default function GroupScreen() {
 
     setLoading(true);
     setError(null);
+    setMatches([]);
     try {
       const token = await getAccessToken();
       if (!token) {
@@ -72,6 +77,7 @@ export default function GroupScreen() {
         return;
       }
       setGroup(selected);
+      setMatches(await listGroupMatches(token, selected.id));
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
         await clearSession();
@@ -200,6 +206,22 @@ export default function GroupScreen() {
                   )}
                 </YStack>
               </YStack>
+
+              <YStack gap="$3">
+                <Text color="$onzeInk" fontSize={20} fontWeight="900">Próximos jogos</Text>
+                {matches.length ? matches.map((match) => (
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    showGroup={false}
+                    onPress={() => router.push({ pathname: '/match', params: { matchId: match.id } })}
+                  />
+                )) : (
+                  <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$5" borderWidth={1} padding="$5">
+                    <Text color="$onzeMuted" fontSize={14}>Nenhum jogo marcado neste grupo.</Text>
+                  </YStack>
+                )}
+              </YStack>
             </>
           ) : (
             <YStack
@@ -259,10 +281,17 @@ export default function GroupScreen() {
                 ) : null}
 
                 {canScheduleGames ? (
-                  <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" opacity={0.62} padding="$4">
-                    <Text color="$onzeInk" fontWeight="800">Marcar jogo</Text>
-                    <Text color="$onzeMuted" fontSize={11}>Em breve nesta etapa</Text>
-                  </YStack>
+                  <MenuButton label="Marcar jogo" onPress={() => {
+                    setMenuVisible(false);
+                    router.push({
+                      pathname: '/create-match',
+                      params: {
+                        groupId: group.id,
+                        groupName: group.name,
+                        venue: group.venue ?? '',
+                      },
+                    });
+                  }} />
                 ) : null}
 
                 {canEditGroup ? (

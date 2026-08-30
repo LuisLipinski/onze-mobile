@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "800876004866",
+    "project_id": "onze-organizador-de-pelada",
+    "storage_bucket": "onze-organizador-de-pelada.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:800876004866:android:13d983c46c31aa96e1491b",
+        "android_client_info": {
+          "package_name": "com.onze.organizadordepelada"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBI3q4K7ICryLz8FcAPfBLkRgeFncdU64E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
