@@ -381,10 +381,40 @@ export function uploadGroupPhoto(
     } as unknown as Blob,
   );
 
-  return request<Group>(`/api/groups/${groupId}/photo`, {
-    method: 'POST',
-    headers: authenticatedHeaders(accessToken),
-    body: form,
+  return new Promise<Group>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${getApiUrl()}/api/groups/${groupId}/photo`);
+    xhr.timeout = REQUEST_TIMEOUT_MS;
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+
+    xhr.onload = () => {
+      let payload: (ApiError & Partial<Group>) | null = null;
+      try {
+        payload = JSON.parse(xhr.responseText) as ApiError & Partial<Group>;
+      } catch {
+        // The API may return no JSON for infrastructure-level errors.
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new ApiRequestError(
+          payload?.message ?? 'Não foi possível enviar a foto do grupo.',
+          xhr.status,
+          payload?.code,
+        ));
+        return;
+      }
+
+      if (!payload) {
+        reject(new Error('O servidor não confirmou o envio da foto do grupo.'));
+        return;
+      }
+
+      resolve(payload as Group);
+    };
+    xhr.onerror = () => reject(new Error('Não foi possível conectar ao servidor para enviar a foto.'));
+    xhr.ontimeout = () => reject(new Error('O envio da foto demorou mais que o esperado. Tente novamente.'));
+    xhr.send(form);
   });
 }
 
