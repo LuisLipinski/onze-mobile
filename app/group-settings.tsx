@@ -191,11 +191,22 @@ export default function GroupSettingsScreen() {
       });
 
       if (photo) {
-        updated = await uploadGroupPhoto(token, group.id, {
-          uri: photo.uri,
-          fileName: photo.fileName,
-          mimeType: photo.mimeType,
-        });
+        try {
+          updated = await uploadGroupPhoto(token, group.id, {
+            uri: photo.uri,
+            fileName: photo.fileName,
+            mimeType: photo.mimeType,
+          });
+        } catch (exception) {
+          setGroup(updated);
+          const reason = exception instanceof Error && exception.message.trim()
+            ? ` Motivo informado: ${exception.message}`
+            : '';
+          setError(
+            `As outras configurações foram salvas, mas a foto ainda não foi enviada. Toque em Salvar configurações novamente para tentar somente o envio da foto.${reason}`,
+          );
+          return;
+        }
       }
 
       setGroup(updated);
