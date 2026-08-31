@@ -33,7 +33,12 @@ function attendanceMessage(match: FootballMatch) {
     }).format(new Date(match.attendanceOpensAt));
     return `Presença abre em ${opening}`;
   }
-  if (match.myAttendance === 'GOING') return 'Você confirmou presença';
+  if (match.myAttendance === 'GOING') {
+    if (match.myPaymentStatus === 'PENDING') return 'Pagamento pendente';
+    if (match.myPaymentStatus === 'REPORTED') return 'Pagamento informado';
+    if (match.myPaymentStatus === 'PAID') return 'Presença e pagamento confirmados';
+    return 'Você confirmou presença';
+  }
   if (match.myAttendance === 'NOT_GOING') return 'Você informou que não vai';
   return 'Confirme sua presença';
 }

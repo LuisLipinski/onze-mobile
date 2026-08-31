@@ -11,6 +11,11 @@ import { Button, Input, Text, TextArea, XStack, YStack } from 'tamagui';
 
 import { createMatch } from '../src/lib/api';
 import { getAccessToken } from '../src/lib/auth-storage';
+import {
+  parsePaymentAmount,
+  paymentAmountInputValue,
+  sanitizePaymentAmountInput,
+} from '../src/lib/payment';
 
 const MATCH_TIME_ZONE = 'America/Sao_Paulo';
 
@@ -70,11 +75,21 @@ export default function CreateMatchScreen() {
     groupId?: string;
     groupName?: string;
     venue?: string;
+    paymentAmount?: string;
+    pixKey?: string;
   }>();
   const [date, setDate] = useState(defaultDate());
   const [time, setTime] = useState('20:00');
   const [venue, setVenue] = useState(params.venue ?? '');
   const [maxPlayers, setMaxPlayers] = useState('14');
+  const [paymentRequired, setPaymentRequired] = useState(
+    Boolean(params.paymentAmount && params.pixKey),
+  );
+  const [paymentAmount, setPaymentAmount] = useState(() => {
+    const initial = Number(params.paymentAmount);
+    return Number.isFinite(initial) && initial > 0 ? paymentAmountInputValue(initial) : '';
+  });
+  const [pixKey, setPixKey] = useState(params.pixKey ?? '');
   const [notes, setNotes] = useState('');
   const [weekly, setWeekly] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -103,6 +118,15 @@ export default function CreateMatchScreen() {
       setError('O limite deve ficar entre 2 e 100 jogadores.');
       return;
     }
+    const parsedPaymentAmount = paymentRequired ? parsePaymentAmount(paymentAmount) : null;
+    if (paymentRequired && parsedPaymentAmount == null) {
+      setError('Informe um valor por jogador válido, como 25,00.');
+      return;
+    }
+    if (paymentRequired && !pixKey.trim()) {
+      setError('Informe a chave PIX para o pagamento.');
+      return;
+    }
     if (!params.groupId) {
       setError('Não foi possível identificar o grupo.');
       return;
@@ -121,6 +145,9 @@ export default function CreateMatchScreen() {
         timeZone: MATCH_TIME_ZONE,
         venue: venue.trim(),
         maxPlayers: parsedMaxPlayers,
+        paymentRequired,
+        paymentAmount: parsedPaymentAmount ?? undefined,
+        pixKey: paymentRequired ? pixKey.trim() : undefined,
         notes,
         recurrence: weekly ? 'WEEKLY' : 'NONE',
       });
@@ -226,6 +253,54 @@ export default function CreateMatchScreen() {
                   value={notes}
                 />
               </Field>
+            </YStack>
+
+            <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
+              <XStack alignItems="center" gap="$4" justifyContent="space-between">
+                <YStack flex={1} gap="$1">
+                  <Text color="$onzeInk" fontSize={17} fontWeight="900">Cobrar por jogador</Text>
+                  <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                    Quem confirmar presença verá o PIX e receberá lembretes até o pagamento.
+                  </Text>
+                </YStack>
+                <Switch
+                  accessibilityLabel="Cobrar pagamento dos jogadores"
+                  onValueChange={setPaymentRequired}
+                  thumbColor="#FFFFFF"
+                  trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
+                  value={paymentRequired}
+                />
+              </XStack>
+
+              {paymentRequired ? (
+                <YStack gap="$4">
+                  <Field label="VALOR POR JOGADOR">
+                    <Input
+                      backgroundColor="$onzeSurface"
+                      borderColor="$onzeBorder"
+                      color="$onzeInk"
+                      keyboardType="decimal-pad"
+                      maxLength={11}
+                      onChangeText={(value) => setPaymentAmount(sanitizePaymentAmountInput(value))}
+                      placeholder="25,00"
+                      placeholderTextColor="$onzeMuted"
+                      value={paymentAmount}
+                    />
+                  </Field>
+                  <Field label="CHAVE PIX">
+                    <Input
+                      backgroundColor="$onzeSurface"
+                      borderColor="$onzeBorder"
+                      color="$onzeInk"
+                      maxLength={255}
+                      onChangeText={setPixKey}
+                      placeholder="Email, telefone, CPF ou chave aleatória"
+                      placeholderTextColor="$onzeMuted"
+                      value={pixKey}
+                    />
+                  </Field>
+                </YStack>
+              ) : null}
             </YStack>
 
             <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">

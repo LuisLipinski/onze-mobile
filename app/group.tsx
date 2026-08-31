@@ -18,6 +18,7 @@ import {
   listGroups,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
+import { formatCurrency } from '../src/lib/payment';
 
 const DAY_LABELS: Record<GroupDayOfWeek, string> = {
   MONDAY: 'Segunda-feira',
@@ -191,6 +192,13 @@ export default function GroupScreen() {
                 <InfoRow label="Cidade" value={group.city || 'Não configurada'} />
                 <InfoRow label="Local / campo" value={group.venue || 'Não configurado'} />
                 <InfoRow label="Mascote" value={group.mascot || 'Não configurado'} />
+                <InfoRow
+                  label="Valor por jogador"
+                  value={group.defaultPaymentAmount == null
+                    ? 'Não configurado'
+                    : formatCurrency(group.defaultPaymentAmount)}
+                />
+                {group.defaultPixKey ? <InfoRow label="Chave PIX" value={group.defaultPixKey} /> : null}
 
                 <YStack gap="$2" marginTop="$2">
                   <Text color="$onzeMuted" fontSize={12} fontWeight="700">DIAS E HORÁRIOS</Text>
@@ -289,6 +297,8 @@ export default function GroupScreen() {
                         groupId: group.id,
                         groupName: group.name,
                         venue: group.venue ?? '',
+                        paymentAmount: group.defaultPaymentAmount?.toString() ?? '',
+                        pixKey: group.defaultPixKey ?? '',
                       },
                     });
                   }} />

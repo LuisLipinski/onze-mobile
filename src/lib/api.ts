@@ -41,6 +41,8 @@ export type Group = {
   city: string | null;
   mascot: string | null;
   venue: string | null;
+  defaultPaymentAmount: number | null;
+  defaultPixKey: string | null;
   schedules: GroupSchedule[];
   role: GroupRole;
   permissions: GroupAdminPermission[];
@@ -73,11 +75,13 @@ export type JoinGroupResponse = {
 export type MatchRecurrence = 'NONE' | 'WEEKLY';
 export type MatchStatus = 'SCHEDULED' | 'CANCELLED';
 export type AttendanceStatus = 'GOING' | 'NOT_GOING';
+export type PaymentStatus = 'PENDING' | 'REPORTED' | 'PAID';
 
 export type MatchAttendance = {
   userId: string;
   displayName: string;
   status: AttendanceStatus;
+  paymentStatus: PaymentStatus | null;
   currentUser: boolean;
 };
 
@@ -92,11 +96,15 @@ export type FootballMatch = {
   timeZone: string;
   venue: string;
   maxPlayers: number;
+  paymentRequired: boolean;
+  paymentAmount: number | null;
+  pixKey: string | null;
   notes: string | null;
   status: MatchStatus;
   attendanceOpensAt: string;
   attendanceOpen: boolean;
   myAttendance: AttendanceStatus | null;
+  myPaymentStatus: PaymentStatus | null;
   goingCount: number;
   notGoingCount: number;
   attendances: MatchAttendance[];
@@ -109,6 +117,9 @@ export type CreateMatchInput = {
   timeZone: string;
   venue: string;
   maxPlayers: number;
+  paymentRequired: boolean;
+  paymentAmount?: number;
+  pixKey?: string;
   notes?: string;
   recurrence: MatchRecurrence;
 };
@@ -245,6 +256,8 @@ export function updateGroupDetails(
     city?: string;
     mascot?: string;
     venue?: string;
+    defaultPaymentAmount?: number;
+    defaultPixKey?: string;
     schedules: GroupSchedule[];
   },
 ) {
@@ -255,6 +268,9 @@ export function updateGroupDetails(
       city: details.city || null,
       mascot: details.mascot || null,
       venue: details.venue || null,
+      defaultPaymentEnabled: details.defaultPaymentAmount != null && Boolean(details.defaultPixKey),
+      defaultPaymentAmount: details.defaultPaymentAmount ?? null,
+      defaultPixKey: details.defaultPixKey || null,
       schedules: details.schedules,
     }),
   });
@@ -414,6 +430,24 @@ export function updateMatchAttendance(
     method: 'PUT',
     headers: authenticatedHeaders(accessToken),
     body: JSON.stringify({ status }),
+  });
+}
+
+export function reportMatchPayment(accessToken: string, matchId: string) {
+  return request<FootballMatch>(`/api/matches/${matchId}/payment/reported`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function confirmMatchPayment(
+  accessToken: string,
+  matchId: string,
+  playerUserId: string,
+) {
+  return request<FootballMatch>(`/api/matches/${matchId}/payments/${playerUserId}/confirm`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
   });
 }
 

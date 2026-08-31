@@ -9,12 +9,20 @@ import {
   ApiRequestError,
   AttendanceStatus,
   cancelMatch,
+  confirmMatchPayment,
   endMatchSeries,
   FootballMatch,
   getMatch,
+  PaymentStatus,
+  reportMatchPayment,
   updateMatchAttendance,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
+import {
+  registerNotificationsForSession,
+  syncSingleMatchNotifications,
+} from '../src/lib/notifications';
+import { formatCurrency } from '../src/lib/payment';
 
 type ManagementAction = 'cancel-occurrence' | 'end-series' | null;
 
@@ -49,6 +57,7 @@ export default function MatchScreen() {
   const [match, setMatch] = useState<FootballMatch | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingAttendance, setUpdatingAttendance] = useState<AttendanceStatus | null>(null);
+  const [updatingPayment, setUpdatingPayment] = useState<string | null>(null);
   const [managementAction, setManagementAction] = useState<ManagementAction>(null);
   const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +90,9 @@ export default function MatchScreen() {
         goToLogin();
         return;
       }
-      setMatch(await getMatch(token, params.matchId));
+      const loadedMatch = await getMatch(token, params.matchId);
+      setMatch(loadedMatch);
+      syncNotifications(token, loadedMatch);
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
         await clearSession();
@@ -104,11 +115,53 @@ export default function MatchScreen() {
         goToLogin();
         return;
       }
-      setMatch(await updateMatchAttendance(token, match.id, status));
+      const updatedMatch = await updateMatchAttendance(token, match.id, status);
+      setMatch(updatedMatch);
+      syncNotifications(token, updatedMatch);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível salvar sua presença.');
     } finally {
       setUpdatingAttendance(null);
+    }
+  }
+
+  async function reportPayment() {
+    if (!match || updatingPayment) return;
+    setUpdatingPayment('current-user');
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        goToLogin();
+        return;
+      }
+      const updatedMatch = await reportMatchPayment(token, match.id);
+      setMatch(updatedMatch);
+      syncNotifications(token, updatedMatch);
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : 'Não foi possível informar o pagamento.');
+    } finally {
+      setUpdatingPayment(null);
+    }
+  }
+
+  async function confirmPlayerPayment(playerUserId: string) {
+    if (!match || updatingPayment) return;
+    setUpdatingPayment(playerUserId);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        goToLogin();
+        return;
+      }
+      const updatedMatch = await confirmMatchPayment(token, match.id, playerUserId);
+      setMatch(updatedMatch);
+      syncNotifications(token, updatedMatch);
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : 'Não foi possível confirmar o pagamento.');
+    } finally {
+      setUpdatingPayment(null);
     }
   }
 
@@ -128,7 +181,9 @@ export default function MatchScreen() {
         await cancelMatch(token, match.id);
       }
       setManagementAction(null);
-      setMatch(await getMatch(token, match.id));
+      const updatedMatch = await getMatch(token, match.id);
+      setMatch(updatedMatch);
+      syncNotifications(token, updatedMatch);
     } catch (exception) {
       setManagementAction(null);
       setError(exception instanceof Error ? exception.message : 'Não foi possível alterar este jogo.');
@@ -142,12 +197,19 @@ export default function MatchScreen() {
     else router.replace('/home');
   }
 
+  function syncNotifications(accessToken: string, updatedMatch: FootballMatch) {
+    void registerNotificationsForSession(accessToken)
+      .then((registration) => syncSingleMatchNotifications(updatedMatch, registration))
+      .catch(() => undefined);
+  }
+
   if (loading && !match) {
     return <ServerLoadingScreen title="Carregando jogo..." message="Buscando a lista de presença." />;
   }
 
   const going = match?.attendances.filter((attendance) => attendance.status === 'GOING') ?? [];
   const notGoing = match?.attendances.filter((attendance) => attendance.status === 'NOT_GOING') ?? [];
+  const payments = match?.attendances.filter((attendance) => attendance.paymentStatus != null) ?? [];
   const actionIsEndSeries = managementAction === 'end-series';
 
   return (
@@ -241,6 +303,51 @@ export default function MatchScreen() {
                 </YStack>
               )}
 
+              {match.paymentRequired && match.myAttendance === 'GOING' ? (
+                <YStack
+                  backgroundColor={match.myPaymentStatus === 'PAID' ? '#EAF7EF' : '$onzeSurface'}
+                  borderColor={match.myPaymentStatus === 'PAID' ? '$onzeGreen' : '$onzeBorder'}
+                  borderRadius="$6"
+                  borderWidth={1}
+                  gap="$3"
+                  padding="$5"
+                >
+                  <XStack alignItems="center" justifyContent="space-between">
+                    <Text color="$onzeInk" fontSize={18} fontWeight="900">Pagamento</Text>
+                    <PaymentBadge status={match.myPaymentStatus} />
+                  </XStack>
+                  <Text color="$onzeInk" fontSize={24} fontWeight="900">
+                    {formatCurrency(match.paymentAmount ?? 0)}
+                  </Text>
+                  <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$4">
+                    <Text color="$onzeMuted" fontSize={11} fontWeight="900">CHAVE PIX</Text>
+                    <Text color="$onzeInk" fontSize={14} fontWeight="800" selectable>
+                      {match.pixKey}
+                    </Text>
+                  </YStack>
+                  {match.myPaymentStatus === 'PENDING' ? (
+                    <Button
+                      backgroundColor="$onzeGreen"
+                      disabled={Boolean(updatingPayment)}
+                      height={50}
+                      onPress={() => void reportPayment()}
+                    >
+                      <Text color="$onzeSurface" fontWeight="900">
+                        {updatingPayment === 'current-user' ? 'Informando...' : 'Já paguei'}
+                      </Text>
+                    </Button>
+                  ) : match.myPaymentStatus === 'REPORTED' ? (
+                    <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                      Pagamento informado. Agora o administrador precisa validar o recebimento.
+                    </Text>
+                  ) : (
+                    <Text color="$onzeGreen" fontSize={13} fontWeight="800">
+                      Recebimento confirmado pelo administrador.
+                    </Text>
+                  )}
+                </YStack>
+              ) : null}
+
               {match.notes ? (
                 <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$2" padding="$5">
                   <Text color="$onzeInk" fontSize={17} fontWeight="900">Observações</Text>
@@ -259,6 +366,41 @@ export default function MatchScreen() {
                   <AttendanceList title="NÃO VÃO" empty="" names={notGoing.map((item) => item.displayName)} muted />
                 ) : null}
               </YStack>
+
+              {match.canManage && match.paymentRequired && payments.length ? (
+                <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
+                  <YStack gap="$1">
+                    <Text color="$onzeInk" fontSize={18} fontWeight="900">Controlar pagamentos</Text>
+                    <Text color="$onzeMuted" fontSize={13}>
+                      Valide somente depois de conferir o recebimento do PIX.
+                    </Text>
+                  </YStack>
+                  {payments.map((attendance) => (
+                    <XStack key={attendance.userId} alignItems="center" gap="$3">
+                      <YStack flex={1} gap="$1">
+                        <Text color="$onzeInk" fontSize={14} fontWeight="800">{attendance.displayName}</Text>
+                        {attendance.status === 'NOT_GOING' ? (
+                          <Text color="$onzeDanger" fontSize={11} fontWeight="800">NÃO VAI AO JOGO</Text>
+                        ) : null}
+                        <PaymentBadge status={attendance.paymentStatus} />
+                      </YStack>
+                      {attendance.status === 'GOING' && attendance.paymentStatus !== 'PAID' ? (
+                        <Button
+                          backgroundColor="$onzeSurface"
+                          borderColor="$onzeGreen"
+                          borderWidth={1}
+                          disabled={Boolean(updatingPayment)}
+                          onPress={() => void confirmPlayerPayment(attendance.userId)}
+                        >
+                          <Text color="$onzeGreen" fontSize={12} fontWeight="900">
+                            {updatingPayment === attendance.userId ? 'Validando...' : 'Confirmar'}
+                          </Text>
+                        </Button>
+                      ) : null}
+                    </XStack>
+                  ))}
+                </YStack>
+              ) : null}
 
               {match.canManage && match.status === 'SCHEDULED' ? (
                 <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
@@ -316,6 +458,20 @@ export default function MatchScreen() {
         />
       ) : null}
     </SafeAreaView>
+  );
+}
+
+function PaymentBadge({ status }: { status: PaymentStatus | null }) {
+  const label = status === 'PAID'
+    ? 'PAGO'
+    : status === 'REPORTED'
+      ? 'AGUARDANDO VALIDAÇÃO'
+      : 'PENDENTE';
+  const color = status === 'PAID' ? '$onzeGreen' : status === 'REPORTED' ? '#8A6414' : '$onzeDanger';
+  return (
+    <Text color={color} fontSize={11} fontWeight="900">
+      {label}
+    </Text>
   );
 }
 

@@ -23,6 +23,11 @@ import {
   uploadGroupPhoto,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
+import {
+  parsePaymentAmount,
+  paymentAmountInputValue,
+  sanitizePaymentAmountInput,
+} from '../src/lib/payment';
 
 const DAYS: { value: GroupDayOfWeek; label: string; fullLabel: string }[] = [
   { value: 'MONDAY', label: 'Seg', fullLabel: 'Segunda-feira' },
@@ -41,6 +46,8 @@ export default function GroupSettingsScreen() {
   const [city, setCity] = useState('');
   const [mascot, setMascot] = useState('');
   const [venue, setVenue] = useState('');
+  const [defaultPaymentAmount, setDefaultPaymentAmount] = useState('');
+  const [defaultPixKey, setDefaultPixKey] = useState('');
   const [times, setTimes] = useState<Partial<Record<GroupDayOfWeek, string>>>({});
   const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +93,8 @@ export default function GroupSettingsScreen() {
       setCity(selected.city ?? '');
       setMascot(selected.mascot ?? '');
       setVenue(selected.venue ?? '');
+      setDefaultPaymentAmount(paymentAmountInputValue(selected.defaultPaymentAmount));
+      setDefaultPixKey(selected.defaultPixKey ?? '');
       setTimes(
         Object.fromEntries(
           selected.schedules.map((schedule) => [schedule.dayOfWeek, schedule.startTime.slice(0, 5)]),
@@ -149,6 +158,20 @@ export default function GroupSettingsScreen() {
     const schedules = buildSchedules();
     if (!schedules) return;
 
+    const hasPaymentAmount = Boolean(defaultPaymentAmount.trim());
+    const hasPixKey = Boolean(defaultPixKey.trim());
+    if (hasPaymentAmount !== hasPixKey) {
+      setError('Informe o valor padrão e a chave PIX juntos, ou deixe os dois vazios.');
+      return;
+    }
+    const parsedPaymentAmount = hasPaymentAmount
+      ? parsePaymentAmount(defaultPaymentAmount)
+      : undefined;
+    if (hasPaymentAmount && parsedPaymentAmount == null) {
+      setError('Informe um valor padrão válido, como 25,00.');
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
@@ -162,6 +185,8 @@ export default function GroupSettingsScreen() {
         city: city.trim() || undefined,
         mascot: mascot.trim() || undefined,
         venue: venue.trim() || undefined,
+        defaultPaymentAmount: parsedPaymentAmount ?? undefined,
+        defaultPixKey: defaultPixKey.trim() || undefined,
         schedules,
       });
 
@@ -233,6 +258,28 @@ export default function GroupSettingsScreen() {
                 <OptionalInput label="Mascote" placeholder="Ex.: Leão" value={mascot} onChangeText={setMascot} />
                 <OptionalInput label="Local / campo onde joga" placeholder="Ex.: Arena dos Amigos" value={venue} onChangeText={setVenue} />
 
+                <YStack backgroundColor="$onzeCanvas" borderRadius="$5" gap="$3" padding="$4">
+                  <YStack gap="$1">
+                    <Text color="$onzeInk" fontSize={16} fontWeight="900">Cobrança padrão</Text>
+                    <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                      Estes dados serão preenchidos automaticamente ao marcar um jogo e poderão ser alterados naquela partida.
+                    </Text>
+                  </YStack>
+                  <OptionalInput
+                    keyboardType="decimal-pad"
+                    label="Valor por jogador"
+                    placeholder="Ex.: 25,00"
+                    value={defaultPaymentAmount}
+                    onChangeText={(value) => setDefaultPaymentAmount(sanitizePaymentAmountInput(value))}
+                  />
+                  <OptionalInput
+                    label="Chave PIX"
+                    placeholder="Email, telefone, CPF ou chave aleatória"
+                    value={defaultPixKey}
+                    onChangeText={setDefaultPixKey}
+                  />
+                </YStack>
+
                 <YStack gap="$3">
                   <Text color="$onzeInk" fontSize={14} fontWeight="700">Dias e horários habituais</Text>
                   <XStack flexWrap="wrap" gap="$2">
@@ -294,11 +341,12 @@ export default function GroupSettingsScreen() {
   );
 }
 
-function OptionalInput({ label, placeholder, value, onChangeText }: {
+function OptionalInput({ label, placeholder, value, onChangeText, keyboardType }: {
   label: string;
   placeholder: string;
   value: string;
   onChangeText: (value: string) => void;
+  keyboardType?: 'default' | 'decimal-pad';
 }) {
   return (
     <YStack gap="$2">
@@ -308,6 +356,7 @@ function OptionalInput({ label, placeholder, value, onChangeText }: {
         borderColor="$onzeBorder"
         color="$onzeInk"
         height={50}
+        keyboardType={keyboardType}
         maxLength={255}
         onChangeText={onChangeText}
         placeholder={placeholder}
