@@ -39,7 +39,15 @@ function attendanceMessage(match: FootballMatch) {
     if (match.myPaymentStatus === 'PAID') return 'Presença e pagamento confirmados';
     return 'Você confirmou presença';
   }
-  if (match.myAttendance === 'NOT_GOING') return 'Você informou que não vai';
+  if (match.myAttendance === 'NOT_GOING') {
+    if (match.myPaymentSettlementStatus === 'REVIEW_REQUIRED'
+        || match.myPaymentSettlementStatus === 'PENDING') {
+      return 'Acerto financeiro pendente';
+    }
+    if (match.myPaymentSettlementStatus === 'REFUNDED') return 'Pagamento reembolsado';
+    if (match.myPaymentSettlementStatus === 'CREDITED') return 'Crédito registrado';
+    return 'Você informou que não vai';
+  }
   return 'Confirme sua presença';
 }
 

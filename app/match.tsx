@@ -4,6 +4,7 @@ import { SafeAreaView, ScrollView } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
+import { PaymentSettlementModal } from '../src/components/payment-settlement-modal';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
@@ -13,8 +14,12 @@ import {
   endMatchSeries,
   FootballMatch,
   getMatch,
+  MatchAttendance,
+  PaymentSettlementResolution,
+  PaymentSettlementStatus,
   PaymentStatus,
   reportMatchPayment,
+  resolveMatchPaymentSettlement,
   updateMatchAttendance,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
@@ -25,6 +30,7 @@ import {
 import { formatCurrency } from '../src/lib/payment';
 
 type ManagementAction = 'cancel-occurrence' | 'end-series' | null;
+type PaymentBadgeColor = '$onzeGreen' | '$onzeDanger' | '$onzeMuted' | '#8A6414';
 
 function formatDateTime(match: FootballMatch) {
   return new Intl.DateTimeFormat('pt-BR', {
@@ -58,6 +64,8 @@ export default function MatchScreen() {
   const [loading, setLoading] = useState(true);
   const [updatingAttendance, setUpdatingAttendance] = useState<AttendanceStatus | null>(null);
   const [updatingPayment, setUpdatingPayment] = useState<string | null>(null);
+  const [pendingAttendanceStatus, setPendingAttendanceStatus] = useState<AttendanceStatus | null>(null);
+  const [settlementPlayer, setSettlementPlayer] = useState<MatchAttendance | null>(null);
   const [managementAction, setManagementAction] = useState<ManagementAction>(null);
   const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,12 +125,25 @@ export default function MatchScreen() {
       }
       const updatedMatch = await updateMatchAttendance(token, match.id, status);
       setMatch(updatedMatch);
+      setPendingAttendanceStatus(null);
       syncNotifications(token, updatedMatch);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível salvar sua presença.');
     } finally {
       setUpdatingAttendance(null);
     }
+  }
+
+  function requestAttendance(status: AttendanceStatus) {
+    if (!match || updatingAttendance) return;
+    if (status === 'NOT_GOING'
+        && match.myAttendance === 'GOING'
+        && match.paymentRequired
+        && match.myPaymentStatus != null) {
+      setPendingAttendanceStatus(status);
+      return;
+    }
+    void confirmAttendance(status);
   }
 
   async function reportPayment() {
@@ -160,6 +181,32 @@ export default function MatchScreen() {
       syncNotifications(token, updatedMatch);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível confirmar o pagamento.');
+    } finally {
+      setUpdatingPayment(null);
+    }
+  }
+
+  async function resolvePlayerSettlement(resolution: PaymentSettlementResolution) {
+    if (!match || !settlementPlayer || updatingPayment) return;
+    setUpdatingPayment(settlementPlayer.userId);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        goToLogin();
+        return;
+      }
+      const updatedMatch = await resolveMatchPaymentSettlement(
+        token,
+        match.id,
+        settlementPlayer.userId,
+        resolution,
+      );
+      setMatch(updatedMatch);
+      setSettlementPlayer(null);
+      syncNotifications(token, updatedMatch);
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : 'Não foi possível resolver o acerto.');
     } finally {
       setUpdatingPayment(null);
     }
@@ -273,7 +320,7 @@ export default function MatchScreen() {
                       disabled={Boolean(updatingAttendance)}
                       flex={1}
                       height={50}
-                      onPress={() => void confirmAttendance('GOING')}
+                      onPress={() => requestAttendance('GOING')}
                     >
                       <Text color={match.myAttendance === 'GOING' ? '$onzeSurface' : '$onzeGreen'} fontWeight="900">
                         {updatingAttendance === 'GOING' ? 'Salvando...' : '✓ Vou jogar'}
@@ -286,7 +333,7 @@ export default function MatchScreen() {
                       disabled={Boolean(updatingAttendance)}
                       flex={1}
                       height={50}
-                      onPress={() => void confirmAttendance('NOT_GOING')}
+                      onPress={() => requestAttendance('NOT_GOING')}
                     >
                       <Text color={match.myAttendance === 'NOT_GOING' ? '$onzeSurface' : '$onzeDanger'} fontWeight="900">
                         {updatingAttendance === 'NOT_GOING' ? 'Salvando...' : 'Não vou'}
@@ -303,10 +350,14 @@ export default function MatchScreen() {
                 </YStack>
               )}
 
-              {match.paymentRequired && match.myAttendance === 'GOING' ? (
+              {match.paymentRequired && match.myPaymentStatus != null ? (
                 <YStack
-                  backgroundColor={match.myPaymentStatus === 'PAID' ? '#EAF7EF' : '$onzeSurface'}
-                  borderColor={match.myPaymentStatus === 'PAID' ? '$onzeGreen' : '$onzeBorder'}
+                  backgroundColor={match.myAttendance === 'GOING' && match.myPaymentStatus === 'PAID'
+                    ? '#EAF7EF'
+                    : '$onzeSurface'}
+                  borderColor={match.myAttendance === 'GOING' && match.myPaymentStatus === 'PAID'
+                    ? '$onzeGreen'
+                    : '$onzeBorder'}
                   borderRadius="$6"
                   borderWidth={1}
                   gap="$3"
@@ -314,35 +365,49 @@ export default function MatchScreen() {
                 >
                   <XStack alignItems="center" justifyContent="space-between">
                     <Text color="$onzeInk" fontSize={18} fontWeight="900">Pagamento</Text>
-                    <PaymentBadge status={match.myPaymentStatus} />
+                    <PaymentBadge
+                      status={match.myPaymentStatus}
+                      settlementStatus={match.myPaymentSettlementStatus}
+                    />
                   </XStack>
                   <Text color="$onzeInk" fontSize={24} fontWeight="900">
                     {formatCurrency(match.paymentAmount ?? 0)}
                   </Text>
-                  <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$4">
-                    <Text color="$onzeMuted" fontSize={11} fontWeight="900">CHAVE PIX</Text>
-                    <Text color="$onzeInk" fontSize={14} fontWeight="800" selectable>
-                      {match.pixKey}
-                    </Text>
-                  </YStack>
-                  {match.myPaymentStatus === 'PENDING' ? (
-                    <Button
-                      backgroundColor="$onzeGreen"
-                      disabled={Boolean(updatingPayment)}
-                      height={50}
-                      onPress={() => void reportPayment()}
-                    >
-                      <Text color="$onzeSurface" fontWeight="900">
-                        {updatingPayment === 'current-user' ? 'Informando...' : 'Já paguei'}
-                      </Text>
-                    </Button>
-                  ) : match.myPaymentStatus === 'REPORTED' ? (
-                    <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
-                      Pagamento informado. Agora o administrador precisa validar o recebimento.
-                    </Text>
+                  {match.myAttendance === 'GOING' ? (
+                    <>
+                      <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$4">
+                        <Text color="$onzeMuted" fontSize={11} fontWeight="900">CHAVE PIX</Text>
+                        <Text color="$onzeInk" fontSize={14} fontWeight="800" selectable>
+                          {match.pixKey}
+                        </Text>
+                      </YStack>
+                      {match.myPaymentStatus === 'PENDING' ? (
+                        <Button
+                          backgroundColor="$onzeGreen"
+                          disabled={Boolean(updatingPayment)}
+                          height={50}
+                          onPress={() => void reportPayment()}
+                        >
+                          <Text color="$onzeSurface" fontWeight="900">
+                            {updatingPayment === 'current-user' ? 'Informando...' : 'Já paguei'}
+                          </Text>
+                        </Button>
+                      ) : match.myPaymentStatus === 'REPORTED' ? (
+                        <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                          Pagamento informado. Agora o administrador precisa validar o recebimento.
+                        </Text>
+                      ) : (
+                        <Text color="$onzeGreen" fontSize={13} fontWeight="800">
+                          Recebimento confirmado pelo administrador.
+                        </Text>
+                      )}
+                    </>
                   ) : (
-                    <Text color="$onzeGreen" fontSize={13} fontWeight="800">
-                      Recebimento confirmado pelo administrador.
+                    <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                      {withdrawalPaymentMessage(
+                        match.myPaymentStatus,
+                        match.myPaymentSettlementStatus,
+                      )}
                     </Text>
                   )}
                 </YStack>
@@ -370,21 +435,34 @@ export default function MatchScreen() {
               {match.canManage && match.paymentRequired && payments.length ? (
                 <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
                   <YStack gap="$1">
-                    <Text color="$onzeInk" fontSize={18} fontWeight="900">Controlar pagamentos</Text>
+                    <Text color="$onzeInk" fontSize={18} fontWeight="900">Pagamentos e acertos</Text>
                     <Text color="$onzeMuted" fontSize={13}>
-                      Valide somente depois de conferir o recebimento do PIX.
+                      Confira o PIX antes de validar pagamentos ou resolver saídas.
                     </Text>
                   </YStack>
                   {payments.map((attendance) => (
-                    <XStack key={attendance.userId} alignItems="center" gap="$3">
-                      <YStack flex={1} gap="$1">
-                        <Text color="$onzeInk" fontSize={14} fontWeight="800">{attendance.displayName}</Text>
-                        {attendance.status === 'NOT_GOING' ? (
-                          <Text color="$onzeDanger" fontSize={11} fontWeight="800">NÃO VAI AO JOGO</Text>
-                        ) : null}
-                        <PaymentBadge status={attendance.paymentStatus} />
-                      </YStack>
-                      {attendance.status === 'GOING' && attendance.paymentStatus !== 'PAID' ? (
+                    <YStack
+                      key={attendance.userId}
+                      backgroundColor="$onzeCanvas"
+                      borderRadius="$4"
+                      gap="$3"
+                      padding="$4"
+                    >
+                      <XStack alignItems="center" gap="$3">
+                        <YStack flex={1} gap="$1">
+                          <Text color="$onzeInk" fontSize={14} fontWeight="800">{attendance.displayName}</Text>
+                          {attendance.status === 'NOT_GOING' ? (
+                            <Text color="$onzeDanger" fontSize={11} fontWeight="800">NÃO VAI AO JOGO</Text>
+                          ) : null}
+                          <PaymentBadge
+                            status={attendance.paymentStatus}
+                            settlementStatus={attendance.paymentSettlementStatus}
+                          />
+                        </YStack>
+                      </XStack>
+                      {attendance.status === 'GOING'
+                          && attendance.paymentStatus !== 'PAID'
+                          && attendance.paymentStatus !== 'CANCELLED' ? (
                         <Button
                           backgroundColor="$onzeSurface"
                           borderColor="$onzeGreen"
@@ -397,7 +475,19 @@ export default function MatchScreen() {
                           </Text>
                         </Button>
                       ) : null}
-                    </XStack>
+                      {attendance.status === 'NOT_GOING'
+                          && isSettlementOpen(attendance.paymentSettlementStatus) ? (
+                        <Button
+                          backgroundColor="$onzeGreen"
+                          disabled={Boolean(updatingPayment)}
+                          onPress={() => setSettlementPlayer(attendance)}
+                        >
+                          <Text color="$onzeSurface" fontSize={12} fontWeight="900">
+                            Resolver acerto
+                          </Text>
+                        </Button>
+                      ) : null}
+                    </YStack>
                   ))}
                 </YStack>
               ) : null}
@@ -457,22 +547,123 @@ export default function MatchScreen() {
           onConfirm={() => void confirmManagementAction()}
         />
       ) : null}
+
+      {match ? (
+        <ConfirmActionModal
+          visible={pendingAttendanceStatus === 'NOT_GOING'}
+          title="Confirmar que não vai?"
+          message={withdrawalConfirmationMessage(match.myPaymentStatus)}
+          confirmLabel="Liberar minha vaga"
+          destructive
+          loading={updatingAttendance === 'NOT_GOING'}
+          onCancel={() => setPendingAttendanceStatus(null)}
+          onConfirm={() => void confirmAttendance('NOT_GOING')}
+        />
+      ) : null}
+
+      <PaymentSettlementModal
+        visible={settlementPlayer != null}
+        playerName={settlementPlayer?.displayName ?? ''}
+        reviewRequired={settlementPlayer?.paymentSettlementStatus === 'REVIEW_REQUIRED'}
+        loading={updatingPayment === settlementPlayer?.userId}
+        onCancel={() => setSettlementPlayer(null)}
+        onResolve={(resolution) => void resolvePlayerSettlement(resolution)}
+      />
     </SafeAreaView>
   );
 }
 
-function PaymentBadge({ status }: { status: PaymentStatus | null }) {
-  const label = status === 'PAID'
+function PaymentBadge({
+  status,
+  settlementStatus,
+}: {
+  status: PaymentStatus | null;
+  settlementStatus: PaymentSettlementStatus | null;
+}) {
+  const settlement = settlementBadge(settlementStatus);
+  const label = settlement?.label ?? (status === 'PAID'
     ? 'PAGO'
     : status === 'REPORTED'
       ? 'AGUARDANDO VALIDAÇÃO'
-      : 'PENDENTE';
-  const color = status === 'PAID' ? '$onzeGreen' : status === 'REPORTED' ? '#8A6414' : '$onzeDanger';
+      : status === 'CANCELLED'
+        ? 'COBRANÇA CANCELADA'
+        : 'PENDENTE');
+  const color = settlement?.color
+    ?? (status === 'PAID'
+      ? '$onzeGreen'
+      : status === 'REPORTED'
+        ? '#8A6414'
+        : status === 'CANCELLED'
+          ? '$onzeMuted'
+          : '$onzeDanger');
   return (
     <Text color={color} fontSize={11} fontWeight="900">
       {label}
     </Text>
   );
+}
+
+function settlementBadge(status: PaymentSettlementStatus | null): {
+  label: string;
+  color: PaymentBadgeColor;
+} | null {
+  switch (status) {
+    case 'REVIEW_REQUIRED':
+      return { label: 'PAGAMENTO EM REVISÃO', color: '#8A6414' };
+    case 'PENDING':
+      return { label: 'ACERTO PENDENTE', color: '$onzeDanger' };
+    case 'NOT_RECEIVED':
+      return { label: 'PAGAMENTO NÃO LOCALIZADO', color: '$onzeMuted' };
+    case 'REFUNDED':
+      return { label: 'REEMBOLSADO', color: '$onzeGreen' };
+    case 'CREDITED':
+      return { label: 'CRÉDITO REGISTRADO', color: '$onzeGreen' };
+    case 'RETAINED':
+      return { label: 'PAGAMENTO MANTIDO', color: '#8A6414' };
+    default:
+      return null;
+  }
+}
+
+function withdrawalConfirmationMessage(status: PaymentStatus | null) {
+  if (status === 'PENDING') {
+    return 'Sua vaga será liberada imediatamente e a cobrança que ainda estava pendente será cancelada.';
+  }
+  if (status === 'REPORTED') {
+    return 'Sua vaga será liberada. Como você informou que já pagou, o administrador será avisado para conferir o PIX e resolver o acerto.';
+  }
+  if (status === 'PAID') {
+    return 'Sua vaga será liberada. Como o pagamento já foi confirmado, o administrador será avisado para registrar reembolso, crédito ou manutenção do valor.';
+  }
+  return 'Sua vaga será liberada imediatamente para outro jogador.';
+}
+
+function withdrawalPaymentMessage(
+  status: PaymentStatus,
+  settlementStatus: PaymentSettlementStatus | null,
+) {
+  switch (settlementStatus) {
+    case 'REVIEW_REQUIRED':
+      return 'Você informou o pagamento antes de sair. O administrador foi avisado e está conferindo o recebimento.';
+    case 'PENDING':
+      return 'Seu pagamento foi confirmado e o administrador precisa registrar reembolso, crédito ou manutenção do valor.';
+    case 'NOT_RECEIVED':
+      return 'O administrador informou que nenhum pagamento foi localizado. A cobrança ficou encerrada.';
+    case 'REFUNDED':
+      return 'O administrador registrou que o pagamento foi reembolsado.';
+    case 'CREDITED':
+      return 'O valor ficou registrado como crédito para uma próxima partida.';
+    case 'RETAINED':
+      return 'O administrador registrou que o pagamento será mantido.';
+    default:
+      return status === 'CANCELLED'
+        ? 'Sua vaga foi liberada e a cobrança pendente foi cancelada.'
+        : 'O histórico deste pagamento continua registrado.';
+  }
+}
+
+function isSettlementOpen(status: PaymentSettlementStatus | null) {
+  return status === 'REVIEW_REQUIRED' || status === 'PENDING';
 }
 
 function AttendanceList({

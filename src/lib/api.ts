@@ -75,13 +75,22 @@ export type JoinGroupResponse = {
 export type MatchRecurrence = 'NONE' | 'WEEKLY';
 export type MatchStatus = 'SCHEDULED' | 'CANCELLED';
 export type AttendanceStatus = 'GOING' | 'NOT_GOING';
-export type PaymentStatus = 'PENDING' | 'REPORTED' | 'PAID';
+export type PaymentStatus = 'PENDING' | 'REPORTED' | 'PAID' | 'CANCELLED';
+export type PaymentSettlementStatus =
+  | 'REVIEW_REQUIRED'
+  | 'PENDING'
+  | 'NOT_RECEIVED'
+  | 'REFUNDED'
+  | 'CREDITED'
+  | 'RETAINED';
+export type PaymentSettlementResolution = 'NOT_RECEIVED' | 'REFUNDED' | 'CREDITED' | 'RETAINED';
 
 export type MatchAttendance = {
   userId: string;
   displayName: string;
   status: AttendanceStatus;
   paymentStatus: PaymentStatus | null;
+  paymentSettlementStatus: PaymentSettlementStatus | null;
   currentUser: boolean;
 };
 
@@ -105,6 +114,7 @@ export type FootballMatch = {
   attendanceOpen: boolean;
   myAttendance: AttendanceStatus | null;
   myPaymentStatus: PaymentStatus | null;
+  myPaymentSettlementStatus: PaymentSettlementStatus | null;
   goingCount: number;
   notGoingCount: number;
   attendances: MatchAttendance[];
@@ -478,6 +488,19 @@ export function confirmMatchPayment(
   return request<FootballMatch>(`/api/matches/${matchId}/payments/${playerUserId}/confirm`, {
     method: 'PUT',
     headers: authenticatedHeaders(accessToken),
+  });
+}
+
+export function resolveMatchPaymentSettlement(
+  accessToken: string,
+  matchId: string,
+  playerUserId: string,
+  resolution: PaymentSettlementResolution,
+) {
+  return request<FootballMatch>(`/api/matches/${matchId}/payments/${playerUserId}/settlement`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ resolution }),
   });
 }
 
