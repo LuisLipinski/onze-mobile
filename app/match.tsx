@@ -11,6 +11,7 @@ import {
   AttendanceStatus,
   cancelMatch,
   confirmMatchPayment,
+  CreditAllocationStatus,
   endMatchSeries,
   FootballMatch,
   getMatch,
@@ -20,6 +21,7 @@ import {
   PaymentStatus,
   reportMatchPayment,
   resolveMatchPaymentSettlement,
+  resolveMatchPaymentSettlements,
   updateMatchAttendance,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
@@ -66,6 +68,8 @@ export default function MatchScreen() {
   const [updatingPayment, setUpdatingPayment] = useState<string | null>(null);
   const [pendingAttendanceStatus, setPendingAttendanceStatus] = useState<AttendanceStatus | null>(null);
   const [settlementPlayer, setSettlementPlayer] = useState<MatchAttendance | null>(null);
+  const [selectedSettlements, setSelectedSettlements] = useState<string[]>([]);
+  const [bulkResolution, setBulkResolution] = useState<PaymentSettlementResolution | null>(null);
   const [managementAction, setManagementAction] = useState<ManagementAction>(null);
   const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +104,11 @@ export default function MatchScreen() {
       }
       const loadedMatch = await getMatch(token, params.matchId);
       setMatch(loadedMatch);
+      if (loadedMatch.status === 'CANCELLED' && loadedMatch.canManage) {
+        setSelectedSettlements(loadedMatch.attendances
+          .filter((attendance) => isSettlementOpen(attendance.paymentSettlementStatus))
+          .map((attendance) => attendance.userId));
+      }
       syncNotifications(token, loadedMatch);
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
@@ -137,7 +146,7 @@ export default function MatchScreen() {
   function requestAttendance(status: AttendanceStatus) {
     if (!match || updatingAttendance) return;
     if (status === 'NOT_GOING'
-        && match.myAttendance === 'GOING'
+        && match.myAttendance !== 'NOT_GOING'
         && match.paymentRequired
         && match.myPaymentStatus != null) {
       setPendingAttendanceStatus(status);
@@ -204,12 +213,47 @@ export default function MatchScreen() {
       );
       setMatch(updatedMatch);
       setSettlementPlayer(null);
+      setSelectedSettlements((current) => current.filter((userId) => userId !== settlementPlayer.userId));
       syncNotifications(token, updatedMatch);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível resolver o acerto.');
     } finally {
       setUpdatingPayment(null);
     }
+  }
+
+  async function resolveSelectedSettlements() {
+    if (!match || !bulkResolution || !selectedSettlements.length || updatingPayment) return;
+    setUpdatingPayment('bulk');
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        goToLogin();
+        return;
+      }
+      const updatedMatch = await resolveMatchPaymentSettlements(
+        token,
+        match.id,
+        selectedSettlements,
+        bulkResolution,
+      );
+      setMatch(updatedMatch);
+      setSelectedSettlements([]);
+      setBulkResolution(null);
+      syncNotifications(token, updatedMatch);
+    } catch (exception) {
+      setBulkResolution(null);
+      setError(exception instanceof Error ? exception.message : 'Não foi possível resolver os acertos selecionados.');
+    } finally {
+      setUpdatingPayment(null);
+    }
+  }
+
+  function toggleSettlementSelection(playerUserId: string) {
+    setSelectedSettlements((current) => current.includes(playerUserId)
+      ? current.filter((userId) => userId !== playerUserId)
+      : [...current, playerUserId]);
   }
 
   async function confirmManagementAction() {
@@ -230,6 +274,11 @@ export default function MatchScreen() {
       setManagementAction(null);
       const updatedMatch = await getMatch(token, match.id);
       setMatch(updatedMatch);
+      if (managementAction === 'cancel-occurrence') {
+        setSelectedSettlements(updatedMatch.attendances
+          .filter((attendance) => isSettlementOpen(attendance.paymentSettlementStatus))
+          .map((attendance) => attendance.userId));
+      }
       syncNotifications(token, updatedMatch);
     } catch (exception) {
       setManagementAction(null);
@@ -256,7 +305,9 @@ export default function MatchScreen() {
 
   const going = match?.attendances.filter((attendance) => attendance.status === 'GOING') ?? [];
   const notGoing = match?.attendances.filter((attendance) => attendance.status === 'NOT_GOING') ?? [];
+  const awaiting = match?.attendances.filter((attendance) => attendance.status === 'PENDING') ?? [];
   const payments = match?.attendances.filter((attendance) => attendance.paymentStatus != null) ?? [];
+  const openSettlements = payments.filter((attendance) => isSettlementOpen(attendance.paymentSettlementStatus));
   const actionIsEndSeries = managementAction === 'end-series';
 
   return (
@@ -352,10 +403,10 @@ export default function MatchScreen() {
 
               {match.paymentRequired && match.myPaymentStatus != null ? (
                 <YStack
-                  backgroundColor={match.myAttendance === 'GOING' && match.myPaymentStatus === 'PAID'
+                  backgroundColor={match.myPaymentStatus === 'PAID'
                     ? '#EAF7EF'
                     : '$onzeSurface'}
-                  borderColor={match.myAttendance === 'GOING' && match.myPaymentStatus === 'PAID'
+                  borderColor={match.myPaymentStatus === 'PAID'
                     ? '$onzeGreen'
                     : '$onzeBorder'}
                   borderRadius="$6"
@@ -368,19 +419,42 @@ export default function MatchScreen() {
                     <PaymentBadge
                       status={match.myPaymentStatus}
                       settlementStatus={match.myPaymentSettlementStatus}
+                      creditAllocationStatus={match.myCreditAllocationStatus}
                     />
                   </XStack>
                   <Text color="$onzeInk" fontSize={24} fontWeight="900">
                     {formatCurrency(match.paymentAmount ?? 0)}
                   </Text>
-                  {match.myAttendance === 'GOING' ? (
-                    <>
-                      <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$4">
-                        <Text color="$onzeMuted" fontSize={11} fontWeight="900">CHAVE PIX</Text>
-                        <Text color="$onzeInk" fontSize={14} fontWeight="800" selectable>
-                          {match.pixKey}
+                  {(match.myCreditAppliedAmount ?? 0) > 0 ? (
+                    <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$2" padding="$4">
+                      <XStack justifyContent="space-between" gap="$3">
+                        <Text color="$onzeMuted" fontSize={12}>Crédito utilizado</Text>
+                        <Text color="$onzeGreen" fontSize={13} fontWeight="900">
+                          {formatCurrency(match.myCreditAppliedAmount ?? 0)}
                         </Text>
-                      </YStack>
+                      </XStack>
+                      <XStack justifyContent="space-between" gap="$3">
+                        <Text color="$onzeMuted" fontSize={12}>Restante via PIX</Text>
+                        <Text color="$onzeInk" fontSize={13} fontWeight="900">
+                          {formatCurrency(match.myRemainingPaymentAmount ?? 0)}
+                        </Text>
+                      </XStack>
+                    </YStack>
+                  ) : null}
+                  {match.myAttendance === 'PENDING' ? (
+                    <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                      Seu crédito está reservado. Confirme “Vou jogar” para aplicá-lo; se você não for, o saldo continuará disponível.
+                    </Text>
+                  ) : match.myAttendance === 'GOING' ? (
+                    <>
+                      {(match.myRemainingPaymentAmount ?? 0) > 0 ? (
+                        <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$4">
+                          <Text color="$onzeMuted" fontSize={11} fontWeight="900">CHAVE PIX</Text>
+                          <Text color="$onzeInk" fontSize={14} fontWeight="800" selectable>
+                            {match.pixKey}
+                          </Text>
+                        </YStack>
+                      ) : null}
                       {match.myPaymentStatus === 'PENDING' ? (
                         <Button
                           backgroundColor="$onzeGreen"
@@ -398,7 +472,9 @@ export default function MatchScreen() {
                         </Text>
                       ) : (
                         <Text color="$onzeGreen" fontSize={13} fontWeight="800">
-                          Recebimento confirmado pelo administrador.
+                          {match.myCreditAllocationStatus === 'APPLIED'
+                            ? 'Pagamento confirmado automaticamente com seu crédito.'
+                            : 'Recebimento confirmado pelo administrador.'}
                         </Text>
                       )}
                     </>
@@ -427,6 +503,14 @@ export default function MatchScreen() {
                 </XStack>
 
                 <AttendanceList title="VÃO JOGAR" empty="Ninguém confirmou ainda." names={going.map((item) => item.displayName)} />
+                {awaiting.length ? (
+                  <AttendanceList
+                    title="AINDA NÃO RESPONDERAM"
+                    empty=""
+                    names={awaiting.map((item) => item.displayName)}
+                    muted
+                  />
+                ) : null}
                 {notGoing.length ? (
                   <AttendanceList title="NÃO VÃO" empty="" names={notGoing.map((item) => item.displayName)} muted />
                 ) : null}
@@ -437,9 +521,28 @@ export default function MatchScreen() {
                   <YStack gap="$1">
                     <Text color="$onzeInk" fontSize={18} fontWeight="900">Pagamentos e acertos</Text>
                     <Text color="$onzeMuted" fontSize={13}>
-                      Confira o PIX antes de validar pagamentos ou resolver saídas.
+                      {match.status === 'CANCELLED'
+                        ? 'Selecione uma ou várias pessoas para registrar reembolso ou manter o valor como crédito.'
+                        : 'Confira o PIX antes de validar pagamentos ou resolver saídas.'}
                     </Text>
                   </YStack>
+                  {match.status === 'CANCELLED' && openSettlements.length ? (
+                    <Button
+                      backgroundColor="$onzeSurface"
+                      borderColor="$onzeBorder"
+                      borderWidth={1}
+                      justifyContent="flex-start"
+                      onPress={() => setSelectedSettlements(
+                        selectedSettlements.length === openSettlements.length
+                          ? []
+                          : openSettlements.map((attendance) => attendance.userId),
+                      )}
+                    >
+                      <Text color="$onzeInk" fontWeight="800">
+                        {selectedSettlements.length === openSettlements.length ? '☑' : '☐'} Selecionar todos
+                      </Text>
+                    </Button>
+                  ) : null}
                   {payments.map((attendance) => (
                     <YStack
                       key={attendance.userId}
@@ -449,15 +552,47 @@ export default function MatchScreen() {
                       padding="$4"
                     >
                       <XStack alignItems="center" gap="$3">
+                        {match.status === 'CANCELLED'
+                            && isSettlementOpen(attendance.paymentSettlementStatus) ? (
+                          <Button
+                            circular
+                            backgroundColor={selectedSettlements.includes(attendance.userId)
+                              ? '$onzeGreen'
+                              : '$onzeSurface'}
+                            borderColor="$onzeGreen"
+                            borderWidth={1}
+                            height={36}
+                            onPress={() => toggleSettlementSelection(attendance.userId)}
+                            width={36}
+                          >
+                            <Text
+                              color={selectedSettlements.includes(attendance.userId)
+                                ? '$onzeSurface'
+                                : '$onzeGreen'}
+                              fontWeight="900"
+                            >
+                              {selectedSettlements.includes(attendance.userId) ? '✓' : ''}
+                            </Text>
+                          </Button>
+                        ) : null}
                         <YStack flex={1} gap="$1">
                           <Text color="$onzeInk" fontSize={14} fontWeight="800">{attendance.displayName}</Text>
                           {attendance.status === 'NOT_GOING' ? (
                             <Text color="$onzeDanger" fontSize={11} fontWeight="800">NÃO VAI AO JOGO</Text>
+                          ) : attendance.status === 'PENDING' ? (
+                            <Text color="$onzeMuted" fontSize={11} fontWeight="800">AINDA NÃO RESPONDEU</Text>
                           ) : null}
                           <PaymentBadge
                             status={attendance.paymentStatus}
                             settlementStatus={attendance.paymentSettlementStatus}
+                            creditAllocationStatus={attendance.creditAllocationStatus}
                           />
+                          {(attendance.creditAppliedAmount ?? 0) > 0 ? (
+                            <Text color="$onzeMuted" fontSize={11}>
+                              {formatCurrency(attendance.creditAppliedAmount ?? 0)} em crédito · {' '}
+                              {formatCurrency(attendance.remainingPaymentAmount ?? 0)} restante
+                            </Text>
+                          ) : null}
                         </YStack>
                       </XStack>
                       {attendance.status === 'GOING'
@@ -475,8 +610,9 @@ export default function MatchScreen() {
                           </Text>
                         </Button>
                       ) : null}
-                      {attendance.status === 'NOT_GOING'
-                          && isSettlementOpen(attendance.paymentSettlementStatus) ? (
+                      {(attendance.status === 'NOT_GOING' || match.status === 'CANCELLED')
+                          && isSettlementOpen(attendance.paymentSettlementStatus)
+                          && match.status !== 'CANCELLED' ? (
                         <Button
                           backgroundColor="$onzeGreen"
                           disabled={Boolean(updatingPayment)}
@@ -489,6 +625,29 @@ export default function MatchScreen() {
                       ) : null}
                     </YStack>
                   ))}
+                  {match.status === 'CANCELLED' && selectedSettlements.length ? (
+                    <YStack gap="$2">
+                      <Text color="$onzeMuted" fontSize={12} fontWeight="800">
+                        {selectedSettlements.length} {selectedSettlements.length === 1 ? 'jogador selecionado' : 'jogadores selecionados'}
+                      </Text>
+                      <Button
+                        backgroundColor="$onzeSurface"
+                        borderColor="$onzeGreen"
+                        borderWidth={1}
+                        disabled={Boolean(updatingPayment)}
+                        onPress={() => setBulkResolution('REFUNDED')}
+                      >
+                        <Text color="$onzeGreen" fontWeight="900">Reembolsar selecionados</Text>
+                      </Button>
+                      <Button
+                        backgroundColor="$onzeGreen"
+                        disabled={Boolean(updatingPayment)}
+                        onPress={() => setBulkResolution('CREDITED')}
+                      >
+                        <Text color="$onzeSurface" fontWeight="900">Manter como crédito</Text>
+                      </Button>
+                    </YStack>
+                  ) : null}
                 </YStack>
               ) : null}
 
@@ -537,8 +696,8 @@ export default function MatchScreen() {
             actionIsEndSeries
               ? 'Esta ocorrência e todos os próximos jogos desta sequência serão cancelados. Essa ação não apaga o histórico.'
               : match.recurrence === 'WEEKLY'
-                ? 'Somente esta ocorrência será cancelada. Os outros jogos semanais continuarão normalmente.'
-                : 'O jogo será cancelado e ninguém poderá mais confirmar presença.'
+                ? 'Somente esta ocorrência será cancelada. Os outros jogos semanais continuarão normalmente. Pagamentos confirmados ficarão disponíveis para acerto.'
+                : 'O jogo será cancelado e ninguém poderá mais confirmar presença. Pagamentos confirmados ficarão disponíveis para reembolso ou crédito.'
           }
           confirmLabel={actionIsEndSeries ? 'Encerrar sequência' : 'Cancelar jogo'}
           destructive
@@ -552,7 +711,11 @@ export default function MatchScreen() {
         <ConfirmActionModal
           visible={pendingAttendanceStatus === 'NOT_GOING'}
           title="Confirmar que não vai?"
-          message={withdrawalConfirmationMessage(match.myPaymentStatus)}
+          message={withdrawalConfirmationMessage(
+            match.myPaymentStatus,
+            match.myCreditAllocationStatus,
+            match.myRemainingPaymentAmount,
+          )}
           confirmLabel="Liberar minha vaga"
           destructive
           loading={updatingAttendance === 'NOT_GOING'}
@@ -560,6 +723,20 @@ export default function MatchScreen() {
           onConfirm={() => void confirmAttendance('NOT_GOING')}
         />
       ) : null}
+
+      <ConfirmActionModal
+        visible={bulkResolution != null}
+        title={bulkResolution === 'CREDITED'
+          ? 'Manter valores como crédito?'
+          : 'Confirmar reembolsos?'}
+        message={bulkResolution === 'CREDITED'
+          ? `O saldo de ${selectedSettlements.length} ${selectedSettlements.length === 1 ? 'jogador' : 'jogadores'} será aplicado automaticamente à próxima partida paga do grupo.`
+          : `Confirme que o reembolso de ${selectedSettlements.length} ${selectedSettlements.length === 1 ? 'jogador foi realizado' : 'jogadores foi realizado'}.`}
+        confirmLabel={bulkResolution === 'CREDITED' ? 'Manter como crédito' : 'Confirmar reembolso'}
+        loading={updatingPayment === 'bulk'}
+        onCancel={() => setBulkResolution(null)}
+        onConfirm={() => void resolveSelectedSettlements()}
+      />
 
       <PaymentSettlementModal
         visible={settlementPlayer != null}
@@ -576,20 +753,33 @@ export default function MatchScreen() {
 function PaymentBadge({
   status,
   settlementStatus,
+  creditAllocationStatus,
 }: {
   status: PaymentStatus | null;
   settlementStatus: PaymentSettlementStatus | null;
+  creditAllocationStatus: CreditAllocationStatus | null;
 }) {
   const settlement = settlementBadge(settlementStatus);
-  const label = settlement?.label ?? (status === 'PAID'
-    ? 'PAGO'
-    : status === 'REPORTED'
-      ? 'AGUARDANDO VALIDAÇÃO'
-      : status === 'CANCELLED'
-        ? 'COBRANÇA CANCELADA'
-        : 'PENDENTE');
+  const label = settlement?.label
+    ?? (creditAllocationStatus === 'RESERVED'
+      ? 'CRÉDITO RESERVADO'
+      : creditAllocationStatus === 'APPLIED' && status === 'PAID'
+        ? 'PAGO COM CRÉDITO'
+        : creditAllocationStatus === 'APPLIED' && status === 'PENDING'
+          ? 'CRÉDITO APLICADO · RESTANTE PENDENTE'
+        : status === 'PAID'
+          ? 'PAGO'
+          : status === 'REPORTED'
+            ? 'AGUARDANDO VALIDAÇÃO'
+            : status === 'CANCELLED'
+              ? 'COBRANÇA CANCELADA'
+              : 'PENDENTE');
   const color = settlement?.color
-    ?? (status === 'PAID'
+    ?? (creditAllocationStatus === 'RESERVED'
+      ? '$onzeGreen'
+      : creditAllocationStatus === 'APPLIED' && status === 'PAID'
+        ? '$onzeGreen'
+        : status === 'PAID'
       ? '$onzeGreen'
       : status === 'REPORTED'
         ? '#8A6414'
@@ -625,7 +815,22 @@ function settlementBadge(status: PaymentSettlementStatus | null): {
   }
 }
 
-function withdrawalConfirmationMessage(status: PaymentStatus | null) {
+function withdrawalConfirmationMessage(
+  status: PaymentStatus | null,
+  creditAllocationStatus: CreditAllocationStatus | null,
+  remainingPaymentAmount: number | null,
+) {
+  if (creditAllocationStatus != null) {
+    if (status === 'REPORTED') {
+      return 'O crédito reservado voltará ao seu saldo. Como você informou o pagamento do restante via PIX, o administrador será avisado para conferir esse valor.';
+    }
+    if (status === 'PAID' && (remainingPaymentAmount ?? 0) > 0) {
+      return 'O crédito aplicado voltará ao seu saldo. O valor complementar pago via PIX ficará aguardando reembolso, crédito ou outra decisão do administrador.';
+    }
+    return creditAllocationStatus === 'RESERVED'
+      ? 'A reserva será removida e o crédito continuará disponível para outra partida deste grupo.'
+      : 'Sua vaga será liberada e o crédito utilizado voltará automaticamente para o próximo jogo.';
+  }
   if (status === 'PENDING') {
     return 'Sua vaga será liberada imediatamente e a cobrança que ainda estava pendente será cancelada.';
   }

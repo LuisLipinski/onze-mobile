@@ -22,6 +22,13 @@ function formatTime(match: FootballMatch) {
 }
 
 function attendanceMessage(match: FootballMatch) {
+  if (match.status === 'CANCELLED') {
+    const hasOpenSettlement = match.attendances.some((attendance) => (
+      attendance.paymentSettlementStatus === 'REVIEW_REQUIRED'
+      || attendance.paymentSettlementStatus === 'PENDING'
+    ));
+    return hasOpenSettlement ? 'Jogo cancelado · acertos pendentes' : 'Jogo cancelado';
+  }
   if (!match.attendanceOpen) {
     const opening = new Intl.DateTimeFormat('pt-BR', {
       timeZone: match.timeZone,
@@ -38,6 +45,11 @@ function attendanceMessage(match: FootballMatch) {
     if (match.myPaymentStatus === 'REPORTED') return 'Pagamento informado';
     if (match.myPaymentStatus === 'PAID') return 'Presença e pagamento confirmados';
     return 'Você confirmou presença';
+  }
+  if (match.myAttendance === 'PENDING') {
+    return match.myCreditAllocationStatus === 'RESERVED'
+      ? 'Crédito reservado · confirme presença'
+      : 'Confirme sua presença';
   }
   if (match.myAttendance === 'NOT_GOING') {
     if (match.myPaymentSettlementStatus === 'REVIEW_REQUIRED'
@@ -64,7 +76,7 @@ export function MatchCard({
     <Pressable onPress={onPress}>
       <YStack
         backgroundColor="$onzeSurface"
-        borderColor="$onzeBorder"
+        borderColor={match.status === 'CANCELLED' ? '$onzeDanger' : '$onzeBorder'}
         borderRadius="$6"
         borderWidth={1}
         gap="$3"
@@ -93,7 +105,7 @@ export function MatchCard({
                 {match.groupName.toUpperCase()}
               </Text>
             ) : null}
-            <Text color="$onzeInk" fontSize={17} fontWeight="900" textTransform="capitalize">
+            <Text color={match.status === 'CANCELLED' ? '$onzeDanger' : '$onzeInk'} fontSize={17} fontWeight="900" textTransform="capitalize">
               {formatDate(match)}
             </Text>
             <Text color="$onzeMuted" fontSize={13} numberOfLines={1}>{match.venue}</Text>
@@ -103,13 +115,19 @@ export function MatchCard({
 
         <XStack alignItems="center" gap="$2" justifyContent="space-between">
           <YStack
-            backgroundColor={match.attendanceOpen ? '$onzeCanvas' : '$onzeBorder'}
+            backgroundColor={match.status === 'CANCELLED'
+              ? '#FDECEC'
+              : match.attendanceOpen ? '$onzeCanvas' : '$onzeBorder'}
             borderRadius={999}
             paddingHorizontal="$3"
             paddingVertical="$2"
           >
             <Text
-              color={match.myAttendance === 'GOING' ? '$onzeGreen' : '$onzeMuted'}
+              color={match.status === 'CANCELLED'
+                ? '$onzeDanger'
+                : match.myAttendance === 'GOING' || match.myCreditAllocationStatus === 'RESERVED'
+                  ? '$onzeGreen'
+                  : '$onzeMuted'}
               fontSize={11}
               fontWeight="800"
             >

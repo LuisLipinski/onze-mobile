@@ -191,11 +191,11 @@ async function scheduleMatchReminders(
             `payment-${dateKey(cursor)}`,
             triggerDate,
             'Pagamento pendente 💳',
-            `Sua vaga em ${match.groupName} está reservada. O pagamento de ${formatCurrency(match.paymentAmount ?? 0)} continua pendente.`,
+            `Sua vaga em ${match.groupName} está reservada. O pagamento de ${formatCurrency(match.myRemainingPaymentAmount ?? match.paymentAmount ?? 0)} continua pendente.`,
           );
         }
       } else if (match.attendanceOpen
-          && match.myAttendance == null) {
+          && (match.myAttendance == null || match.myAttendance === 'PENDING')) {
         await scheduleNotification(
           match,
           `attendance-${dateKey(cursor)}`,
@@ -215,7 +215,7 @@ function tomorrowNotificationCopy(match: FootballMatch) {
   if (match.myPaymentStatus === 'PENDING') {
     return {
       title: 'Jogo amanhã — pagamento pendente 💳',
-      body: `Pague ${formatCurrency(match.paymentAmount ?? 0)} e prepare-se para o jogo de ${match.groupName}.`,
+      body: `Pague ${formatCurrency(match.myRemainingPaymentAmount ?? match.paymentAmount ?? 0)} e prepare-se para o jogo de ${match.groupName}.`,
     };
   }
   if (match.myPaymentStatus === 'REPORTED') {

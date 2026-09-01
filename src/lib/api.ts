@@ -74,8 +74,9 @@ export type JoinGroupResponse = {
 
 export type MatchRecurrence = 'NONE' | 'WEEKLY';
 export type MatchStatus = 'SCHEDULED' | 'CANCELLED';
-export type AttendanceStatus = 'GOING' | 'NOT_GOING';
+export type AttendanceStatus = 'PENDING' | 'GOING' | 'NOT_GOING';
 export type PaymentStatus = 'PENDING' | 'REPORTED' | 'PAID' | 'CANCELLED';
+export type CreditAllocationStatus = 'RESERVED' | 'APPLIED';
 export type PaymentSettlementStatus =
   | 'REVIEW_REQUIRED'
   | 'PENDING'
@@ -91,6 +92,20 @@ export type MatchAttendance = {
   status: AttendanceStatus;
   paymentStatus: PaymentStatus | null;
   paymentSettlementStatus: PaymentSettlementStatus | null;
+  creditAppliedAmount: number | null;
+  remainingPaymentAmount: number | null;
+  creditAllocationStatus: CreditAllocationStatus | null;
+  currentUser: boolean;
+};
+
+export type PlayerCredit = {
+  userId: string;
+  displayName: string;
+  availableAmount: number;
+  allocatedAmount: number;
+  allocationStatus: CreditAllocationStatus | null;
+  allocatedMatchId: string | null;
+  allocatedMatchStartsAt: string | null;
   currentUser: boolean;
 };
 
@@ -115,6 +130,9 @@ export type FootballMatch = {
   myAttendance: AttendanceStatus | null;
   myPaymentStatus: PaymentStatus | null;
   myPaymentSettlementStatus: PaymentSettlementStatus | null;
+  myCreditAppliedAmount: number | null;
+  myRemainingPaymentAmount: number | null;
+  myCreditAllocationStatus: CreditAllocationStatus | null;
   goingCount: number;
   notGoingCount: number;
   attendances: MatchAttendance[];
@@ -455,6 +473,12 @@ export function listGroupMatches(accessToken: string, groupId: string) {
   });
 }
 
+export function listGroupCredits(accessToken: string, groupId: string) {
+  return request<PlayerCredit[]>(`/api/groups/${groupId}/credits`, {
+    headers: authenticatedHeaders(accessToken),
+  });
+}
+
 export function getMatch(accessToken: string, matchId: string) {
   return request<FootballMatch>(`/api/matches/${matchId}`, {
     headers: authenticatedHeaders(accessToken),
@@ -501,6 +525,19 @@ export function resolveMatchPaymentSettlement(
     method: 'PUT',
     headers: authenticatedHeaders(accessToken),
     body: JSON.stringify({ resolution }),
+  });
+}
+
+export function resolveMatchPaymentSettlements(
+  accessToken: string,
+  matchId: string,
+  playerUserIds: string[],
+  resolution: PaymentSettlementResolution,
+) {
+  return request<FootballMatch>(`/api/matches/${matchId}/payment-settlements`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ playerUserIds, resolution }),
   });
 }
 

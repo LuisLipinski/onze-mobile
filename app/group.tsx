@@ -132,6 +132,8 @@ export default function GroupScreen() {
   const canAddMembers = group ? hasGroupPermission(group, 'ADD_MEMBERS') : false;
   const canEditGroup = group ? hasGroupPermission(group, 'EDIT_GROUP') : false;
   const canScheduleGames = group ? hasGroupPermission(group, 'SCHEDULE_GAMES') : false;
+  const cancelledWithSettlements = matches.filter((match) => match.status === 'CANCELLED');
+  const upcomingMatches = matches.filter((match) => match.status === 'SCHEDULED');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
@@ -215,9 +217,26 @@ export default function GroupScreen() {
                 </YStack>
               </YStack>
 
+              {cancelledWithSettlements.length ? (
+                <YStack gap="$3">
+                  <Text color="$onzeDanger" fontSize={20} fontWeight="900">Acertos pendentes</Text>
+                  <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                    Resolva os pagamentos dos jogos cancelados antes de encerrar o histórico.
+                  </Text>
+                  {cancelledWithSettlements.map((match) => (
+                    <MatchCard
+                      key={match.id}
+                      match={match}
+                      showGroup={false}
+                      onPress={() => router.push({ pathname: '/match', params: { matchId: match.id } })}
+                    />
+                  ))}
+                </YStack>
+              ) : null}
+
               <YStack gap="$3">
                 <Text color="$onzeInk" fontSize={20} fontWeight="900">Próximos jogos</Text>
-                {matches.length ? matches.map((match) => (
+                {upcomingMatches.length ? upcomingMatches.map((match) => (
                   <MatchCard
                     key={match.id}
                     match={match}
@@ -303,6 +322,18 @@ export default function GroupScreen() {
                     });
                   }} />
                 ) : null}
+
+                <MenuButton label={canScheduleGames ? 'Créditos dos jogadores' : 'Meu crédito'} onPress={() => {
+                  setMenuVisible(false);
+                  router.push({
+                    pathname: '/group-credits',
+                    params: {
+                      groupId: group.id,
+                      groupName: group.name,
+                      canManage: canScheduleGames ? 'true' : 'false',
+                    },
+                  });
+                }} />
 
                 {canEditGroup ? (
                   <MenuButton label="Configurações do grupo" onPress={() => {
