@@ -149,12 +149,15 @@ async function scheduleMatchReminders(
 ) {
   const now = new Date();
   const startsAt = new Date(match.startsAt);
+  const signupDeadline = new Date(match.signupDeadline);
+  const paymentDeadline = match.paymentDeadline ? new Date(match.paymentDeadline) : null;
   if (match.status !== 'SCHEDULED' || startsAt.getTime() <= now.getTime()) return;
 
   if (!registration.remoteEnabled
       && match.recurrence === 'WEEKLY'
       && !match.attendanceOpen
-      && new Date(match.attendanceOpensAt).getTime() > now.getTime()) {
+      && new Date(match.attendanceOpensAt).getTime() > now.getTime()
+      && new Date(match.attendanceOpensAt).getTime() <= signupDeadline.getTime()) {
     await scheduleNotification(
       match,
       'attendance-opened',
@@ -176,7 +179,10 @@ async function scheduleMatchReminders(
     if (triggerDate.getTime() > now.getTime() && triggerDate.getTime() < startsAt.getTime()) {
       const isDayBefore = compareDate(addDays(cursor, 1), matchDay) === 0;
       if (match.myAttendance === 'GOING') {
-        if (isDayBefore) {
+        const pendingPaymentAfterDeadline = match.myPaymentStatus === 'PENDING'
+          && paymentDeadline != null
+          && triggerDate.getTime() > paymentDeadline.getTime();
+        if (isDayBefore && !pendingPaymentAfterDeadline) {
           const copy = tomorrowNotificationCopy(match);
           await scheduleNotification(
             match,
@@ -185,7 +191,8 @@ async function scheduleMatchReminders(
             copy.title,
             copy.body,
           );
-        } else if (match.myPaymentStatus === 'PENDING') {
+        } else if (match.myPaymentStatus === 'PENDING'
+            && (paymentDeadline == null || triggerDate.getTime() <= paymentDeadline.getTime())) {
           await scheduleNotification(
             match,
             `payment-${dateKey(cursor)}`,
@@ -195,6 +202,7 @@ async function scheduleMatchReminders(
           );
         }
       } else if (match.attendanceOpen
+          && triggerDate.getTime() <= signupDeadline.getTime()
           && (match.myAttendance == null || match.myAttendance === 'PENDING')) {
         await scheduleNotification(
           match,

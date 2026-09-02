@@ -95,6 +95,7 @@ export type MatchAttendance = {
   creditAppliedAmount: number | null;
   remainingPaymentAmount: number | null;
   creditAllocationStatus: CreditAllocationStatus | null;
+  paymentDeadlineRemovedAt: string | null;
   currentUser: boolean;
 };
 
@@ -127,12 +128,18 @@ export type FootballMatch = {
   status: MatchStatus;
   attendanceOpensAt: string;
   attendanceOpen: boolean;
+  signupDeadline: string;
+  signupOpen: boolean;
+  paymentDeadline: string | null;
+  paymentOpen: boolean;
+  canWithdraw: boolean;
   myAttendance: AttendanceStatus | null;
   myPaymentStatus: PaymentStatus | null;
   myPaymentSettlementStatus: PaymentSettlementStatus | null;
   myCreditAppliedAmount: number | null;
   myRemainingPaymentAmount: number | null;
   myCreditAllocationStatus: CreditAllocationStatus | null;
+  myPaymentDeadlineRemovedAt: string | null;
   goingCount: number;
   notGoingCount: number;
   attendances: MatchAttendance[];
@@ -145,6 +152,10 @@ export type CreateMatchInput = {
   timeZone: string;
   venue: string;
   maxPlayers: number;
+  signupDeadlineDate: string;
+  signupDeadlineTime: string;
+  paymentDeadlineDate?: string;
+  paymentDeadlineTime?: string;
   paymentRequired: boolean;
   paymentAmount?: number;
   pixKey?: string;

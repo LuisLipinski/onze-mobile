@@ -59,6 +59,18 @@ function formatOpening(match: FootballMatch) {
   }).format(new Date(match.attendanceOpensAt));
 }
 
+function formatDeadline(value: string, timeZone: string) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value));
+}
+
 export default function MatchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ matchId?: string }>();
@@ -304,7 +316,12 @@ export default function MatchScreen() {
   }
 
   const going = match?.attendances.filter((attendance) => attendance.status === 'GOING') ?? [];
-  const notGoing = match?.attendances.filter((attendance) => attendance.status === 'NOT_GOING') ?? [];
+  const removedForPaymentDeadline = match?.attendances.filter(
+    (attendance) => attendance.paymentDeadlineRemovedAt != null,
+  ) ?? [];
+  const notGoing = match?.attendances.filter(
+    (attendance) => attendance.status === 'NOT_GOING' && attendance.paymentDeadlineRemovedAt == null,
+  ) ?? [];
   const awaiting = match?.attendances.filter((attendance) => attendance.status === 'PENDING') ?? [];
   const payments = match?.attendances.filter((attendance) => attendance.paymentStatus != null) ?? [];
   const openSettlements = payments.filter((attendance) => isSettlementOpen(attendance.paymentSettlementStatus));
@@ -341,6 +358,34 @@ export default function MatchScreen() {
                 </YStack>
               ) : null}
 
+              <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
+                <Text color="$onzeInk" fontSize={17} fontWeight="900">Prazos</Text>
+                <XStack alignItems="center" gap="$3" justifyContent="space-between">
+                  <YStack flex={1} gap="$1">
+                    <Text color="$onzeMuted" fontSize={11} fontWeight="900">ENTRAR NA LISTA ATÉ</Text>
+                    <Text color="$onzeInk" fontSize={13} fontWeight="800">
+                      {formatDeadline(match.signupDeadline, match.timeZone)}
+                    </Text>
+                  </YStack>
+                  <Text color={match.signupOpen ? '$onzeGreen' : '$onzeDanger'} fontSize={11} fontWeight="900">
+                    {match.signupOpen ? 'ABERTA' : 'ENCERRADA'}
+                  </Text>
+                </XStack>
+                {match.paymentRequired && match.paymentDeadline ? (
+                  <XStack alignItems="center" gap="$3" justifyContent="space-between">
+                    <YStack flex={1} gap="$1">
+                      <Text color="$onzeMuted" fontSize={11} fontWeight="900">PAGAR ATÉ</Text>
+                      <Text color="$onzeInk" fontSize={13} fontWeight="800">
+                        {formatDeadline(match.paymentDeadline, match.timeZone)}
+                      </Text>
+                    </YStack>
+                    <Text color={match.paymentOpen ? '$onzeGreen' : '$onzeDanger'} fontSize={11} fontWeight="900">
+                      {match.paymentOpen ? 'EM ABERTO' : 'ENCERRADO'}
+                    </Text>
+                  </XStack>
+                ) : null}
+              </YStack>
+
               {match.status === 'CANCELLED' ? (
                 <YStack backgroundColor="#FDECEC" borderColor="$onzeDanger" borderRadius="$6" borderWidth={1} gap="$2" padding="$5">
                   <Text color="$onzeDanger" fontSize={18} fontWeight="900">Jogo cancelado</Text>
@@ -358,9 +403,19 @@ export default function MatchScreen() {
                   padding="$5"
                 >
                   <YStack gap="$1">
-                    <Text color="$onzeInk" fontSize={19} fontWeight="900">Você vai jogar?</Text>
+                    <Text color="$onzeInk" fontSize={19} fontWeight="900">
+                      {!match.signupOpen && match.myAttendance !== 'GOING'
+                        ? 'Lista encerrada'
+                        : match.myAttendance === 'GOING' && !match.canWithdraw
+                          ? 'Sua vaga está confirmada'
+                          : 'Você vai jogar?'}
+                    </Text>
                     <Text color="$onzeMuted" fontSize={13}>
-                      {match.goingCount} de {match.maxPlayers} vagas preenchidas.
+                      {!match.signupOpen && match.myAttendance !== 'GOING'
+                        ? `O prazo terminou com ${match.goingCount} de ${match.maxPlayers} vagas preenchidas.`
+                        : match.myAttendance === 'GOING' && !match.canWithdraw
+                          ? 'O prazo de pagamento terminou. Como seu pagamento está protegido, seu nome não pode mais ser retirado da lista.'
+                          : `${match.goingCount} de ${match.maxPlayers} vagas preenchidas.`}
                     </Text>
                   </YStack>
                   <XStack gap="$3">
@@ -368,7 +423,8 @@ export default function MatchScreen() {
                       backgroundColor={match.myAttendance === 'GOING' ? '$onzeGreen' : '$onzeSurface'}
                       borderColor="$onzeGreen"
                       borderWidth={1}
-                      disabled={Boolean(updatingAttendance)}
+                      disabled={Boolean(updatingAttendance)
+                        || (!match.signupOpen && match.myAttendance !== 'GOING')}
                       flex={1}
                       height={50}
                       onPress={() => requestAttendance('GOING')}
@@ -381,7 +437,10 @@ export default function MatchScreen() {
                       backgroundColor={match.myAttendance === 'NOT_GOING' ? '$onzeDanger' : '$onzeSurface'}
                       borderColor="$onzeDanger"
                       borderWidth={1}
-                      disabled={Boolean(updatingAttendance)}
+                      disabled={Boolean(updatingAttendance)
+                        || (match.myAttendance === 'GOING'
+                          ? !match.canWithdraw
+                          : !match.signupOpen)}
                       flex={1}
                       height={50}
                       onPress={() => requestAttendance('NOT_GOING')}
@@ -455,7 +514,7 @@ export default function MatchScreen() {
                           </Text>
                         </YStack>
                       ) : null}
-                      {match.myPaymentStatus === 'PENDING' ? (
+                      {match.myPaymentStatus === 'PENDING' && match.paymentOpen ? (
                         <Button
                           backgroundColor="$onzeGreen"
                           disabled={Boolean(updatingPayment)}
@@ -466,6 +525,10 @@ export default function MatchScreen() {
                             {updatingPayment === 'current-user' ? 'Informando...' : 'Já paguei'}
                           </Text>
                         </Button>
+                      ) : match.myPaymentStatus === 'PENDING' ? (
+                        <Text color="$onzeDanger" fontSize={13} lineHeight={19}>
+                          O prazo de pagamento terminou e não é mais possível informar o PIX.
+                        </Text>
                       ) : match.myPaymentStatus === 'REPORTED' ? (
                         <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
                           Pagamento informado. Agora o administrador precisa validar o recebimento.
@@ -479,12 +542,19 @@ export default function MatchScreen() {
                       )}
                     </>
                   ) : (
-                    <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
-                      {withdrawalPaymentMessage(
-                        match.myPaymentStatus,
-                        match.myPaymentSettlementStatus,
-                      )}
-                    </Text>
+                    <YStack gap="$2">
+                      {match.myPaymentDeadlineRemovedAt ? (
+                        <Text color="$onzeDanger" fontSize={13} fontWeight="800" lineHeight={19}>
+                          Você foi removido automaticamente porque o pagamento não foi informado até o prazo.
+                        </Text>
+                      ) : null}
+                      <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                        {withdrawalPaymentMessage(
+                          match.myPaymentStatus,
+                          match.myPaymentSettlementStatus,
+                        )}
+                      </Text>
+                    </YStack>
                   )}
                 </YStack>
               ) : null}
@@ -513,6 +583,14 @@ export default function MatchScreen() {
                 ) : null}
                 {notGoing.length ? (
                   <AttendanceList title="NÃO VÃO" empty="" names={notGoing.map((item) => item.displayName)} muted />
+                ) : null}
+                {removedForPaymentDeadline.length ? (
+                  <AttendanceList
+                    title="REMOVIDOS POR PRAZO DE PAGAMENTO"
+                    empty=""
+                    names={removedForPaymentDeadline.map((item) => item.displayName)}
+                    danger
+                  />
                 ) : null}
               </YStack>
 
@@ -577,7 +655,9 @@ export default function MatchScreen() {
                         ) : null}
                         <YStack flex={1} gap="$1">
                           <Text color="$onzeInk" fontSize={14} fontWeight="800">{attendance.displayName}</Text>
-                          {attendance.status === 'NOT_GOING' ? (
+                          {attendance.paymentDeadlineRemovedAt ? (
+                            <Text color="$onzeDanger" fontSize={11} fontWeight="800">REMOVIDO POR FALTA DE PAGAMENTO</Text>
+                          ) : attendance.status === 'NOT_GOING' ? (
                             <Text color="$onzeDanger" fontSize={11} fontWeight="800">NÃO VAI AO JOGO</Text>
                           ) : attendance.status === 'PENDING' ? (
                             <Text color="$onzeMuted" fontSize={11} fontWeight="800">AINDA NÃO RESPONDEU</Text>
@@ -715,7 +795,9 @@ export default function MatchScreen() {
             match.myPaymentStatus,
             match.myCreditAllocationStatus,
             match.myRemainingPaymentAmount,
-          )}
+          ) + (match.signupOpen
+            ? ''
+            : ' Como o prazo de inscrição já terminou, você não poderá entrar novamente nesta lista.')}
           confirmLabel="Liberar minha vaga"
           destructive
           loading={updatingAttendance === 'NOT_GOING'}
@@ -876,19 +958,23 @@ function AttendanceList({
   names,
   empty,
   muted = false,
+  danger = false,
 }: {
   title: string;
   names: string[];
   empty: string;
   muted?: boolean;
+  danger?: boolean;
 }) {
   return (
     <YStack gap="$2">
       <Text color="$onzeMuted" fontSize={11} fontWeight="900">{title}</Text>
       {names.length ? names.map((name, index) => (
         <XStack key={`${name}-${index}`} alignItems="center" gap="$2">
-          <Text color={muted ? '$onzeMuted' : '$onzeGreen'} fontSize={13}>{muted ? '–' : '✓'}</Text>
-          <Text color={muted ? '$onzeMuted' : '$onzeInk'} fontSize={14} fontWeight="700">{name}</Text>
+          <Text color={danger ? '$onzeDanger' : muted ? '$onzeMuted' : '$onzeGreen'} fontSize={13}>
+            {danger ? '!' : muted ? '–' : '✓'}
+          </Text>
+          <Text color={danger ? '$onzeDanger' : muted ? '$onzeMuted' : '$onzeInk'} fontSize={14} fontWeight="700">{name}</Text>
         </XStack>
       )) : (
         <Text color="$onzeMuted" fontSize={13}>{empty}</Text>

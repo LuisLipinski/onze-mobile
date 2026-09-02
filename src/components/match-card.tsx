@@ -21,6 +21,17 @@ function formatTime(match: FootballMatch) {
   }).format(new Date(match.startsAt));
 }
 
+function formatDeadline(value: string, timeZone: string) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone,
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value));
+}
+
 function attendanceMessage(match: FootballMatch) {
   if (match.status === 'CANCELLED') {
     const hasOpenSettlement = match.attendances.some((attendance) => (
@@ -40,11 +51,17 @@ function attendanceMessage(match: FootballMatch) {
     }).format(new Date(match.attendanceOpensAt));
     return `Presença abre em ${opening}`;
   }
+  if (match.myPaymentDeadlineRemovedAt) {
+    return 'Removido por falta de pagamento';
+  }
   if (match.myAttendance === 'GOING') {
     if (match.myPaymentStatus === 'PENDING') return 'Pagamento pendente';
     if (match.myPaymentStatus === 'REPORTED') return 'Pagamento informado';
     if (match.myPaymentStatus === 'PAID') return 'Presença e pagamento confirmados';
     return 'Você confirmou presença';
+  }
+  if (!match.signupOpen) {
+    return 'Lista encerrada';
   }
   if (match.myAttendance === 'PENDING') {
     return match.myCreditAllocationStatus === 'RESERVED'
@@ -138,6 +155,19 @@ export function MatchCard({
             {match.goingCount}/{match.maxPlayers} confirmados
           </Text>
         </XStack>
+
+        {match.status === 'SCHEDULED' && match.attendanceOpen ? (
+          <YStack gap="$1">
+            <Text color={match.signupOpen ? '$onzeMuted' : '$onzeDanger'} fontSize={11} fontWeight="700">
+              Inscrições até {formatDeadline(match.signupDeadline, match.timeZone)}
+            </Text>
+            {match.paymentRequired && match.paymentDeadline ? (
+              <Text color={match.paymentOpen ? '$onzeMuted' : '$onzeDanger'} fontSize={11} fontWeight="700">
+                Pagamento até {formatDeadline(match.paymentDeadline, match.timeZone)}
+              </Text>
+            ) : null}
+          </YStack>
+        ) : null}
 
         {match.recurrence === 'WEEKLY' ? (
           <Text color="$onzeMuted" fontSize={11} fontWeight="700">↻ JOGO SEMANAL</Text>

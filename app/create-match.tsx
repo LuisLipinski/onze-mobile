@@ -78,8 +78,13 @@ export default function CreateMatchScreen() {
     paymentAmount?: string;
     pixKey?: string;
   }>();
-  const [date, setDate] = useState(defaultDate());
+  const initialDate = defaultDate();
+  const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState('20:00');
+  const [signupDeadlineDate, setSignupDeadlineDate] = useState(initialDate);
+  const [signupDeadlineTime, setSignupDeadlineTime] = useState('12:00');
+  const [paymentDeadlineDate, setPaymentDeadlineDate] = useState(initialDate);
+  const [paymentDeadlineTime, setPaymentDeadlineTime] = useState('18:00');
   const [venue, setVenue] = useState(params.venue ?? '');
   const [maxPlayers, setMaxPlayers] = useState('14');
   const [paymentRequired, setPaymentRequired] = useState(
@@ -101,6 +106,10 @@ export default function CreateMatchScreen() {
 
     const parsedDate = parseDate(date);
     const parsedTime = parseTime(time);
+    const parsedSignupDeadlineDate = parseDate(signupDeadlineDate);
+    const parsedSignupDeadlineTime = parseTime(signupDeadlineTime);
+    const parsedPaymentDeadlineDate = paymentRequired ? parseDate(paymentDeadlineDate) : null;
+    const parsedPaymentDeadlineTime = paymentRequired ? parseTime(paymentDeadlineTime) : null;
     const parsedMaxPlayers = Number.parseInt(maxPlayers, 10);
     if (!parsedDate) {
       setError('Informe a data no formato DD/MM/AAAA.');
@@ -108,6 +117,31 @@ export default function CreateMatchScreen() {
     }
     if (!parsedTime) {
       setError('Informe o horário no formato HH:MM.');
+      return;
+    }
+    if (!parsedSignupDeadlineDate || !parsedSignupDeadlineTime) {
+      setError('Informe uma data e um horário válidos para encerrar as inscrições.');
+      return;
+    }
+    if (paymentRequired && (!parsedPaymentDeadlineDate || !parsedPaymentDeadlineTime)) {
+      setError('Informe uma data e um horário válidos para o prazo de pagamento.');
+      return;
+    }
+    const matchDateTime = `${parsedDate}T${parsedTime}`;
+    const signupDateTime = `${parsedSignupDeadlineDate}T${parsedSignupDeadlineTime}`;
+    const paymentDateTime = parsedPaymentDeadlineDate && parsedPaymentDeadlineTime
+      ? `${parsedPaymentDeadlineDate}T${parsedPaymentDeadlineTime}`
+      : null;
+    if (signupDateTime >= matchDateTime) {
+      setError('O prazo de inscrição precisa terminar antes do início do jogo.');
+      return;
+    }
+    if (paymentDateTime && paymentDateTime < signupDateTime) {
+      setError('O prazo de pagamento não pode terminar antes do prazo de inscrição.');
+      return;
+    }
+    if (paymentDateTime && paymentDateTime >= matchDateTime) {
+      setError('O prazo de pagamento precisa terminar antes do início do jogo.');
       return;
     }
     if (!venue.trim()) {
@@ -145,6 +179,10 @@ export default function CreateMatchScreen() {
         timeZone: MATCH_TIME_ZONE,
         venue: venue.trim(),
         maxPlayers: parsedMaxPlayers,
+        signupDeadlineDate: parsedSignupDeadlineDate,
+        signupDeadlineTime: parsedSignupDeadlineTime,
+        paymentDeadlineDate: parsedPaymentDeadlineDate ?? undefined,
+        paymentDeadlineTime: parsedPaymentDeadlineTime ?? undefined,
         paymentRequired,
         paymentAmount: parsedPaymentAmount ?? undefined,
         pixKey: paymentRequired ? pixKey.trim() : undefined,
@@ -180,6 +218,84 @@ export default function CreateMatchScreen() {
               <Text color="$onzeMuted" fontSize={14} lineHeight={20}>
                 Defina os dados da partida. Os membros poderão confirmar presença assim que ela for criada.
               </Text>
+            </YStack>
+
+            <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
+              <YStack gap="$1">
+                <Text color="$onzeInk" fontSize={17} fontWeight="900">Prazos da partida</Text>
+                <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                  Depois do primeiro prazo ninguém novo entra na lista. Use o segundo para garantir os pagamentos antes do jogo.
+                </Text>
+              </YStack>
+
+              <YStack gap="$2">
+                <Text color="$onzeMuted" fontSize={11} fontWeight="900">ENTRAR NA LISTA ATÉ</Text>
+                <XStack gap="$3">
+                  <Field flex={1} label="DATA">
+                    <Input
+                      backgroundColor="$onzeSurface"
+                      borderColor="$onzeBorder"
+                      color="$onzeInk"
+                      keyboardType="numeric"
+                      maxLength={10}
+                      onChangeText={(value) => setSignupDeadlineDate(formatDateInput(value))}
+                      placeholder="DD/MM/AAAA"
+                      placeholderTextColor="$onzeMuted"
+                      value={signupDeadlineDate}
+                    />
+                  </Field>
+                  <Field flex={0.7} label="HORÁRIO">
+                    <Input
+                      backgroundColor="$onzeSurface"
+                      borderColor="$onzeBorder"
+                      color="$onzeInk"
+                      keyboardType="numeric"
+                      maxLength={5}
+                      onChangeText={(value) => setSignupDeadlineTime(formatTimeInput(value))}
+                      placeholder="12:00"
+                      placeholderTextColor="$onzeMuted"
+                      value={signupDeadlineTime}
+                    />
+                  </Field>
+                </XStack>
+              </YStack>
+
+              {paymentRequired ? (
+                <YStack gap="$2">
+                  <Text color="$onzeMuted" fontSize={11} fontWeight="900">PAGAR ATÉ</Text>
+                  <XStack gap="$3">
+                    <Field flex={1} label="DATA">
+                      <Input
+                        backgroundColor="$onzeSurface"
+                        borderColor="$onzeBorder"
+                        color="$onzeInk"
+                        keyboardType="numeric"
+                        maxLength={10}
+                        onChangeText={(value) => setPaymentDeadlineDate(formatDateInput(value))}
+                        placeholder="DD/MM/AAAA"
+                        placeholderTextColor="$onzeMuted"
+                        value={paymentDeadlineDate}
+                      />
+                    </Field>
+                    <Field flex={0.7} label="HORÁRIO">
+                      <Input
+                        backgroundColor="$onzeSurface"
+                        borderColor="$onzeBorder"
+                        color="$onzeInk"
+                        keyboardType="numeric"
+                        maxLength={5}
+                        onChangeText={(value) => setPaymentDeadlineTime(formatTimeInput(value))}
+                        placeholder="18:00"
+                        placeholderTextColor="$onzeMuted"
+                        value={paymentDeadlineTime}
+                      />
+                    </Field>
+                  </XStack>
+                  <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                    Quem não pagar será removido automaticamente. Quem já pagou ou informou o pagamento continuará na lista e não poderá sair após esse prazo.
+                  </Text>
+                </YStack>
+              ) : null}
             </YStack>
 
             <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
@@ -308,7 +424,7 @@ export default function CreateMatchScreen() {
                 <YStack flex={1} gap="$1">
                   <Text color="$onzeInk" fontSize={17} fontWeight="900">Repetir toda semana</Text>
                   <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
-                    Mantém o mesmo dia, horário e local nos próximos jogos.
+                    Mantém o mesmo dia, horário, local e intervalos dos prazos nos próximos jogos.
                   </Text>
                 </YStack>
                 <Switch
