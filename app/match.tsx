@@ -5,16 +5,20 @@ import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { PaymentSettlementModal } from '../src/components/payment-settlement-modal';
+import { ReplacementPlayerModal } from '../src/components/replacement-player-modal';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
+  addMatchReplacement,
   AttendanceStatus,
   cancelMatch,
   confirmMatchPayment,
   CreditAllocationStatus,
   endMatchSeries,
   FootballMatch,
+  GroupMember,
   getMatch,
+  listGroupMembers,
   MatchAttendance,
   PaymentSettlementResolution,
   PaymentSettlementStatus,
@@ -82,6 +86,10 @@ export default function MatchScreen() {
   const [settlementPlayer, setSettlementPlayer] = useState<MatchAttendance | null>(null);
   const [selectedSettlements, setSelectedSettlements] = useState<string[]>([]);
   const [bulkResolution, setBulkResolution] = useState<PaymentSettlementResolution | null>(null);
+  const [replacementDeparture, setReplacementDeparture] = useState<MatchAttendance | null>(null);
+  const [replacementCandidates, setReplacementCandidates] = useState<GroupMember[]>([]);
+  const [selectedReplacementUserId, setSelectedReplacementUserId] = useState<string | null>(null);
+  const [replacingPlayer, setReplacingPlayer] = useState(false);
   const [managementAction, setManagementAction] = useState<ManagementAction>(null);
   const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -268,6 +276,68 @@ export default function MatchScreen() {
       : [...current, playerUserId]);
   }
 
+  async function openReplacementPicker(departure: MatchAttendance) {
+    if (!match || replacingPlayer) return;
+    setReplacementDeparture(departure);
+    setSelectedReplacementUserId(null);
+    setReplacementCandidates([]);
+    setReplacingPlayer(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        goToLogin();
+        return;
+      }
+      const members = await listGroupMembers(token, match.groupId);
+      const confirmed = new Set(match.attendances
+        .filter((attendance) => attendance.status === 'GOING')
+        .map((attendance) => attendance.userId));
+      const otherOpenDepartures = new Set(match.attendances
+        .filter((attendance) => attendance.userId !== departure.userId
+          && attendance.replacementRequiredAt != null
+          && isSettlementOpen(attendance.paymentSettlementStatus))
+        .map((attendance) => attendance.userId));
+      setReplacementCandidates(members.filter((member) => (
+        !confirmed.has(member.userId)
+        && !otherOpenDepartures.has(member.userId)
+      )));
+    } catch (exception) {
+      setReplacementDeparture(null);
+      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar os membros disponíveis.');
+    } finally {
+      setReplacingPlayer(false);
+    }
+  }
+
+  async function confirmReplacement() {
+    if (!match || !replacementDeparture || !selectedReplacementUserId || replacingPlayer) return;
+    setReplacingPlayer(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        goToLogin();
+        return;
+      }
+      const updatedMatch = await addMatchReplacement(
+        token,
+        match.id,
+        replacementDeparture.userId,
+        selectedReplacementUserId,
+      );
+      setMatch(updatedMatch);
+      setReplacementDeparture(null);
+      setReplacementCandidates([]);
+      setSelectedReplacementUserId(null);
+      syncNotifications(token, updatedMatch);
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : 'Não foi possível preencher a vaga.');
+    } finally {
+      setReplacingPlayer(false);
+    }
+  }
+
   async function confirmManagementAction() {
     if (!match || !managementAction || managing) return;
     setManaging(true);
@@ -325,6 +395,7 @@ export default function MatchScreen() {
   const awaiting = match?.attendances.filter((attendance) => attendance.status === 'PENDING') ?? [];
   const payments = match?.attendances.filter((attendance) => attendance.paymentStatus != null) ?? [];
   const openSettlements = payments.filter((attendance) => isSettlementOpen(attendance.paymentSettlementStatus));
+  const currentAttendance = match?.attendances.find((attendance) => attendance.currentUser) ?? null;
   const actionIsEndSeries = managementAction === 'end-series';
 
   return (
@@ -404,17 +475,17 @@ export default function MatchScreen() {
                 >
                   <YStack gap="$1">
                     <Text color="$onzeInk" fontSize={19} fontWeight="900">
-                      {!match.signupOpen && match.myAttendance !== 'GOING'
-                        ? 'Lista encerrada'
-                        : match.myAttendance === 'GOING' && !match.canWithdraw
-                          ? 'Sua vaga está confirmada'
+                      {currentAttendance?.replacementRequiredAt
+                        ? 'Saída registrada'
+                        : !match.signupOpen && match.myAttendance !== 'GOING'
+                          ? 'Lista encerrada'
                           : 'Você vai jogar?'}
                     </Text>
                     <Text color="$onzeMuted" fontSize={13}>
-                      {!match.signupOpen && match.myAttendance !== 'GOING'
-                        ? `O prazo terminou com ${match.goingCount} de ${match.maxPlayers} vagas preenchidas.`
-                        : match.myAttendance === 'GOING' && !match.canWithdraw
-                          ? 'O prazo de pagamento terminou. Como seu pagamento está protegido, seu nome não pode mais ser retirado da lista.'
+                      {currentAttendance?.replacementRequiredAt
+                        ? 'Depois de sair com pagamento registrado, somente um administrador pode colocar você novamente na lista.'
+                        : !match.signupOpen && match.myAttendance !== 'GOING'
+                          ? `O prazo terminou com ${match.goingCount} de ${match.maxPlayers} vagas preenchidas.`
                           : `${match.goingCount} de ${match.maxPlayers} vagas preenchidas.`}
                     </Text>
                   </YStack>
@@ -424,7 +495,7 @@ export default function MatchScreen() {
                       borderColor="$onzeGreen"
                       borderWidth={1}
                       disabled={Boolean(updatingAttendance)
-                        || (!match.signupOpen && match.myAttendance !== 'GOING')}
+                        || (match.myAttendance !== 'GOING' && !match.canJoin)}
                       flex={1}
                       height={50}
                       onPress={() => requestAttendance('GOING')}
@@ -514,7 +585,7 @@ export default function MatchScreen() {
                           </Text>
                         </YStack>
                       ) : null}
-                      {match.myPaymentStatus === 'PENDING' && match.paymentOpen ? (
+                      {match.myPaymentStatus === 'PENDING' && match.canReportPayment ? (
                         <Button
                           backgroundColor="$onzeGreen"
                           disabled={Boolean(updatingPayment)}
@@ -527,7 +598,7 @@ export default function MatchScreen() {
                         </Button>
                       ) : match.myPaymentStatus === 'PENDING' ? (
                         <Text color="$onzeDanger" fontSize={13} lineHeight={19}>
-                          O prazo de pagamento terminou e não é mais possível informar o PIX.
+                          O prazo de pagamento terminou. Se você entrou como reposição, peça ao administrador para conferir sua vaga.
                         </Text>
                       ) : match.myPaymentStatus === 'REPORTED' ? (
                         <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
@@ -552,8 +623,33 @@ export default function MatchScreen() {
                         {withdrawalPaymentMessage(
                           match.myPaymentStatus,
                           match.myPaymentSettlementStatus,
+                          currentAttendance,
                         )}
                       </Text>
+                      {currentAttendance?.replacementRequiredAt
+                          && isSettlementOpen(match.myPaymentSettlementStatus) ? (
+                        <YStack
+                          backgroundColor={currentAttendance.settlementAvailable ? '#EAF7EF' : '#FFF7E6'}
+                          borderRadius="$4"
+                          gap="$1"
+                          padding="$4"
+                        >
+                          <Text
+                            color={currentAttendance.settlementAvailable ? '$onzeGreen' : '#8A6414'}
+                            fontSize={12}
+                            fontWeight="900"
+                          >
+                            {currentAttendance.settlementAvailable
+                              ? 'ACERTO LIBERADO'
+                              : 'AGUARDANDO REPOSIÇÃO'}
+                          </Text>
+                          <Text color="$onzeInk" fontSize={13} lineHeight={19}>
+                            {currentAttendance.replacementDisplayName
+                              ? `${currentAttendance.replacementDisplayName} preencheu sua vaga. O administrador já pode resolver o acerto.`
+                              : 'Seu pagamento permanece protegido. O acerto será liberado quando outra pessoa preencher sua vaga.'}
+                          </Text>
+                        </YStack>
+                      ) : null}
                     </YStack>
                   )}
                 </YStack>
@@ -673,6 +769,17 @@ export default function MatchScreen() {
                               {formatCurrency(attendance.remainingPaymentAmount ?? 0)} restante
                             </Text>
                           ) : null}
+                          {attendance.replacementRequiredAt ? (
+                            <Text
+                              color={attendance.settlementAvailable ? '$onzeGreen' : '#8A6414'}
+                              fontSize={11}
+                              fontWeight="900"
+                            >
+                              {attendance.replacementDisplayName
+                                ? `VAGA PREENCHIDA POR ${attendance.replacementDisplayName.toUpperCase()}`
+                                : 'ACERTO BLOQUEADO · AGUARDANDO REPOSIÇÃO'}
+                            </Text>
+                          ) : null}
                         </YStack>
                       </XStack>
                       {attendance.status === 'GOING'
@@ -690,16 +797,33 @@ export default function MatchScreen() {
                           </Text>
                         </Button>
                       ) : null}
+                      {match.status === 'SCHEDULED'
+                          && attendance.replacementRequiredAt != null
+                          && attendance.replacementFilledAt == null ? (
+                        <Button
+                          backgroundColor="$onzeSurface"
+                          borderColor="#8A6414"
+                          borderWidth={1}
+                          disabled={replacingPlayer || Boolean(updatingPayment)}
+                          onPress={() => void openReplacementPicker(attendance)}
+                        >
+                          <Text color="#8A6414" fontSize={12} fontWeight="900">
+                            Adicionar reposição
+                          </Text>
+                        </Button>
+                      ) : null}
                       {(attendance.status === 'NOT_GOING' || match.status === 'CANCELLED')
                           && isSettlementOpen(attendance.paymentSettlementStatus)
-                          && match.status !== 'CANCELLED' ? (
+                          && match.status !== 'CANCELLED'
+                          && (attendance.settlementAvailable
+                            || attendance.paymentSettlementStatus === 'REVIEW_REQUIRED') ? (
                         <Button
                           backgroundColor="$onzeGreen"
                           disabled={Boolean(updatingPayment)}
                           onPress={() => setSettlementPlayer(attendance)}
                         >
                           <Text color="$onzeSurface" fontSize={12} fontWeight="900">
-                            Resolver acerto
+                            {attendance.settlementAvailable ? 'Resolver acerto' : 'Conferir pagamento'}
                           </Text>
                         </Button>
                       ) : null}
@@ -796,6 +920,8 @@ export default function MatchScreen() {
             match.myCreditAllocationStatus,
             match.myRemainingPaymentAmount,
           ) + (match.signupOpen
+            || match.myPaymentStatus === 'PAID'
+            || match.myPaymentStatus === 'REPORTED'
             ? ''
             : ' Como o prazo de inscrição já terminou, você não poderá entrar novamente nesta lista.')}
           confirmLabel="Liberar minha vaga"
@@ -824,9 +950,27 @@ export default function MatchScreen() {
         visible={settlementPlayer != null}
         playerName={settlementPlayer?.displayName ?? ''}
         reviewRequired={settlementPlayer?.paymentSettlementStatus === 'REVIEW_REQUIRED'}
+        settlementAvailable={settlementPlayer?.settlementAvailable ?? false}
         loading={updatingPayment === settlementPlayer?.userId}
         onCancel={() => setSettlementPlayer(null)}
         onResolve={(resolution) => void resolvePlayerSettlement(resolution)}
+      />
+
+      <ReplacementPlayerModal
+        visible={replacementDeparture != null}
+        departedName={replacementDeparture?.displayName ?? ''}
+        departedUserId={replacementDeparture?.userId ?? ''}
+        candidates={replacementCandidates}
+        selectedUserId={selectedReplacementUserId}
+        loading={replacingPlayer}
+        onSelect={setSelectedReplacementUserId}
+        onCancel={() => {
+          if (replacingPlayer) return;
+          setReplacementDeparture(null);
+          setReplacementCandidates([]);
+          setSelectedReplacementUserId(null);
+        }}
+        onConfirm={() => void confirmReplacement()}
       />
     </SafeAreaView>
   );
@@ -904,23 +1048,25 @@ function withdrawalConfirmationMessage(
 ) {
   if (creditAllocationStatus != null) {
     if (status === 'REPORTED') {
-      return 'O crédito reservado voltará ao seu saldo. Como você informou o pagamento do restante via PIX, o administrador será avisado para conferir esse valor.';
+      return 'Sua vaga será liberada, mas o crédito e o PIX informado continuarão protegidos até outra pessoa preencher a vaga. Somente um administrador poderá colocar você novamente na lista.';
     }
     if (status === 'PAID' && (remainingPaymentAmount ?? 0) > 0) {
-      return 'O crédito aplicado voltará ao seu saldo. O valor complementar pago via PIX ficará aguardando reembolso, crédito ou outra decisão do administrador.';
+      return 'Sua vaga será liberada. O crédito e o valor complementar ficarão bloqueados até uma reposição entrar; depois o administrador poderá resolver o acerto.';
     }
-    return creditAllocationStatus === 'RESERVED'
+    return status === 'PAID'
+      ? 'Sua vaga será liberada, mas o crédito usado ficará bloqueado até outra pessoa preencher a vaga. Somente um administrador poderá readicionar você.'
+      : creditAllocationStatus === 'RESERVED'
       ? 'A reserva será removida e o crédito continuará disponível para outra partida deste grupo.'
-      : 'Sua vaga será liberada e o crédito utilizado voltará automaticamente para o próximo jogo.';
+      : 'Sua vaga será liberada e o crédito ainda pendente voltará ao saldo.';
   }
   if (status === 'PENDING') {
     return 'Sua vaga será liberada imediatamente e a cobrança que ainda estava pendente será cancelada.';
   }
   if (status === 'REPORTED') {
-    return 'Sua vaga será liberada. Como você informou que já pagou, o administrador será avisado para conferir o PIX e resolver o acerto.';
+    return 'Sua vaga será liberada. O pagamento informado ficará bloqueado até outra pessoa ocupar a vaga; somente o administrador poderá readicionar você.';
   }
   if (status === 'PAID') {
-    return 'Sua vaga será liberada. Como o pagamento já foi confirmado, o administrador será avisado para registrar reembolso, crédito ou manutenção do valor.';
+    return 'Sua vaga será liberada, mas o pagamento ficará bloqueado até outra pessoa ocupar a vaga. Depois o administrador poderá fazer o acerto.';
   }
   return 'Sua vaga será liberada imediatamente para outro jogador.';
 }
@@ -928,12 +1074,17 @@ function withdrawalConfirmationMessage(
 function withdrawalPaymentMessage(
   status: PaymentStatus,
   settlementStatus: PaymentSettlementStatus | null,
+  attendance: MatchAttendance | null,
 ) {
   switch (settlementStatus) {
     case 'REVIEW_REQUIRED':
-      return 'Você informou o pagamento antes de sair. O administrador foi avisado e está conferindo o recebimento.';
+      return attendance?.settlementAvailable
+        ? 'Você informou o pagamento antes de sair. Sua vaga já foi preenchida e o administrador pode concluir o acerto.'
+        : 'Você informou o pagamento antes de sair. O acerto aguarda a conferência do PIX e o preenchimento da vaga.';
     case 'PENDING':
-      return 'Seu pagamento foi confirmado e o administrador precisa registrar reembolso, crédito ou manutenção do valor.';
+      return attendance?.settlementAvailable
+        ? 'Sua vaga foi preenchida. O administrador já pode registrar o reembolso, crédito ou manutenção do valor.'
+        : 'Seu pagamento permanece protegido e o acerto ficará bloqueado até sua vaga ser preenchida.';
     case 'NOT_RECEIVED':
       return 'O administrador informou que nenhum pagamento foi localizado. A cobrança ficou encerrada.';
     case 'REFUNDED':

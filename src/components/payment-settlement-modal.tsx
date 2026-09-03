@@ -7,6 +7,7 @@ type PaymentSettlementModalProps = {
   visible: boolean;
   playerName: string;
   reviewRequired: boolean;
+  settlementAvailable: boolean;
   loading?: boolean;
   onCancel: () => void;
   onResolve: (resolution: PaymentSettlementResolution) => void;
@@ -16,6 +17,7 @@ export function PaymentSettlementModal({
   visible,
   playerName,
   reviewRequired,
+  settlementAvailable,
   loading = false,
   onCancel,
   onResolve,
@@ -51,6 +53,11 @@ export function PaymentSettlementModal({
                   ? `${playerName} informou o pagamento, mas saiu antes da validação. Confira o PIX e registre o resultado.`
                   : `O pagamento de ${playerName} já foi confirmado. Registre como o valor será acertado.`}
               </Text>
+              {!settlementAvailable ? (
+                <Text color="$onzeDanger" fontSize={13} fontWeight="800" lineHeight={19}>
+                  Reembolso, crédito e manutenção ficam bloqueados até esta vaga ser preenchida.
+                </Text>
+              ) : null}
             </YStack>
 
             <YStack gap="$2">
@@ -65,19 +72,19 @@ export function PaymentSettlementModal({
               <SettlementButton
                 label="Marcar como reembolsado"
                 color="$onzeGreen"
-                disabled={loading}
+                disabled={loading || !settlementAvailable}
                 onPress={() => onResolve('REFUNDED')}
               />
               <SettlementButton
                 label="Registrar crédito para próxima partida"
                 color="$onzeGreen"
-                disabled={loading}
+                disabled={loading || !settlementAvailable}
                 onPress={() => onResolve('CREDITED')}
               />
               <SettlementButton
                 label="Manter pagamento"
                 color="#8A6414"
-                disabled={loading}
+                disabled={loading || !settlementAvailable}
                 onPress={() => onResolve('RETAINED')}
               />
             </YStack>

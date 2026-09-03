@@ -96,6 +96,13 @@ export type MatchAttendance = {
   remainingPaymentAmount: number | null;
   creditAllocationStatus: CreditAllocationStatus | null;
   paymentDeadlineRemovedAt: string | null;
+  replacementRequiredAt: string | null;
+  replacementUserId: string | null;
+  replacementDisplayName: string | null;
+  replacementFilledAt: string | null;
+  addedAsReplacementAt: string | null;
+  replacementForUserId: string | null;
+  settlementAvailable: boolean;
   currentUser: boolean;
 };
 
@@ -132,6 +139,8 @@ export type FootballMatch = {
   signupOpen: boolean;
   paymentDeadline: string | null;
   paymentOpen: boolean;
+  canReportPayment: boolean;
+  canJoin: boolean;
   canWithdraw: boolean;
   myAttendance: AttendanceStatus | null;
   myPaymentStatus: PaymentStatus | null;
@@ -549,6 +558,19 @@ export function resolveMatchPaymentSettlements(
     method: 'PUT',
     headers: authenticatedHeaders(accessToken),
     body: JSON.stringify({ playerUserIds, resolution }),
+  });
+}
+
+export function addMatchReplacement(
+  accessToken: string,
+  matchId: string,
+  departedUserId: string,
+  replacementUserId: string,
+) {
+  return request<FootballMatch>(`/api/matches/${matchId}/replacements/${departedUserId}`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ replacementUserId }),
   });
 }
 
