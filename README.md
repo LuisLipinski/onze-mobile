@@ -1,10 +1,21 @@
 # Onze Mobile
 
-Aplicativo mobile do **Onze — Organizador de Pelada**.
+Aplicativo Android do **Onze — Organizador de Pelada**.
 
-> Estado documentado em 03/09/2026: a versão mais recente está na branch `feature/paid-withdrawal-replacement-refund` e contempla grupos, administração, partidas, presença, pagamentos, créditos, prazos, notificações e reposição da vaga após saída paga. A `master` permanece como referência estável.
+> Estado revisado em 04/09/2026 contra a implementação da branch mais completa. Esta página diferencia funcionalidade implementada, integração em `development` e itens planejados.
 
-## Stack
+## Estado por branch
+
+| Branch | Estado |
+|---|---|
+| `feature/paid-withdrawal-replacement-refund` | Versão funcional mais completa: partidas, presença, financeiro, prazos, notificações e reposições. |
+| `docs/documentation-alignment-2026-09-04` | Correções documentais baseadas na versão funcional mais completa. |
+| `development` | Integração até grupos e permissões administrativas; está nove commits atrás da versão funcional auditada. |
+| `master` | Baseline inicial com somente README. **Ainda não é um backup funcional do aplicativo.** |
+
+A base funcional mais recente foi introduzida pelo commit `23c176e`; commits posteriores na mesma linha podem conter somente documentação. Nenhuma destas alterações foi promovida para `master`.
+
+## Stack implementada
 
 - React Native 0.86.3 e React 19.2.3
 - Expo SDK 57 e Expo Router
@@ -12,101 +23,102 @@ Aplicativo mobile do **Onze — Organizador de Pelada**.
 - Tamagui
 - Expo SecureStore e autenticação biométrica
 - Expo Notifications com Firebase Cloud Messaging no Android
+- Identificador Android `com.onze.organizadordepelada`
 
-## Funcionalidades implementadas
+## Conta e acesso
 
-### Conta
+- Cadastro, login, recuperação de senha e encerramento local da sessão.
+- Access token e dados da conta armazenados no SecureStore.
+- O access token da API dura duas horas por padrão e não existe refresh token.
+- A biometria fica vinculada a uma única conta e apresenta nome/e-mail salvos.
+- Encerrar a sessão não desativa a preferência biométrica.
+- A biometria reutiliza o token protegido no aparelho; quando ele expira, o usuário precisa entrar novamente com senha.
+- Opções **Entrar com senha** e **Entrar com outra conta** não reutilizam silenciosamente a conta biométrica.
+- Links de convite e notificações preservam o destino após autenticação.
 
-- Cadastro, login, recuperação de senha e encerramento da sessão.
-- Token de acesso protegido pelo SecureStore.
-- Opção de entrada biométrica no dispositivo.
+## Navegação e telas implementadas
 
-### Grupos e administração
+- Barra inferior: **Home | Grupos | Configurações**.
+- Home com próximos jogos e estado vazio.
+- Cadastro, login, solicitação e confirmação de recuperação de senha.
+- Lista, criação, edição e entrada em grupos.
+- Fluxo de foto e dados complementares do grupo.
+- Convite por link HTTPS/código, compartilhamento e regeneração.
+- Membros, promoção, rebaixamento, transferência do Principal e permissões individuais.
+- Criação de partida, detalhe da partida, presença, pagamentos e cancelamentos.
+- Créditos do grupo, acertos em lote e seleção de reposição.
+- Tela de carregamento específica para o despertar da API no Render.
 
-- Criação e entrada em grupos por convite.
-- Foto, nome, local, horários habituais, valor e chave PIX padrão.
-- Lista de membros e administradores.
-- Administrador Principal, permissões individuais e transferência do cargo.
+## Administração de grupos
 
-### Partidas e presença
+- O criador entra como `PRIMARY_ADMIN`.
+- Um `ADMIN` novo começa sem permissões.
+- Promoção de membros depende de `PROMOTE_MEMBERS`.
+- Somente o Principal edita permissões, rebaixa administradores e transfere o cargo.
+- Após a transferência, o antigo Principal permanece como `ADMIN` sem permissões automáticas.
+- Edição, convites, remoção de membros e partidas respeitam as permissões devolvidas pelo backend.
 
-- Criação de partida avulsa ou série semanal.
-- Data, horário, fuso, local, limite de jogadores e observações.
-- Prazo final para entrar na lista e prazo final para pagamento.
-- Respostas de presença e atualização imediata da lista.
-- Cancelamento de uma partida ou encerramento da série.
-- Depois do prazo de inscrição, somente o administrador pode adicionar uma reposição.
+## Partidas e presença
 
-### Pagamentos, créditos e reposições
+- Partida avulsa ou série semanal.
+- Data, horário, fuso, local, limite de jogadores, observações e cobrança opcional.
+- Prazo final de inscrição e, quando há cobrança, prazo final de pagamento.
+- O jogador escolhe **Vou jogar** ou **Não vou**; **Talvez** não está implementado.
+- Cartões e detalhe exibem abertura da presença, prazos e contagem de vagas.
+- Depois do prazo de inscrição, o jogador não entra sozinho.
+- Cancelamento de uma ocorrência ou encerramento da série.
+- Lista de espera e promoção automática ainda não estão implementadas.
 
-- Cobrança por jogador com valor e chave PIX próprios da partida.
-- Botão **Já paguei** e confirmação posterior pelo administrador.
-- Tela de créditos do grupo com valores disponíveis, reservados e aplicados.
-- Crédito mantido para a próxima partida e aplicado automaticamente quando elegível.
+## Pagamentos, créditos e reposições
+
+- Valor e PIX próprios da partida, com padrões opcionais do grupo.
+- Botão **Já paguei** e confirmação por administrador autorizado.
+- Jogador comum vê apenas o próprio pagamento; Principal ou `ADMIN` com `SCHEDULE_GAMES` acessa o painel completo.
+- Crédito disponível, reservado e aplicado exibido na tela do grupo e da partida.
 - Acertos individuais ou em lote: não recebido, reembolso, crédito ou retenção.
-- Remoção automática da lista quando o pagamento continua pendente após o prazo.
-- Jogador que já pagou pode sair da lista; o acerto fica bloqueado até a vaga ser preenchida.
-- Administrador pode devolver o próprio jogador à vaga ou escolher outro membro como substituto.
-- Quando a vaga é preenchida, o administrador pode reembolsar, manter crédito ou reter o valor.
+- Jogador com pagamento informado ou confirmado pode sair.
+- O acerto fica bloqueado até a vaga ser preenchida, exceto a decisão **não recebido** aplicável a pagamento apenas informado.
+- O jogador que saiu não retorna sozinho; um administrador autorizado pode recolocá-lo ou escolher outro membro.
+- O cancelamento da partida libera os acertos sem exigir reposição.
 
-### Notificações
+## Notificações
 
-- Push remoto por Expo/FCM para eventos enviados pela API.
-- Avisos de jogo criado, presença liberada, pagamento, time completo, crédito, reposição e cancelamento.
-- Lembretes diários às 09:00 para presença e pagamento.
+- Push remoto por Expo/FCM para eventos da API.
+- Jogo criado, presença liberada, lembretes, pagamento, crédito, reposição, time completo e cancelamento.
 - Aviso no dia anterior ao jogo.
-- Fallback local quando o push remoto não puder ser registrado.
-- Ao tocar na notificação, o aplicativo abre a partida correspondente.
+- Ao tocar, o aplicativo abre diretamente a partida.
+- Quando o push remoto não está disponível, o aplicativo agenda lembretes locais.
+- O fallback local agenda no máximo 30 dias futuros e é refeito após sincronização dos jogos.
+- Recibos do Expo/FCM e limpeza automática de tokens rejeitados ainda estão pendentes.
 
-## Fluxo de presença e pagamento
+## Validação atual
 
-| Estado | Comportamento |
-|---|---|
-| Ainda não respondeu | Recebe lembrete de presença até o prazo de inscrição |
-| Confirmou e não pagou | Vaga reservada; recebe cobrança até o prazo de pagamento |
-| Informou o pagamento | Cobrança é pausada enquanto aguarda o administrador |
-| Pagamento confirmado | Permanece na lista como pago |
-| Pendente após o prazo | É removido automaticamente da lista |
-| Pago e saiu da lista | Acerto fica em análise e bloqueado enquanto não houver reposição |
-| Vaga preenchida ou jogo cancelado | Acerto é liberado para decisão administrativa |
-
-## Executar localmente
-
-Pré-requisitos: Node.js 22 e npm.
+- `Mobile CI`: instala dependências e executa `npm run typecheck`.
+- `Android APK`: executa o prebuild limpo, compila `assembleRelease` para `arm64-v8a` e publica o APK por 14 dias.
+- O perfil EAS `preview` gera APK de distribuição interna.
+- O repositório ainda não possui testes unitários, testes de componentes ou suíte E2E Android automatizada.
+- Configuração Expo, bundle Android e integridade do APK são verificações de entrega; ainda não fazem parte integral do workflow `Mobile CI`.
 
 ```bash
 npm install
 npm run typecheck
+npx expo config --type public
+npx expo export --platform android
 npx expo start
 ```
 
 Variáveis opcionais:
 
-- `EXPO_PUBLIC_API_URL`: URL da API. Sem ela, o app usa a API de desenvolvimento no Render.
-- `EXPO_PUBLIC_EAS_PROJECT_ID`: projeto EAS usado para gerar o Expo Push Token. O `projectId` do `app.json` é usado como alternativa.
+- `EXPO_PUBLIC_API_URL`: URL da API; sem ela, usa o Render de desenvolvimento.
+- `EXPO_PUBLIC_EAS_PROJECT_ID`: projeto usado para gerar o Expo Push Token; o `projectId` do `app.json` é o fallback.
 
-O aplicativo Android usa o identificador `com.onze.organizadordepelada` e o arquivo público `google-services.json`. Nenhuma chave privada deve ser commitada.
+## Planejado, ainda não disponível
 
-## Validação e APK
-
-```bash
-npm run typecheck
-npx expo config --type public
-npx expo export --platform android
-```
-
-- O workflow **Mobile CI** instala as dependências e executa o TypeScript.
-- O workflow **Android APK** faz o prebuild, compila a versão `release` para `arm64-v8a` e mantém o artefato por 14 dias.
-- O perfil EAS `preview` gera um APK de distribuição interna.
-- O APK deve ser instalado e aberto ao menos uma vez para registrar o aparelho e pedir permissão de notificações.
-
-## Ambientes e branches
-
-- `master`: versão estável; só recebe promoção após aprovação explícita.
-- `development`: integração e validação.
-- `feature/*`: funcionalidades isoladas e geração automática de APK.
-- `docs/*`: alterações documentais.
+- Perfil esportivo completo.
+- Lista de espera.
+- Formação e balanceamento dos times.
+- Jogo ao vivo, placar e eventos.
+- Estatísticas e histórico esportivo.
+- Free/Premium e publicação em loja.
 
 API padrão: <https://onze-organizador-de-pelada.onrender.com>
-
-Projeto EAS: `onze-organizador-de-pelada/onze-organizador-de-pelada`
