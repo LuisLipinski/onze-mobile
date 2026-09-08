@@ -12,6 +12,7 @@ import { Button, Input, Text, XStack, YStack } from 'tamagui';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { GroupDayOfWeek, GroupSchedule, updateGroupDetails } from '../src/lib/api';
 import { getAccessToken } from '../src/lib/auth-storage';
+import { parsePaymentAmount, sanitizePaymentAmountInput } from '../src/lib/payment';
 
 const DAYS: { value: GroupDayOfWeek; label: string; fullLabel: string }[] = [
   { value: 'MONDAY', label: 'Seg', fullLabel: 'Segunda-feira' },
@@ -33,6 +34,8 @@ export default function CreateGroupDetailsScreen() {
   const [city, setCity] = useState('');
   const [mascot, setMascot] = useState('');
   const [venue, setVenue] = useState('');
+  const [defaultPaymentAmount, setDefaultPaymentAmount] = useState('');
+  const [defaultPixKey, setDefaultPixKey] = useState('');
   const [times, setTimes] = useState<Partial<Record<GroupDayOfWeek, string>>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -82,6 +85,20 @@ export default function CreateGroupDetailsScreen() {
     const schedules = buildSchedules();
     if (!schedules) return;
 
+    const hasPaymentAmount = Boolean(defaultPaymentAmount.trim());
+    const hasPixKey = Boolean(defaultPixKey.trim());
+    if (hasPaymentAmount !== hasPixKey) {
+      setError('Informe o valor padrão e a chave PIX juntos, ou deixe os dois vazios.');
+      return;
+    }
+    const parsedPaymentAmount = hasPaymentAmount
+      ? parsePaymentAmount(defaultPaymentAmount)
+      : undefined;
+    if (hasPaymentAmount && parsedPaymentAmount == null) {
+      setError('Informe um valor padrão válido, como 25,00.');
+      return;
+    }
+
     setError(null);
     setLoading(true);
 
@@ -96,6 +113,8 @@ export default function CreateGroupDetailsScreen() {
         city: city.trim() || undefined,
         mascot: mascot.trim() || undefined,
         venue: venue.trim() || undefined,
+        defaultPaymentAmount: parsedPaymentAmount ?? undefined,
+        defaultPixKey: defaultPixKey.trim() || undefined,
         schedules,
       });
 
@@ -120,7 +139,7 @@ export default function CreateGroupDetailsScreen() {
   function skip() {
     Alert.alert(
       'Você pode configurar depois',
-      'Cidade, dias, horários, mascote e local podem ser alterados em Grupo > Configurações.',
+      'Cidade, dias, horários, mascote, local e cobrança podem ser alterados em Grupo > Configurações.',
       [{ text: 'Continuar', onPress: goToInvite }],
     );
   }
@@ -198,6 +217,28 @@ export default function CreateGroupDetailsScreen() {
                 value={venue}
                 onChangeText={setVenue}
               />
+
+              <YStack backgroundColor="$onzeCanvas" borderRadius="$5" gap="$3" padding="$4">
+                <YStack gap="$1">
+                  <Text color="$onzeInk" fontSize={16} fontWeight="900">Cobrança padrão</Text>
+                  <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                    Opcional. Usaremos estes dados como sugestão ao marcar cada jogo.
+                  </Text>
+                </YStack>
+                <OptionalInput
+                  keyboardType="decimal-pad"
+                  label="Valor por jogador"
+                  placeholder="Ex.: 25,00"
+                  value={defaultPaymentAmount}
+                  onChangeText={(value) => setDefaultPaymentAmount(sanitizePaymentAmountInput(value))}
+                />
+                <OptionalInput
+                  label="Chave PIX"
+                  placeholder="Email, telefone, CPF ou chave aleatória"
+                  value={defaultPixKey}
+                  onChangeText={setDefaultPixKey}
+                />
+              </YStack>
 
               <YStack gap="$3">
                 <XStack alignItems="center" justifyContent="space-between">
@@ -296,11 +337,13 @@ function OptionalInput({
   placeholder,
   value,
   onChangeText,
+  keyboardType,
 }: {
   label: string;
   placeholder: string;
   value: string;
   onChangeText: (value: string) => void;
+  keyboardType?: 'default' | 'decimal-pad';
 }) {
   return (
     <YStack gap="$2">
@@ -318,6 +361,7 @@ function OptionalInput({
         color="$onzeInk"
         focusStyle={{ borderColor: '$onzeGreen' }}
         height={50}
+        keyboardType={keyboardType}
         maxLength={255}
         onChangeText={onChangeText}
         placeholder={placeholder}

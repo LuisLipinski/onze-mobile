@@ -4,17 +4,21 @@ import { Image, Modal, Pressable, SafeAreaView, ScrollView } from 'react-native'
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
+import { MatchCard } from '../src/components/match-card';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
+  FootballMatch,
   Group,
   GroupDayOfWeek,
   GroupRole,
   hasGroupPermission,
   leaveGroup,
+  listGroupMatches,
   listGroups,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
+import { formatCurrency } from '../src/lib/payment';
 
 const DAY_LABELS: Record<GroupDayOfWeek, string> = {
   MONDAY: 'Segunda-feira',
@@ -36,6 +40,7 @@ export default function GroupScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ groupId: string }>();
   const [group, setGroup] = useState<Group | null>(null);
+  const [matches, setMatches] = useState<FootballMatch[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -57,6 +62,7 @@ export default function GroupScreen() {
 
     setLoading(true);
     setError(null);
+    setMatches([]);
     try {
       const token = await getAccessToken();
       if (!token) {
@@ -72,6 +78,7 @@ export default function GroupScreen() {
         return;
       }
       setGroup(selected);
+      setMatches(await listGroupMatches(token, selected.id));
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
         await clearSession();
@@ -125,6 +132,8 @@ export default function GroupScreen() {
   const canAddMembers = group ? hasGroupPermission(group, 'ADD_MEMBERS') : false;
   const canEditGroup = group ? hasGroupPermission(group, 'EDIT_GROUP') : false;
   const canScheduleGames = group ? hasGroupPermission(group, 'SCHEDULE_GAMES') : false;
+  const cancelledWithSettlements = matches.filter((match) => match.status === 'CANCELLED');
+  const upcomingMatches = matches.filter((match) => match.status === 'SCHEDULED');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
@@ -185,6 +194,13 @@ export default function GroupScreen() {
                 <InfoRow label="Cidade" value={group.city || 'Não configurada'} />
                 <InfoRow label="Local / campo" value={group.venue || 'Não configurado'} />
                 <InfoRow label="Mascote" value={group.mascot || 'Não configurado'} />
+                <InfoRow
+                  label="Valor por jogador"
+                  value={group.defaultPaymentAmount == null
+                    ? 'Não configurado'
+                    : formatCurrency(group.defaultPaymentAmount)}
+                />
+                {group.defaultPixKey ? <InfoRow label="Chave PIX" value={group.defaultPixKey} /> : null}
 
                 <YStack gap="$2" marginTop="$2">
                   <Text color="$onzeMuted" fontSize={12} fontWeight="700">DIAS E HORÁRIOS</Text>
@@ -199,6 +215,39 @@ export default function GroupScreen() {
                     <Text color="$onzeMuted" fontSize={14}>Nenhum horário configurado.</Text>
                   )}
                 </YStack>
+              </YStack>
+
+              {cancelledWithSettlements.length ? (
+                <YStack gap="$3">
+                  <Text color="$onzeDanger" fontSize={20} fontWeight="900">Acertos pendentes</Text>
+                  <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                    Resolva os pagamentos dos jogos cancelados antes de encerrar o histórico.
+                  </Text>
+                  {cancelledWithSettlements.map((match) => (
+                    <MatchCard
+                      key={match.id}
+                      match={match}
+                      showGroup={false}
+                      onPress={() => router.push({ pathname: '/match', params: { matchId: match.id } })}
+                    />
+                  ))}
+                </YStack>
+              ) : null}
+
+              <YStack gap="$3">
+                <Text color="$onzeInk" fontSize={20} fontWeight="900">Próximos jogos</Text>
+                {upcomingMatches.length ? upcomingMatches.map((match) => (
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    showGroup={false}
+                    onPress={() => router.push({ pathname: '/match', params: { matchId: match.id } })}
+                  />
+                )) : (
+                  <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$5" borderWidth={1} padding="$5">
+                    <Text color="$onzeMuted" fontSize={14}>Nenhum jogo marcado neste grupo.</Text>
+                  </YStack>
+                )}
               </YStack>
             </>
           ) : (
@@ -259,11 +308,32 @@ export default function GroupScreen() {
                 ) : null}
 
                 {canScheduleGames ? (
-                  <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" opacity={0.62} padding="$4">
-                    <Text color="$onzeInk" fontWeight="800">Marcar jogo</Text>
-                    <Text color="$onzeMuted" fontSize={11}>Em breve nesta etapa</Text>
-                  </YStack>
+                  <MenuButton label="Marcar jogo" onPress={() => {
+                    setMenuVisible(false);
+                    router.push({
+                      pathname: '/create-match',
+                      params: {
+                        groupId: group.id,
+                        groupName: group.name,
+                        venue: group.venue ?? '',
+                        paymentAmount: group.defaultPaymentAmount?.toString() ?? '',
+                        pixKey: group.defaultPixKey ?? '',
+                      },
+                    });
+                  }} />
                 ) : null}
+
+                <MenuButton label={canScheduleGames ? 'Créditos dos jogadores' : 'Meu crédito'} onPress={() => {
+                  setMenuVisible(false);
+                  router.push({
+                    pathname: '/group-credits',
+                    params: {
+                      groupId: group.id,
+                      groupName: group.name,
+                      canManage: canScheduleGames ? 'true' : 'false',
+                    },
+                  });
+                }} />
 
                 {canEditGroup ? (
                   <MenuButton label="Configurações do grupo" onPress={() => {

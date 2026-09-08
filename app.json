@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "Onze",
-    "slug": "onze-mobile",
+    "slug": "onze-organizador-de-pelada",
+    "owner": "onze-organizador-de-pelada",
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "onze",
@@ -10,6 +11,7 @@
     "newArchEnabled": true,
     "android": {
       "package": "com.onze.organizadordepelada",
+      "googleServicesFile": "./google-services.json",
       "icon": "./assets/icon.png",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
@@ -17,10 +19,16 @@
         "backgroundColor": "#148A4A"
       }
     },
+    "extra": {
+      "eas": {
+        "projectId": "af0ba138-73ef-43d2-9b8c-e98fb1c5db31"
+      }
+    },
     "plugins": [
       "expo-router",
       "expo-secure-store",
       "expo-system-ui",
+      "expo-notifications",
       [
         "expo-local-authentication",
         {

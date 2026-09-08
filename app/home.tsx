@@ -1,49 +1,68 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
-import { Text, YStack } from 'tamagui';
+import { Button, Text, YStack } from 'tamagui';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
+import { MatchCard } from '../src/components/match-card';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
-import { ApiRequestError, getCurrentUser, User } from '../src/lib/api';
+import {
+  ApiRequestError,
+  FootballMatch,
+  getCurrentUser,
+  listUpcomingMatches,
+  User,
+} from '../src/lib/api';
 import {
   clearSession,
   getAccessToken,
   getStoredCurrentUser,
   saveCurrentUser,
 } from '../src/lib/auth-storage';
+import {
+  registerNotificationsForSession,
+  syncAttendanceOpeningNotifications,
+} from '../src/lib/notifications';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [matches, setMatches] = useState<FootballMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      void loadUser();
+      void loadHome();
     }, []),
   );
 
-  async function loadUser() {
+  async function loadHome() {
     setLoading(true);
     setError(null);
     try {
-      const stored = await getStoredCurrentUser();
-      if (stored) {
-        setUser(stored);
-        return;
-      }
-
       const token = await getAccessToken();
       if (!token) {
         router.replace('/');
         return;
       }
 
-      const current = await getCurrentUser(token);
-      await saveCurrentUser(current);
-      setUser(current);
+      const stored = await getStoredCurrentUser();
+      let currentUser = stored;
+      if (stored) {
+        setUser(stored);
+      } else {
+        currentUser = await getCurrentUser(token);
+        await saveCurrentUser(currentUser);
+        setUser(currentUser);
+      }
+
+      const upcoming = await listUpcomingMatches(token);
+      setMatches(upcoming);
+
+      void registerNotificationsForSession(token)
+        .then((registration) => syncAttendanceOpeningNotifications(upcoming, registration))
+        .catch(() => undefined);
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
         await clearSession();
@@ -71,7 +90,7 @@ export default function HomeScreen() {
                 {user ? `Olá, ${user.displayName}` : 'Sua próxima pelada'}
               </Text>
               <Text color="$onzeMuted" fontSize={14} lineHeight={20}>
-                Veja o que está marcado e acompanhe suas próximas partidas.
+                Veja o que está marcado, confirme sua presença e não perca o próximo jogo.
               </Text>
             </YStack>
 
@@ -84,29 +103,42 @@ export default function HomeScreen() {
                 padding="$4"
               >
                 <Text color="$onzeDanger" fontSize={13}>{error}</Text>
+                <Button backgroundColor="$onzeGreen" marginTop="$3" onPress={() => void loadHome()}>
+                  <Text color="$onzeSurface" fontWeight="800">Tentar novamente</Text>
+                </Button>
               </YStack>
             ) : null}
 
             <YStack gap="$3">
               <Text color="$onzeInk" fontSize={20} fontWeight="900">Próximos jogos</Text>
 
-              <YStack
-                alignItems="center"
-                backgroundColor="$onzeSurface"
-                borderColor="$onzeBorder"
-                borderRadius="$7"
-                borderWidth={1}
-                gap="$3"
-                padding="$7"
-              >
-                <Text fontSize={42}>⚽</Text>
-                <Text color="$onzeInk" fontSize={19} fontWeight="900" textAlign="center">
-                  Você não tem jogo marcado
-                </Text>
-                <Text color="$onzeMuted" fontSize={14} lineHeight={21} textAlign="center">
-                  Quando uma partida for marcada em um dos seus grupos, ela aparecerá aqui.
-                </Text>
-              </YStack>
+              {!error && matches.length === 0 ? (
+                <YStack
+                  alignItems="center"
+                  backgroundColor="$onzeSurface"
+                  borderColor="$onzeBorder"
+                  borderRadius="$7"
+                  borderWidth={1}
+                  gap="$3"
+                  padding="$7"
+                >
+                  <Text fontSize={42}>⚽</Text>
+                  <Text color="$onzeInk" fontSize={19} fontWeight="900" textAlign="center">
+                    Você não tem nenhum jogo marcado.
+                  </Text>
+                  <Text color="$onzeMuted" fontSize={14} lineHeight={21} textAlign="center">
+                    Quando uma partida for marcada em um dos seus grupos, ela aparecerá aqui.
+                  </Text>
+                </YStack>
+              ) : (
+                matches.map((match) => (
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    onPress={() => router.push({ pathname: '/match', params: { matchId: match.id } })}
+                  />
+                ))
+              )}
             </YStack>
           </YStack>
         </ScrollView>
