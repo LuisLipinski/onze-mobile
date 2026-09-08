@@ -2,18 +2,17 @@
 
 Aplicativo Android do **Onze — Organizador de Pelada**.
 
-> Estado revisado em 04/09/2026 contra a implementação da branch mais completa. Esta página diferencia funcionalidade implementada, integração em `development` e itens planejados.
+> Estado revisado em 08/09/2026 contra a implementação integrada em `development`. Esta página diferencia funcionalidade implementada, histórico de branches e itens planejados.
 
 ## Estado por branch
 
 | Branch | Estado |
 |---|---|
-| `feature/paid-withdrawal-replacement-refund` | Versão funcional mais completa: partidas, presença, financeiro, prazos, notificações e reposições. |
-| `docs/documentation-alignment-2026-09-04` | Correções documentais baseadas na versão funcional mais completa. |
-| `development` | Integração até grupos e permissões administrativas; está nove commits atrás da versão funcional auditada. |
+| `development` | Versão funcional corrente: partidas, presença, financeiro, prazos, notificações e reposições. |
+| `feature/paid-withdrawal-replacement-refund` | Branch histórica que originou a linha funcional já integrada em `development`. |
 | `master` | Baseline inicial com somente README. **Ainda não é um backup funcional do aplicativo.** |
 
-A base funcional mais recente foi introduzida pelo commit `23c176e`; commits posteriores na mesma linha podem conter somente documentação. Nenhuma destas alterações foi promovida para `master`.
+A linha funcional foi integrada em `development` pelo [PR #13](https://github.com/LuisLipinski/onze-mobile/pull/13), no merge `3aaf352`. Sua base foi introduzida em `23c176e`. Nenhuma destas alterações foi promovida para `master`.
 
 ## Stack implementada
 
@@ -95,6 +94,7 @@ A base funcional mais recente foi introduzida pelo commit `23c176e`; commits pos
 
 - `Mobile CI`: instala dependências e executa `npm run typecheck`.
 - `Android APK`: executa o prebuild limpo, compila `assembleRelease` para `arm64-v8a` e publica o APK por 14 dias.
+- A integração em `development` passou no [Mobile CI #154](https://github.com/LuisLipinski/onze-mobile/actions/runs/34223392704) e no [Android APK #127](https://github.com/LuisLipinski/onze-mobile/actions/runs/34223392624), que publicou o artifact `onze-development-apk`.
 - O perfil EAS `preview` gera APK de distribuição interna.
 - O repositório ainda não possui testes unitários, testes de componentes ou suíte E2E Android automatizada.
 - Configuração Expo, bundle Android e integridade do APK são verificações de entrega; ainda não fazem parte integral do workflow `Mobile CI`.
