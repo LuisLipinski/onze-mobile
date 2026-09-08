@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Onze",
+    "slug": "onze-organizador-de-pelada",
+    "owner": "onze-organizador-de-pelada",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "onze",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.onze.organizadordepelada",
+      "googleServicesFile": "./google-services.json",
+      "icon": "./assets/icon.png",
+      "softwareKeyboardLayoutMode": "resize",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#148A4A"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "af0ba138-73ef-43d2-9b8c-e98fb1c5db31"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-system-ui",
+      "expo-notifications",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permitir que o Onze use a biometria para entrar na sua conta."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permitir que o Onze acesse suas fotos para escolher a imagem do grupo.",
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

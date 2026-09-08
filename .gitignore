@@ -1,0 +1,13 @@
+node_modules/
+.expo/
+dist/
+web-build/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+*-firebase-adminsdk-*.json
+google-service-account-key.json
+assets/icon.png
+assets/adaptive-icon.png
