@@ -10,9 +10,9 @@ Aplicativo Android do **Onze — Organizador de Pelada**.
 |---|---|
 | `development` | Versão funcional corrente: partidas, presença, financeiro, prazos, notificações e reposições. |
 | `feature/paid-withdrawal-replacement-refund` | Branch histórica que originou a linha funcional já integrada em `development`. |
-| `master` | Baseline inicial com somente README. **Ainda não é um backup funcional do aplicativo.** |
+| `master` | Branch de release estável; recebe somente versões validadas em `development` e autorizadas explicitamente. |
 
-A linha funcional foi integrada em `development` pelo [PR #13](https://github.com/LuisLipinski/onze-mobile/pull/13), no merge `3aaf352`. Sua base foi introduzida em `23c176e`. Nenhuma destas alterações foi promovida para `master`.
+A linha funcional foi integrada em `development` pelo [PR #13](https://github.com/LuisLipinski/onze-mobile/pull/13), no merge `3aaf352`. Sua base foi introduzida em `23c176e`. Promoções para `master` ocorrem somente após validação e autorização explícita.
 
 ## Stack implementada
 
