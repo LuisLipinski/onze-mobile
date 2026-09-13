@@ -21,5 +21,8 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Unit tests
+        run: npm test
+
       - name: TypeScript
         run: npm run typecheck

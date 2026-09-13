@@ -2,7 +2,7 @@
 
 Aplicativo Android do **Onze — Organizador de Pelada**.
 
-> Estado revisado em 08/09/2026 contra a implementação integrada em `development`. Esta página diferencia funcionalidade implementada, histórico de branches e itens planejados.
+> Estado revisado em 13/09/2026 contra a implementação preparada para `development`. Esta página diferencia funcionalidade implementada, histórico de branches e itens planejados.
 
 ## Estado por branch
 
@@ -46,7 +46,17 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 - Membros, promoção, rebaixamento, transferência do Principal e permissões individuais.
 - Criação de partida, detalhe da partida, presença, pagamentos e cancelamentos.
 - Créditos do grupo, acertos em lote e seleção de reposição.
-- Tela de carregamento específica para o despertar da API no Render.
+- Loading global para operações assíncronas, incluindo o despertar da API no Render.
+
+## Loading global
+
+- Todas as chamadas da API passam pelo mesmo controlador de loading; o upload da foto também participa do fluxo.
+- Um overlay modal bloqueia interações repetidas e informa qual operação está em andamento.
+- Operações muito rápidas não piscam na tela: o overlay aparece após 180 ms.
+- Após oito segundos, a mensagem explica que o servidor está demorando e que não é necessário tocar novamente.
+- Requisições simultâneas são contabilizadas; o overlay só fecha quando todas terminam.
+- Sucesso, erro e timeout sempre liberam o overlay. O timeout da API permanece em 60 segundos e devolve o usuário à tela para tentar novamente.
+- Registro silencioso do token de push não bloqueia a navegação. Seleção de foto, compartilhamento e biometria mantêm o feedback nativo do sistema.
 
 ## Administração de grupos
 
@@ -92,15 +102,17 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 
 ## Validação atual
 
-- `Mobile CI`: instala dependências e executa `npm run typecheck`.
+- `Mobile CI`: instala dependências, executa os testes unitários com `npm test` e valida o TypeScript com `npm run typecheck`.
 - `Android APK`: executa o prebuild limpo, compila `assembleRelease` para `arm64-v8a` e publica o APK por 14 dias.
 - A integração em `development` passou no [Mobile CI #154](https://github.com/LuisLipinski/onze-mobile/actions/runs/34223392704) e no [Android APK #127](https://github.com/LuisLipinski/onze-mobile/actions/runs/34223392624), que publicou o artifact `onze-development-apk`.
 - O perfil EAS `preview` gera APK de distribuição interna.
-- O repositório ainda não possui testes unitários, testes de componentes ou suíte E2E Android automatizada.
+- O controlador do loading global possui cinco testes unitários para concorrência, finalização idempotente e limpeza após sucesso ou erro.
+- Testes de componentes e uma suíte E2E Android automatizada ainda não foram implementados.
 - Configuração Expo, bundle Android e integridade do APK são verificações de entrega; ainda não fazem parte integral do workflow `Mobile CI`.
 
 ```bash
 npm install
+npm test
 npm run typecheck
 npx expo config --type public
 npx expo export --platform android
