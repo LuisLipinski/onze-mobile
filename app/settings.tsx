@@ -13,6 +13,7 @@ import {
   getStoredCurrentUser,
 } from '../src/lib/auth-storage';
 import { isBiometricAvailable } from '../src/lib/biometrics';
+import { withGlobalLoading } from '../src/lib/global-loading';
 import { unregisterNotificationsForSession } from '../src/lib/notifications';
 
 export default function SettingsScreen() {
@@ -31,21 +32,33 @@ export default function SettingsScreen() {
   );
 
   async function loadSettings() {
-    const [user, available, credential] = await Promise.all([
-      getStoredCurrentUser(),
-      isBiometricAvailable().catch(() => false),
-      getBiometricCredential(),
-    ]);
-    setDisplayName(user?.displayName ?? '');
-    setAccountEmail(user?.email ?? '');
-    setBiometricAvailable(available);
-    setBiometricEnabled(
-      Boolean(
-        user &&
-          credential &&
-          user.email.trim().toLowerCase() === credential.email.trim().toLowerCase(),
-      ),
-    );
+    try {
+      await withGlobalLoading(
+        async () => {
+          const [user, available, credential] = await Promise.all([
+            getStoredCurrentUser(),
+            isBiometricAvailable().catch(() => false),
+            getBiometricCredential(),
+          ]);
+          setDisplayName(user?.displayName ?? '');
+          setAccountEmail(user?.email ?? '');
+          setBiometricAvailable(available);
+          setBiometricEnabled(
+            Boolean(
+              user &&
+                credential &&
+                user.email.trim().toLowerCase() === credential.email.trim().toLowerCase(),
+            ),
+          );
+        },
+        {
+          title: 'Carregando as configurações...',
+          message: 'Estamos conferindo sua conta e as opções de biometria.',
+        },
+      );
+    } catch {
+      setMessage('Não foi possível carregar as configurações. Tente novamente.');
+    }
   }
 
   async function onBiometricToggle(value: boolean) {
@@ -63,7 +76,13 @@ export default function SettingsScreen() {
 
     setUpdatingBiometric(true);
     try {
-      await enableBiometricLogin();
+      await withGlobalLoading(
+        enableBiometricLogin,
+        {
+          title: 'Ativando a biometria...',
+          message: 'Estamos protegendo o acesso desta conta no aparelho.',
+        },
+      );
       setBiometricEnabled(true);
       setMessage(`Login com biometria ativado para ${accountEmail}. Você continua conectado.`);
     } catch {
@@ -76,7 +95,13 @@ export default function SettingsScreen() {
   async function disableBiometrics() {
     setUpdatingBiometric(true);
     try {
-      await disableBiometricLogin();
+      await withGlobalLoading(
+        disableBiometricLogin,
+        {
+          title: 'Desativando a biometria...',
+          message: 'Estamos removendo o vínculo desta conta no aparelho.',
+        },
+      );
       setBiometricEnabled(false);
       setMessage('Login com biometria desativado neste aparelho.');
     } catch {
@@ -87,12 +112,24 @@ export default function SettingsScreen() {
   }
 
   async function logout() {
-    const token = await getAccessToken();
-    if (token) {
-      await unregisterNotificationsForSession(token).catch(() => undefined);
+    try {
+      await withGlobalLoading(
+        async () => {
+          const token = await getAccessToken();
+          if (token) {
+            await unregisterNotificationsForSession(token).catch(() => undefined);
+          }
+          await clearSession();
+          router.replace('/');
+        },
+        {
+          title: 'Saindo da conta...',
+          message: 'Estamos encerrando sua sessão com segurança.',
+        },
+      );
+    } catch {
+      setMessage('Não foi possível sair da conta. Tente novamente.');
     }
-    await clearSession();
-    router.replace('/');
   }
 
   return (

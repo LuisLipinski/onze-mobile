@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useColorScheme } from 'react-native';
 import { TamaguiProvider } from 'tamagui';
 
+import { GlobalLoadingOverlay } from '../src/components/global-loading-overlay';
 import { tamaguiConfig } from '../tamagui.config';
 
 export default function RootLayout() {
@@ -30,6 +31,7 @@ export default function RootLayout() {
       defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}
     >
       <Stack screenOptions={{ headerShown: false }} />
+      <GlobalLoadingOverlay />
     </TamaguiProvider>
   );
 }
