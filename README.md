@@ -2,7 +2,7 @@
 
 Aplicativo Android do **Onze — Organizador de Pelada**.
 
-> Estado revisado em 13/09/2026 contra a implementação preparada para `development`. Esta página diferencia funcionalidade implementada, histórico de branches e itens planejados.
+> Estado revisado em 14/09/2026 contra a implementação preparada para `development`. Esta página diferencia funcionalidade implementada, histórico de branches e itens planejados.
 
 ## Estado por branch
 
@@ -44,6 +44,7 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 - Fluxo de foto e dados complementares do grupo.
 - Convite por link HTTPS/código, compartilhamento e regeneração.
 - Membros, promoção, rebaixamento, transferência do Principal e permissões individuais.
+- Perfil esportivo próprio e edição administrativa por jogador.
 - Criação de partida, detalhe da partida, presença, pagamentos e cancelamentos.
 - Créditos do grupo, acertos em lote e seleção de reposição.
 - Loading global para operações assíncronas, incluindo o despertar da API no Render.
@@ -66,6 +67,17 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 - Somente o Principal edita permissões, rebaixa administradores e transfere o cargo.
 - Após a transferência, o antigo Principal permanece como `ADMIN` sem permissões automáticas.
 - Edição, convites, remoção de membros e partidas respeitam as permissões devolvidas pelo backend.
+- O Principal pode delegar `EDIT_PLAYER_PROFILES` para permitir a edição dos perfis esportivos de terceiros.
+
+## Perfil esportivo
+
+- O perfil é independente em cada grupo e pode ser aberto pelo menu da pelada.
+- O jogador seleciona uma ou mais posições de linha: zagueiro, meio-campo, ponta e atacante.
+- A opção de goleiro é independente e pode coexistir com qualquer posição de linha.
+- O pé dominante aceita direito, esquerdo ou ambos.
+- O nível técnico segue a escala de 1 — Iniciante a 5 — Destaque e só pode ser alterado pelo Principal ou por um administrador autorizado.
+- A lista administrativa de membros resume posições, goleiro, pé dominante e avaliação técnica, além de indicar perfis ainda não preenchidos.
+- Todas as consultas e gravações usam o loading global e mantêm mensagens de erro recuperáveis na tela.
 
 ## Partidas e presença
 
@@ -107,6 +119,7 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 - A integração em `development` passou no [Mobile CI #154](https://github.com/LuisLipinski/onze-mobile/actions/runs/34223392704) e no [Android APK #127](https://github.com/LuisLipinski/onze-mobile/actions/runs/34223392624), que publicou o artifact `onze-development-apk`.
 - O perfil EAS `preview` gera APK de distribuição interna.
 - O controlador do loading global possui cinco testes unitários para concorrência, finalização idempotente e limpeza após sucesso ou erro.
+- As regras locais do perfil esportivo possuem três testes unitários para múltiplas posições, goleiro, validação e rótulos da escala técnica.
 - Testes de componentes e uma suíte E2E Android automatizada ainda não foram implementados.
 - Configuração Expo, bundle Android e integridade do APK são verificações de entrega; ainda não fazem parte integral do workflow `Mobile CI`.
 
@@ -126,7 +139,6 @@ Variáveis opcionais:
 
 ## Planejado, ainda não disponível
 
-- Perfil esportivo completo.
 - Lista de espera.
 - Formação e balanceamento dos times.
 - Jogo ao vivo, placar e eventos.

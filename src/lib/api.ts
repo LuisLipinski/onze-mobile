@@ -3,6 +3,7 @@ import {
   withGlobalLoading,
 } from './global-loading';
 import type { GlobalLoadingOptions } from './global-loading';
+import type { DominantFoot, PlayerPosition } from './sports-profile';
 
 export type User = {
   id: string;
@@ -24,7 +25,8 @@ export type GroupAdminPermission =
   | 'REMOVE_MEMBERS'
   | 'PROMOTE_MEMBERS'
   | 'EDIT_GROUP'
-  | 'SCHEDULE_GAMES';
+  | 'SCHEDULE_GAMES'
+  | 'EDIT_PLAYER_PROFILES';
 export type GroupDayOfWeek =
   | 'MONDAY'
   | 'TUESDAY'
@@ -62,6 +64,22 @@ export type GroupMember = {
   role: GroupRole;
   permissions: GroupAdminPermission[];
   currentUser: boolean;
+  positions: PlayerPosition[];
+  canPlayGoalkeeper: boolean;
+  dominantFoot: DominantFoot | null;
+  technicalLevel: number | null;
+  sportsProfileComplete: boolean;
+};
+
+export type SportsProfile = {
+  membershipId: string;
+  userId: string;
+  displayName: string;
+  positions: PlayerPosition[];
+  canPlayGoalkeeper: boolean;
+  dominantFoot: DominantFoot | null;
+  technicalLevel: number | null;
+  complete: boolean;
 };
 
 export type GroupInvite = {
@@ -384,6 +402,72 @@ export function listGroupMembers(accessToken: string, groupId: string) {
     loading: {
       title: 'Carregando os jogadores...',
       message: 'Estamos atualizando os membros e administradores do grupo.',
+    },
+  });
+}
+
+export function getOwnSportsProfile(accessToken: string, groupId: string) {
+  return request<SportsProfile>(`/api/groups/${groupId}/members/me/sports-profile`, {
+    headers: authenticatedHeaders(accessToken),
+    loading: {
+      title: 'Carregando seu perfil...',
+      message: 'Estamos buscando suas preferências esportivas neste grupo.',
+    },
+  });
+}
+
+export function updateOwnSportsProfile(
+  accessToken: string,
+  groupId: string,
+  profile: {
+    positions: PlayerPosition[];
+    canPlayGoalkeeper: boolean;
+    dominantFoot: DominantFoot;
+  },
+) {
+  return request<SportsProfile>(`/api/groups/${groupId}/members/me/sports-profile`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify(profile),
+    loading: {
+      title: 'Salvando seu perfil...',
+      message: 'Estamos atualizando suas posições e preferências no grupo.',
+    },
+  });
+}
+
+export function getMemberSportsProfile(
+  accessToken: string,
+  groupId: string,
+  membershipId: string,
+) {
+  return request<SportsProfile>(`/api/groups/${groupId}/members/${membershipId}/sports-profile`, {
+    headers: authenticatedHeaders(accessToken),
+    loading: {
+      title: 'Carregando o perfil...',
+      message: 'Estamos buscando os dados esportivos deste jogador.',
+    },
+  });
+}
+
+export function updateMemberSportsProfile(
+  accessToken: string,
+  groupId: string,
+  membershipId: string,
+  profile: {
+    positions: PlayerPosition[];
+    canPlayGoalkeeper: boolean;
+    dominantFoot: DominantFoot;
+    technicalLevel: number;
+  },
+) {
+  return request<SportsProfile>(`/api/groups/${groupId}/members/${membershipId}/sports-profile`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify(profile),
+    loading: {
+      title: 'Salvando o perfil...',
+      message: 'Estamos atualizando o perfil e a avaliação técnica do jogador.',
     },
   });
 }
