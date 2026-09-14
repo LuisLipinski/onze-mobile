@@ -293,6 +293,14 @@ export default function GroupScreen() {
                   </Button>
                 </XStack>
 
+                <MenuButton label="Meu perfil esportivo" onPress={() => {
+                  setMenuVisible(false);
+                  router.push({
+                    pathname: '/sports-profile',
+                    params: { groupId: group.id, groupName: group.name },
+                  });
+                }} />
+
                 {isAdmin ? (
                   <MenuButton label="Ver membros" onPress={() => {
                     setMenuVisible(false);

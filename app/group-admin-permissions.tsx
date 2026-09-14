@@ -41,7 +41,12 @@ const PERMISSIONS: {
   {
     value: 'SCHEDULE_GAMES',
     label: 'Marcar jogos',
-    description: 'Liberar a marcação de partidas quando essa funcionalidade estiver disponível.',
+    description: 'Marcar partidas e administrar presença, pagamentos, créditos e reposições.',
+  },
+  {
+    value: 'EDIT_PLAYER_PROFILES',
+    label: 'Editar perfis esportivos',
+    description: 'Atualizar posições, opção de goleiro, pé dominante e nível técnico dos jogadores.',
   },
 ];
 

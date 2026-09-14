@@ -18,6 +18,11 @@ import {
   transferPrimaryAdmin,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
+import {
+  formatDominantFoot,
+  formatPlayingRoles,
+  formatTechnicalLevel,
+} from '../src/lib/sports-profile';
 
 const ROLE_LABELS: Record<GroupRole, string> = {
   PRIMARY_ADMIN: 'Administrador principal',
@@ -31,6 +36,7 @@ const PERMISSION_LABELS: Record<GroupAdminPermission, string> = {
   PROMOTE_MEMBERS: 'Promover membros',
   EDIT_GROUP: 'Editar grupo',
   SCHEDULE_GAMES: 'Marcar jogos',
+  EDIT_PLAYER_PROFILES: 'Editar perfis esportivos',
 };
 
 type PendingAction = {
@@ -60,6 +66,9 @@ export default function GroupAdminsScreen() {
     : false;
   const canRemoveMembers = currentMember
     ? hasGroupPermission(currentMember, 'REMOVE_MEMBERS')
+    : false;
+  const canEditPlayerProfiles = currentMember
+    ? hasGroupPermission(currentMember, 'EDIT_PLAYER_PROFILES')
     : false;
 
   async function loadMembers() {
@@ -167,6 +176,19 @@ export default function GroupAdminsScreen() {
     });
   }
 
+  function editSportsProfile(member: GroupMember) {
+    if (!params.groupId) return;
+    router.push({
+      pathname: '/sports-profile',
+      params: {
+        groupId: params.groupId,
+        groupName: params.groupName ?? '',
+        membershipId: member.membershipId,
+        memberName: member.displayName,
+      },
+    });
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 44 }}>
@@ -199,10 +221,12 @@ export default function GroupAdminsScreen() {
                 isPrimaryAdmin={isPrimaryAdmin}
                 canPromoteMembers={canPromoteMembers}
                 canRemoveMembers={canRemoveMembers}
+                canEditPlayerProfiles={canEditPlayerProfiles}
                 busy={actionId === member.membershipId}
                 onPromoteMember={() => setPendingAction({ type: 'promote', member })}
                 onRemoveMember={() => setPendingAction({ type: 'remove', member })}
                 onEditPermissions={() => editPermissions(member)}
+                onEditSportsProfile={() => editSportsProfile(member)}
                 onPromoteToPrimary={() => setPendingAction({ type: 'transfer', member })}
                 onDemote={() => setPendingAction({ type: 'demote', member })}
               />
@@ -266,10 +290,12 @@ function MemberCard({
   isPrimaryAdmin,
   canPromoteMembers,
   canRemoveMembers,
+  canEditPlayerProfiles,
   busy,
   onPromoteMember,
   onRemoveMember,
   onEditPermissions,
+  onEditSportsProfile,
   onPromoteToPrimary,
   onDemote,
 }: {
@@ -277,10 +303,12 @@ function MemberCard({
   isPrimaryAdmin: boolean;
   canPromoteMembers: boolean;
   canRemoveMembers: boolean;
+  canEditPlayerProfiles: boolean;
   busy: boolean;
   onPromoteMember: () => void;
   onRemoveMember: () => void;
   onEditPermissions: () => void;
+  onEditSportsProfile: () => void;
   onPromoteToPrimary: () => void;
   onDemote: () => void;
 }) {
@@ -309,6 +337,36 @@ function MemberCard({
           </Text>
         </YStack>
       </XStack>
+
+      <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$3">
+        <Text color="$onzeMuted" fontSize={10} fontWeight="900">PERFIL ESPORTIVO</Text>
+        <Text
+          color={member.sportsProfileComplete ? '$onzeInk' : '$onzeMuted'}
+          fontSize={12}
+          fontWeight={member.sportsProfileComplete ? '700' : '400'}
+          lineHeight={18}
+        >
+          {formatPlayingRoles(member.positions, member.canPlayGoalkeeper)}
+        </Text>
+        {member.sportsProfileComplete ? (
+          <Text color="$onzeMuted" fontSize={11} lineHeight={17}>
+            Pé {formatDominantFoot(member.dominantFoot).toLowerCase()} • {formatTechnicalLevel(member.technicalLevel)}
+          </Text>
+        ) : null}
+      </YStack>
+
+      {canEditPlayerProfiles ? (
+        <Button
+          backgroundColor="$onzeSurface"
+          borderColor="$onzeGreen"
+          borderWidth={1}
+          disabled={busy}
+          height={42}
+          onPress={onEditSportsProfile}
+        >
+          <Text color="$onzeGreen" fontSize={13} fontWeight="800">Editar perfil esportivo</Text>
+        </Button>
+      ) : null}
 
       {member.role === 'ADMIN' ? (
         <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$3">

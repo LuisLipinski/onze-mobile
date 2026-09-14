@@ -8,7 +8,7 @@
     "start": "expo start",
     "android": "expo start --android",
     "web": "expo start --web",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test src/lib/global-loading.test.mjs",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test src/lib/*.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
