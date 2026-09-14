@@ -90,6 +90,7 @@ export default function CreateMatchScreen() {
   const [paymentRequired, setPaymentRequired] = useState(
     Boolean(params.paymentAmount && params.pixKey),
   );
+  const [goalkeeperPays, setGoalkeeperPays] = useState(true);
   const [paymentAmount, setPaymentAmount] = useState(() => {
     const initial = Number(params.paymentAmount);
     return Number.isFinite(initial) && initial > 0 ? paymentAmountInputValue(initial) : '';
@@ -184,6 +185,7 @@ export default function CreateMatchScreen() {
         paymentDeadlineDate: parsedPaymentDeadlineDate ?? undefined,
         paymentDeadlineTime: parsedPaymentDeadlineTime ?? undefined,
         paymentRequired,
+        goalkeeperPays: paymentRequired ? goalkeeperPays : true,
         paymentAmount: parsedPaymentAmount ?? undefined,
         pixKey: paymentRequired ? pixKey.trim() : undefined,
         notes,
@@ -415,6 +417,30 @@ export default function CreateMatchScreen() {
                       value={pixKey}
                     />
                   </Field>
+                  <YStack gap="$2">
+                    <XStack alignItems="center" gap="$4" justifyContent="space-between">
+                      <YStack flex={1} gap="$1">
+                        <Text color="$onzeInk" fontSize={15} fontWeight="900">
+                          Goleiros pagam
+                        </Text>
+                        <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                          Se desligado, jogadores marcados como goleiros pelo administrador ficarão isentos.
+                        </Text>
+                      </YStack>
+                      <Switch
+                        accessibilityLabel="Cobrar pagamento dos goleiros"
+                        onValueChange={setGoalkeeperPays}
+                        thumbColor="#FFFFFF"
+                        trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
+                        value={goalkeeperPays}
+                      />
+                    </XStack>
+                    {weekly ? (
+                      <Text color="$onzeGreen" fontSize={12} fontWeight="800" lineHeight={18}>
+                        Esta regra também será mantida nas próximas rodadas semanais.
+                      </Text>
+                    ) : null}
+                  </YStack>
                 </YStack>
               ) : null}
             </YStack>

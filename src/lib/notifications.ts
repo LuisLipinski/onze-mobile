@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 
 import type { FootballMatch } from './api';
 import { registerPushToken, unregisterPushToken } from './api';
+import { hasPendingCurrentPlayerPayment } from './match-payment';
 import { formatCurrency } from './payment';
 
 const PUSH_TOKEN_KEY = 'onze.expoPushToken';
@@ -179,7 +180,8 @@ async function scheduleMatchReminders(
     if (triggerDate.getTime() > now.getTime() && triggerDate.getTime() < startsAt.getTime()) {
       const isDayBefore = compareDate(addDays(cursor, 1), matchDay) === 0;
       if (match.myAttendance === 'GOING') {
-        const pendingPaymentAfterDeadline = match.myPaymentStatus === 'PENDING'
+        const pendingPayment = hasPendingCurrentPlayerPayment(match);
+        const pendingPaymentAfterDeadline = pendingPayment
           && paymentDeadline != null
           && triggerDate.getTime() > paymentDeadline.getTime();
         if (isDayBefore && !pendingPaymentAfterDeadline) {
@@ -191,7 +193,7 @@ async function scheduleMatchReminders(
             copy.title,
             copy.body,
           );
-        } else if (match.myPaymentStatus === 'PENDING'
+        } else if (pendingPayment
             && (paymentDeadline == null || triggerDate.getTime() <= paymentDeadline.getTime())) {
           await scheduleNotification(
             match,
@@ -220,7 +222,7 @@ async function scheduleMatchReminders(
 }
 
 function tomorrowNotificationCopy(match: FootballMatch) {
-  if (match.myPaymentStatus === 'PENDING') {
+  if (hasPendingCurrentPlayerPayment(match)) {
     return {
       title: 'Jogo amanhã — pagamento pendente 💳',
       body: `Pague ${formatCurrency(match.myRemainingPaymentAmount ?? match.paymentAmount ?? 0)} e prepare-se para o jogo de ${match.groupName}.`,

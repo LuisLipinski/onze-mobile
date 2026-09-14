@@ -114,6 +114,8 @@ export type MatchAttendance = {
   userId: string;
   displayName: string;
   status: AttendanceStatus;
+  isGoalkeeper: boolean;
+  paymentExempt: boolean;
   paymentStatus: PaymentStatus | null;
   paymentSettlementStatus: PaymentSettlementStatus | null;
   creditAppliedAmount: number | null;
@@ -128,6 +130,12 @@ export type MatchAttendance = {
   replacementForUserId: string | null;
   settlementAvailable: boolean;
   currentUser: boolean;
+};
+
+export type RentalGoalkeeper = {
+  id: string;
+  displayName: string;
+  createdAt: string;
 };
 
 export type PlayerCredit = {
@@ -153,6 +161,7 @@ export type FootballMatch = {
   venue: string;
   maxPlayers: number;
   paymentRequired: boolean;
+  goalkeeperPays: boolean;
   paymentAmount: number | null;
   pixKey: string | null;
   notes: string | null;
@@ -176,6 +185,7 @@ export type FootballMatch = {
   goingCount: number;
   notGoingCount: number;
   attendances: MatchAttendance[];
+  rentalGoalkeepers: RentalGoalkeeper[];
   canManage: boolean;
 };
 
@@ -190,6 +200,7 @@ export type CreateMatchInput = {
   paymentDeadlineDate?: string;
   paymentDeadlineTime?: string;
   paymentRequired: boolean;
+  goalkeeperPays: boolean;
   paymentAmount?: number;
   pixKey?: string;
   notes?: string;
@@ -796,6 +807,57 @@ export function addMatchReplacement(
       message: 'Estamos preenchendo a vaga e liberando o acerto aplicável.',
     },
   });
+}
+
+export function updateMatchGoalkeeper(
+  accessToken: string,
+  matchId: string,
+  playerUserId: string,
+  isGoalkeeper: boolean,
+) {
+  return request<FootballMatch>(`/api/matches/${matchId}/goalkeepers/${playerUserId}`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ isGoalkeeper }),
+    loading: {
+      title: isGoalkeeper ? 'Definindo o goleiro...' : 'Atualizando o goleiro...',
+      message: 'Estamos aplicando as regras de presença e pagamento desta partida.',
+    },
+  });
+}
+
+export function addRentalGoalkeeper(
+  accessToken: string,
+  matchId: string,
+  displayName: string,
+) {
+  return request<FootballMatch>(`/api/matches/${matchId}/rental-goalkeepers`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ displayName: displayName.trim() }),
+    loading: {
+      title: 'Adicionando goleiro...',
+      message: 'Estamos reservando uma vaga para o goleiro de aluguel.',
+    },
+  });
+}
+
+export function removeRentalGoalkeeper(
+  accessToken: string,
+  matchId: string,
+  rentalGoalkeeperId: string,
+) {
+  return request<FootballMatch>(
+    `/api/matches/${matchId}/rental-goalkeepers/${rentalGoalkeeperId}`,
+    {
+      method: 'DELETE',
+      headers: authenticatedHeaders(accessToken),
+      loading: {
+        title: 'Removendo goleiro...',
+        message: 'Estamos liberando a vaga desta partida.',
+      },
+    },
+  );
 }
 
 export function cancelMatch(accessToken: string, matchId: string) {

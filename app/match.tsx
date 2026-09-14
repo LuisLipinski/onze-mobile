@@ -5,11 +5,13 @@ import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { PaymentSettlementModal } from '../src/components/payment-settlement-modal';
+import { RentalGoalkeeperModal } from '../src/components/rental-goalkeeper-modal';
 import { ReplacementPlayerModal } from '../src/components/replacement-player-modal';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
   addMatchReplacement,
+  addRentalGoalkeeper,
   AttendanceStatus,
   cancelMatch,
   confirmMatchPayment,
@@ -23,10 +25,13 @@ import {
   PaymentSettlementResolution,
   PaymentSettlementStatus,
   PaymentStatus,
+  removeRentalGoalkeeper,
   reportMatchPayment,
+  RentalGoalkeeper,
   resolveMatchPaymentSettlement,
   resolveMatchPaymentSettlements,
   updateMatchAttendance,
+  updateMatchGoalkeeper,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
 import {
@@ -34,6 +39,10 @@ import {
   syncSingleMatchNotifications,
 } from '../src/lib/notifications';
 import { formatCurrency } from '../src/lib/payment';
+import {
+  currentMatchAttendance,
+  shouldShowCurrentPlayerPayment,
+} from '../src/lib/match-payment';
 
 type ManagementAction = 'cancel-occurrence' | 'end-series' | null;
 type PaymentBadgeColor = '$onzeGreen' | '$onzeDanger' | '$onzeMuted' | '#8A6414';
@@ -90,6 +99,13 @@ export default function MatchScreen() {
   const [replacementCandidates, setReplacementCandidates] = useState<GroupMember[]>([]);
   const [selectedReplacementUserId, setSelectedReplacementUserId] = useState<string | null>(null);
   const [replacingPlayer, setReplacingPlayer] = useState(false);
+  const [goalkeeperChange, setGoalkeeperChange] = useState<MatchAttendance | null>(null);
+  const [updatingGoalkeeperId, setUpdatingGoalkeeperId] = useState<string | null>(null);
+  const [rentalModalVisible, setRentalModalVisible] = useState(false);
+  const [rentalGoalkeeperName, setRentalGoalkeeperName] = useState('');
+  const [rentalGoalkeeperError, setRentalGoalkeeperError] = useState<string | null>(null);
+  const [rentalToRemove, setRentalToRemove] = useState<RentalGoalkeeper | null>(null);
+  const [managingRentalId, setManagingRentalId] = useState<string | null>(null);
   const [managementAction, setManagementAction] = useState<ManagementAction>(null);
   const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -212,6 +228,95 @@ export default function MatchScreen() {
       setError(exception instanceof Error ? exception.message : 'Não foi possível confirmar o pagamento.');
     } finally {
       setUpdatingPayment(null);
+    }
+  }
+
+  async function confirmGoalkeeperChange() {
+    if (!match || !goalkeeperChange || updatingGoalkeeperId) return;
+    const isGoalkeeper = !goalkeeperChange.isGoalkeeper;
+    setUpdatingGoalkeeperId(goalkeeperChange.userId);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        goToLogin();
+        return;
+      }
+      const updatedMatch = await updateMatchGoalkeeper(
+        token,
+        match.id,
+        goalkeeperChange.userId,
+        isGoalkeeper,
+      );
+      setMatch(updatedMatch);
+      setGoalkeeperChange(null);
+      syncNotifications(token, updatedMatch);
+    } catch (exception) {
+      setGoalkeeperChange(null);
+      setError(exception instanceof Error
+        ? exception.message
+        : 'Não foi possível atualizar o goleiro.');
+    } finally {
+      setUpdatingGoalkeeperId(null);
+    }
+  }
+
+  function openRentalGoalkeeperModal() {
+    if (!match || match.goingCount >= match.maxPlayers) return;
+    setRentalGoalkeeperName('');
+    setRentalGoalkeeperError(null);
+    setRentalModalVisible(true);
+  }
+
+  async function confirmRentalGoalkeeper() {
+    if (!match || managingRentalId || !rentalModalVisible) return;
+    const displayName = rentalGoalkeeperName.trim();
+    if (!displayName) {
+      setRentalGoalkeeperError('Informe o nome do goleiro de aluguel.');
+      return;
+    }
+
+    setManagingRentalId('new');
+    setRentalGoalkeeperError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        goToLogin();
+        return;
+      }
+      const updatedMatch = await addRentalGoalkeeper(token, match.id, displayName);
+      setMatch(updatedMatch);
+      setRentalModalVisible(false);
+      setRentalGoalkeeperName('');
+    } catch (exception) {
+      setRentalGoalkeeperError(exception instanceof Error
+        ? exception.message
+        : 'Não foi possível adicionar o goleiro de aluguel.');
+    } finally {
+      setManagingRentalId(null);
+    }
+  }
+
+  async function confirmRentalGoalkeeperRemoval() {
+    if (!match || !rentalToRemove || managingRentalId) return;
+    setManagingRentalId(rentalToRemove.id);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        goToLogin();
+        return;
+      }
+      const updatedMatch = await removeRentalGoalkeeper(token, match.id, rentalToRemove.id);
+      setMatch(updatedMatch);
+      setRentalToRemove(null);
+    } catch (exception) {
+      setRentalToRemove(null);
+      setError(exception instanceof Error
+        ? exception.message
+        : 'Não foi possível remover o goleiro de aluguel.');
+    } finally {
+      setManagingRentalId(null);
     }
   }
 
@@ -395,8 +500,10 @@ export default function MatchScreen() {
   const awaiting = match?.attendances.filter((attendance) => attendance.status === 'PENDING') ?? [];
   const payments = match?.attendances.filter((attendance) => attendance.paymentStatus != null) ?? [];
   const openSettlements = payments.filter((attendance) => isSettlementOpen(attendance.paymentSettlementStatus));
-  const currentAttendance = match?.attendances.find((attendance) => attendance.currentUser) ?? null;
+  const currentAttendance = match ? currentMatchAttendance(match) : null;
+  const showCurrentPayment = match ? shouldShowCurrentPlayerPayment(match) : false;
   const actionIsEndSeries = managementAction === 'end-series';
+  const goalkeeperTargetState = goalkeeperChange ? !goalkeeperChange.isGoalkeeper : false;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
@@ -454,6 +561,13 @@ export default function MatchScreen() {
                       {match.paymentOpen ? 'EM ABERTO' : 'ENCERRADO'}
                     </Text>
                   </XStack>
+                ) : null}
+                {match.paymentRequired ? (
+                  <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                    {match.goalkeeperPays
+                      ? 'Goleiros membros seguem a cobrança normal desta partida.'
+                      : 'Goleiros marcados pelo administrador ficam isentos nesta partida.'}
+                  </Text>
                 ) : null}
               </YStack>
 
@@ -531,7 +645,7 @@ export default function MatchScreen() {
                 </YStack>
               )}
 
-              {match.paymentRequired && match.myPaymentStatus != null ? (
+              {showCurrentPayment && match.myPaymentStatus != null ? (
                 <YStack
                   backgroundColor={match.myPaymentStatus === 'PAID'
                     ? '#EAF7EF'
@@ -665,10 +779,36 @@ export default function MatchScreen() {
               <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
                 <XStack alignItems="center" justifyContent="space-between">
                   <Text color="$onzeInk" fontSize={18} fontWeight="900">Lista de presença</Text>
-                  <Text color="$onzeGreen" fontSize={13} fontWeight="900">{going.length}/{match.maxPlayers}</Text>
+                  <Text color="$onzeGreen" fontSize={13} fontWeight="900">{match.goingCount}/{match.maxPlayers}</Text>
                 </XStack>
 
-                <AttendanceList title="VÃO JOGAR" empty="Ninguém confirmou ainda." names={going.map((item) => item.displayName)} />
+                <ConfirmedAttendanceList
+                  members={going}
+                  rentalGoalkeepers={match.rentalGoalkeepers}
+                  canManage={match.canManage && match.status === 'SCHEDULED'}
+                  updatingGoalkeeperId={updatingGoalkeeperId}
+                  managingRentalId={managingRentalId}
+                  onChangeGoalkeeper={setGoalkeeperChange}
+                  onRemoveRental={setRentalToRemove}
+                />
+                {match.canManage && match.status === 'SCHEDULED' ? (
+                  <YStack gap="$2">
+                    <Button
+                      backgroundColor="$onzeSurface"
+                      borderColor="$onzeGreen"
+                      borderWidth={1}
+                      disabled={Boolean(managingRentalId) || match.goingCount >= match.maxPlayers}
+                      onPress={openRentalGoalkeeperModal}
+                    >
+                      <Text color="$onzeGreen" fontWeight="900">+ Adicionar goleiro de aluguel</Text>
+                    </Button>
+                    {match.goingCount >= match.maxPlayers ? (
+                      <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                        Remova ou libere uma vaga antes de adicionar outro goleiro.
+                      </Text>
+                    ) : null}
+                  </YStack>
+                ) : null}
                 {awaiting.length ? (
                   <AttendanceList
                     title="AINDA NÃO RESPONDERAM"
@@ -913,6 +1053,52 @@ export default function MatchScreen() {
 
       {match ? (
         <ConfirmActionModal
+          visible={goalkeeperChange != null}
+          title={goalkeeperTargetState ? 'Definir como goleiro?' : 'Remover papel de goleiro?'}
+          message={goalkeeperTargetState
+            ? match.goalkeeperPays
+              ? `${goalkeeperChange?.displayName ?? 'O jogador'} será identificado como goleiro, mas seguirá a cobrança normal desta partida.`
+              : `${goalkeeperChange?.displayName ?? 'O jogador'} ficará isento nesta partida. Crédito sem dinheiro será devolvido; pagamento em dinheiro já informado ou confirmado bloqueará a alteração.`
+            : goalkeeperChange?.paymentExempt
+              ? `${goalkeeperChange.displayName} deixará de ser goleiro e voltará a ter a cobrança normal desta partida.`
+              : `${goalkeeperChange?.displayName ?? 'O jogador'} deixará de ser identificado como goleiro. A situação de pagamento não será alterada.`}
+          confirmLabel={goalkeeperTargetState ? 'Definir goleiro' : 'Remover papel'}
+          loading={updatingGoalkeeperId === goalkeeperChange?.userId}
+          onCancel={() => setGoalkeeperChange(null)}
+          onConfirm={() => void confirmGoalkeeperChange()}
+        />
+      ) : null}
+
+      <RentalGoalkeeperModal
+        visible={rentalModalVisible}
+        name={rentalGoalkeeperName}
+        error={rentalGoalkeeperError}
+        loading={managingRentalId === 'new'}
+        onChangeName={(name) => {
+          setRentalGoalkeeperName(name);
+          setRentalGoalkeeperError(null);
+        }}
+        onCancel={() => {
+          if (managingRentalId) return;
+          setRentalModalVisible(false);
+          setRentalGoalkeeperError(null);
+        }}
+        onConfirm={() => void confirmRentalGoalkeeper()}
+      />
+
+      <ConfirmActionModal
+        visible={rentalToRemove != null}
+        title="Remover goleiro de aluguel?"
+        message={`${rentalToRemove?.displayName ?? 'Este goleiro'} será removido somente desta partida e a vaga ficará disponível novamente.`}
+        confirmLabel="Remover goleiro"
+        destructive
+        loading={managingRentalId === rentalToRemove?.id}
+        onCancel={() => setRentalToRemove(null)}
+        onConfirm={() => void confirmRentalGoalkeeperRemoval()}
+      />
+
+      {match ? (
+        <ConfirmActionModal
           visible={pendingAttendanceStatus === 'NOT_GOING'}
           title="Confirmar que não vai?"
           message={withdrawalConfirmationMessage(
@@ -1102,6 +1288,113 @@ function withdrawalPaymentMessage(
 
 function isSettlementOpen(status: PaymentSettlementStatus | null) {
   return status === 'REVIEW_REQUIRED' || status === 'PENDING';
+}
+
+function ConfirmedAttendanceList({
+  members,
+  rentalGoalkeepers,
+  canManage,
+  updatingGoalkeeperId,
+  managingRentalId,
+  onChangeGoalkeeper,
+  onRemoveRental,
+}: {
+  members: MatchAttendance[];
+  rentalGoalkeepers: RentalGoalkeeper[];
+  canManage: boolean;
+  updatingGoalkeeperId: string | null;
+  managingRentalId: string | null;
+  onChangeGoalkeeper: (attendance: MatchAttendance) => void;
+  onRemoveRental: (goalkeeper: RentalGoalkeeper) => void;
+}) {
+  const empty = members.length === 0 && rentalGoalkeepers.length === 0;
+  return (
+    <YStack gap="$2">
+      <Text color="$onzeMuted" fontSize={11} fontWeight="900">VÃO JOGAR</Text>
+      {empty ? (
+        <Text color="$onzeMuted" fontSize={13}>Ninguém confirmou ainda.</Text>
+      ) : null}
+      {members.map((attendance) => (
+        <XStack key={attendance.userId} alignItems="center" gap="$2">
+          <Text color="$onzeGreen" fontSize={13}>✓</Text>
+          <YStack flex={1} gap="$1">
+            <Text color="$onzeInk" fontSize={14} fontWeight="700">
+              {attendance.displayName}
+            </Text>
+            {attendance.isGoalkeeper ? (
+              <XStack flexWrap="wrap" gap="$2">
+                <RoleBadge label="GOLEIRO" />
+                {attendance.paymentExempt ? <RoleBadge label="ISENTO" exempt /> : null}
+              </XStack>
+            ) : null}
+          </YStack>
+          {canManage ? (
+            <Button
+              backgroundColor="$onzeSurface"
+              borderColor={attendance.isGoalkeeper ? '$onzeDanger' : '$onzeGreen'}
+              borderWidth={1}
+              disabled={Boolean(updatingGoalkeeperId)}
+              minHeight={36}
+              onPress={() => onChangeGoalkeeper(attendance)}
+              paddingHorizontal="$3"
+            >
+              <Text
+                color={attendance.isGoalkeeper ? '$onzeDanger' : '$onzeGreen'}
+                fontSize={11}
+                fontWeight="900"
+              >
+                {updatingGoalkeeperId === attendance.userId
+                  ? 'Salvando...'
+                  : attendance.isGoalkeeper ? 'Remover' : 'Definir goleiro'}
+              </Text>
+            </Button>
+          ) : null}
+        </XStack>
+      ))}
+      {rentalGoalkeepers.map((goalkeeper) => (
+        <XStack key={goalkeeper.id} alignItems="center" gap="$2">
+          <Text color="$onzeGreen" fontSize={13}>✓</Text>
+          <YStack flex={1} gap="$1">
+            <Text color="$onzeInk" fontSize={14} fontWeight="700">
+              {goalkeeper.displayName} — Goleiro de aluguel
+            </Text>
+            <RoleBadge label="GOLEIRO" />
+          </YStack>
+          {canManage ? (
+            <Button
+              backgroundColor="$onzeSurface"
+              borderColor="$onzeDanger"
+              borderWidth={1}
+              disabled={Boolean(managingRentalId)}
+              minHeight={36}
+              onPress={() => onRemoveRental(goalkeeper)}
+              paddingHorizontal="$3"
+            >
+              <Text color="$onzeDanger" fontSize={11} fontWeight="900">
+                {managingRentalId === goalkeeper.id ? 'Removendo...' : 'Remover'}
+              </Text>
+            </Button>
+          ) : null}
+        </XStack>
+      ))}
+    </YStack>
+  );
+}
+
+function RoleBadge({ label, exempt = false }: { label: string; exempt?: boolean }) {
+  return (
+    <Text
+      backgroundColor={exempt ? '#FFF7E6' : '#EAF7EF'}
+      borderRadius={999}
+      color={exempt ? '#8A6414' : '$onzeGreen'}
+      fontSize={10}
+      fontWeight="900"
+      paddingHorizontal="$2"
+      paddingVertical="$1"
+    >
+      {label}
+    </Text>
+  );
 }
 
 function AttendanceList({
