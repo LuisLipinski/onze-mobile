@@ -9,12 +9,17 @@ import {
 } from 'react-native';
 import { Button, Input, Text, TextArea, XStack, YStack } from 'tamagui';
 
-import { createMatch, MatchType } from '../src/lib/api';
+import { createMatch, MatchModality, MatchType } from '../src/lib/api';
 import { getAccessToken } from '../src/lib/auth-storage';
 import {
   getMatchFormatValidationError,
   requiredGoalkeepersAfterTeamCountChange,
 } from '../src/lib/match-format';
+import {
+  idealPlayers,
+  MATCH_MODALITY_OPTIONS,
+  minimumPlayersValidationError,
+} from '../src/lib/match-modality';
 import {
   parsePaymentAmount,
   paymentAmountInputValue,
@@ -91,6 +96,8 @@ export default function CreateMatchScreen() {
   const [paymentDeadlineTime, setPaymentDeadlineTime] = useState('18:00');
   const [venue, setVenue] = useState(params.venue ?? '');
   const [maxPlayers, setMaxPlayers] = useState('14');
+  const [modality, setModality] = useState<MatchModality>('FUT7');
+  const [minimumPlayers, setMinimumPlayers] = useState('14');
   const [matchType, setMatchType] = useState<MatchType>('INTERNAL');
   const [teamCount, setTeamCount] = useState('2');
   const [requiredGoalkeepers, setRequiredGoalkeepers] = useState('2');
@@ -109,6 +116,9 @@ export default function CreateMatchScreen() {
   const [error, setError] = useState<string | null>(null);
 
   function selectMatchType(nextMatchType: MatchType) {
+    updateSuggestedPlayerCounts(modality, nextMatchType, nextMatchType === 'INTERNAL'
+      ? Number.parseInt(teamCount, 10) || 2
+      : null);
     setMatchType(nextMatchType);
     if (nextMatchType === 'VERSUS_EXTERNAL') {
       setRequiredGoalkeepers('1');
@@ -124,14 +134,42 @@ export default function CreateMatchScreen() {
 
   function changeTeamCount(value: string) {
     const normalized = value.replace(/\D/g, '').slice(0, 2);
-    setTeamCount(normalized);
     const parsed = Number.parseInt(normalized, 10);
+    if (Number.isInteger(parsed) && parsed >= 2) {
+      updateSuggestedPlayerCounts(modality, 'INTERNAL', parsed);
+    }
+    setTeamCount(normalized);
     if (Number.isInteger(parsed) && parsed >= 2) {
       setRequiredGoalkeepers((current) => String(requiredGoalkeepersAfterTeamCountChange(
         Number.parseInt(current, 10) || 0,
         parsed,
       )));
     }
+  }
+
+  function updateSuggestedPlayerCounts(
+    nextModality: MatchModality,
+    nextType: MatchType,
+    nextTeamCount: number | null,
+  ) {
+    const currentTeamCount = matchType === 'INTERNAL' ? Number.parseInt(teamCount, 10) || 2 : null;
+    const currentIdeal = idealPlayers(modality, matchType, currentTeamCount);
+    const nextIdeal = idealPlayers(nextModality, nextType, nextTeamCount);
+    setMaxPlayers((current) => Number.parseInt(current, 10) === currentIdeal
+      ? String(nextIdeal)
+      : current);
+    setMinimumPlayers((current) => Number.parseInt(current, 10) === currentIdeal
+      ? String(nextIdeal)
+      : current);
+  }
+
+  function selectModality(nextModality: MatchModality) {
+    updateSuggestedPlayerCounts(
+      nextModality,
+      matchType,
+      matchType === 'INTERNAL' ? Number.parseInt(teamCount, 10) || 2 : null,
+    );
+    setModality(nextModality);
   }
 
   async function submit() {
@@ -145,6 +183,7 @@ export default function CreateMatchScreen() {
     const parsedPaymentDeadlineDate = paymentRequired ? parseDate(paymentDeadlineDate) : null;
     const parsedPaymentDeadlineTime = paymentRequired ? parseTime(paymentDeadlineTime) : null;
     const parsedMaxPlayers = Number.parseInt(maxPlayers, 10);
+    const parsedMinimumPlayers = Number.parseInt(minimumPlayers, 10);
     const parsedTeamCount = matchType === 'INTERNAL' ? Number.parseInt(teamCount, 10) : null;
     const parsedRequiredGoalkeepers = Number.parseInt(requiredGoalkeepers, 10);
     if (!parsedDate) {
@@ -188,6 +227,11 @@ export default function CreateMatchScreen() {
       setError('O limite deve ficar entre 2 e 100 jogadores.');
       return;
     }
+    const minimumError = minimumPlayersValidationError(parsedMinimumPlayers, parsedMaxPlayers);
+    if (minimumError) {
+      setError(minimumError);
+      return;
+    }
     const matchFormatError = getMatchFormatValidationError(
       matchType,
       parsedTeamCount,
@@ -227,6 +271,8 @@ export default function CreateMatchScreen() {
         matchType,
         teamCount: parsedTeamCount ?? undefined,
         requiredGoalkeepers: parsedRequiredGoalkeepers,
+        modality,
+        minimumPlayers: parsedMinimumPlayers,
         signupDeadlineDate: parsedSignupDeadlineDate,
         signupDeadlineTime: parsedSignupDeadlineTime,
         paymentDeadlineDate: parsedPaymentDeadlineDate ?? undefined,
@@ -390,6 +436,18 @@ export default function CreateMatchScreen() {
                 />
               </Field>
 
+              <YStack gap="$3">
+                <Text color="$onzeMuted" fontSize={11} fontWeight="900">MODALIDADE</Text>
+                {MATCH_MODALITY_OPTIONS.map((option) => (
+                  <MatchTypeButton
+                    key={option.value}
+                    label={`${option.label} · ${option.playersPerTeam} por time`}
+                    selected={modality === option.value}
+                    onPress={() => selectModality(option.value)}
+                  />
+                ))}
+              </YStack>
+
               <Field label="LIMITE DE JOGADORES">
                 <Input
                   backgroundColor="$onzeSurface"
@@ -402,6 +460,32 @@ export default function CreateMatchScreen() {
                   placeholderTextColor="$onzeMuted"
                   value={maxPlayers}
                 />
+              </Field>
+
+              <Field label="QUANTIDADE MÍNIMA DE JOGADORES">
+                <Input
+                  accessibilityLabel="Quantidade mínima de jogadores"
+                  backgroundColor="$onzeSurface"
+                  borderColor="$onzeBorder"
+                  color="$onzeInk"
+                  keyboardType="number-pad"
+                  maxLength={3}
+                  onChangeText={(value) => setMinimumPlayers(value.replace(/\D/g, ''))}
+                  placeholder={String(idealPlayers(
+                    modality,
+                    matchType,
+                    matchType === 'INTERNAL' ? Number.parseInt(teamCount, 10) || 2 : null,
+                  ))}
+                  placeholderTextColor="$onzeMuted"
+                  value={minimumPlayers}
+                />
+                <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                  Ideal para esta configuração: {idealPlayers(
+                    modality,
+                    matchType,
+                    matchType === 'INTERNAL' ? Number.parseInt(teamCount, 10) || 2 : null,
+                  )}. A formação automática fica bloqueada abaixo do mínimo.
+                </Text>
               </Field>
 
               <YStack gap="$3">
@@ -566,7 +650,7 @@ export default function CreateMatchScreen() {
                 <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$4">
                   <Text color="$onzeGreen" fontSize={13} fontWeight="900">Como funciona</Text>
                   <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                    No dia seguinte a cada jogo, às 09:00, a presença da próxima semana será liberada. Tipo, times e quantidade de goleiros serão mantidos; goleiros de aluguel não serão copiados.
+                    No dia seguinte a cada jogo, às 09:00, a presença da próxima semana será liberada. Tipo, modalidade, times, mínimo e goleiros serão mantidos; convidados e goleiros de aluguel não serão copiados.
                   </Text>
                 </YStack>
               ) : null}

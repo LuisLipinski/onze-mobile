@@ -24,10 +24,12 @@ import {
   getOwnSportsProfile,
   listGroupMembers,
   MatchAttendance,
+  MatchGuest,
   PaymentSettlementResolution,
   PaymentSettlementStatus,
   PaymentStatus,
   removeRentalGoalkeeper,
+  removeMatchGuest,
   reportMatchPayment,
   RentalGoalkeeper,
   resolveMatchPaymentSettlement,
@@ -51,6 +53,8 @@ import {
   currentMatchAttendance,
   shouldShowCurrentPlayerPayment,
 } from '../src/lib/match-payment';
+import { modalityLabel } from '../src/lib/match-modality';
+import { positionLabel } from '../src/lib/sports-profile';
 
 type ManagementAction = 'cancel-occurrence' | 'end-series' | null;
 type GoalkeeperPicker = 'secondary' | 'volunteer' | null;
@@ -116,6 +120,7 @@ export default function MatchScreen() {
   const [rentalGoalkeeperError, setRentalGoalkeeperError] = useState<string | null>(null);
   const [rentalToRemove, setRentalToRemove] = useState<RentalGoalkeeper | null>(null);
   const [managingRentalId, setManagingRentalId] = useState<string | null>(null);
+  const [managingGuestId, setManagingGuestId] = useState<string | null>(null);
   const [managementAction, setManagementAction] = useState<ManagementAction>(null);
   const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -339,6 +344,26 @@ export default function MatchScreen() {
         : 'Não foi possível remover o goleiro de aluguel.');
     } finally {
       setManagingRentalId(null);
+    }
+  }
+
+  async function removeGuest(guest: MatchGuest) {
+    if (!match || managingGuestId) return;
+    setManagingGuestId(guest.id);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        goToLogin();
+        return;
+      }
+      setMatch(await removeMatchGuest(token, match.id, guest.id));
+    } catch (exception) {
+      setError(exception instanceof Error
+        ? exception.message
+        : 'Não foi possível remover o convidado.');
+    } finally {
+      setManagingGuestId(null);
     }
   }
 
@@ -608,6 +633,9 @@ export default function MatchScreen() {
               >
                 <YStack gap="$1">
                   <Text color="$onzeInk" fontSize={18} fontWeight="900">Formato da partida</Text>
+                  <Text color="$onzeInk" fontSize={14} fontWeight="800">
+                    Modalidade: {modalityLabel(match.modality)}
+                  </Text>
                   {match.matchType === 'INTERNAL' ? (
                     <Text color="$onzeInk" fontSize={14} fontWeight="800">Times: {match.teamCount}</Text>
                   ) : (
@@ -616,6 +644,18 @@ export default function MatchScreen() {
                   <Text color="$onzeInk" fontSize={14} fontWeight="800">
                     Goleiros: {match.currentGoalkeepers} de {match.requiredGoalkeepers}
                   </Text>
+                  <Text color="$onzeInk" fontSize={14} fontWeight="800">
+                    Mínimo: {match.minimumPlayers} • Ideal: {match.idealPlayers}
+                  </Text>
+                  {match.missingMinimumPlayers > 0 ? (
+                    <Text color="$onzeDanger" fontSize={13} fontWeight="800">
+                      Faltam {match.missingMinimumPlayers} {match.missingMinimumPlayers === 1 ? 'jogador' : 'jogadores'} para formar os times.
+                    </Text>
+                  ) : match.goingCount < match.idealPlayers ? (
+                    <Text color="#8A6414" fontSize={12} fontWeight="800">
+                      O mínimo foi atingido; ainda há vagas e as equipes podem ser formadas reduzidas.
+                    </Text>
+                  ) : null}
                   {missingGoalkeepersMessage(match.missingGoalkeepers) ? (
                     <Text color="$onzeDanger" fontSize={13} fontWeight="800">
                       {missingGoalkeepersMessage(match.missingGoalkeepers)}
@@ -688,6 +728,36 @@ export default function MatchScreen() {
                       </Text>
                     ) : null}
                   </YStack>
+                ) : null}
+
+                {match.canManage && match.status === 'SCHEDULED' ? (
+                  <Button
+                    backgroundColor="$onzeSurface"
+                    borderColor="$onzeGreen"
+                    borderWidth={1}
+                    onPress={() => router.push({
+                      pathname: '/edit-match-player-config',
+                      params: { matchId: match.id },
+                    })}
+                  >
+                    <Text color="$onzeGreen" fontWeight="900">Editar modalidade e mínimo</Text>
+                  </Button>
+                ) : null}
+
+                {match.matchType === 'INTERNAL' && (match.canViewTechnical || match.teamsGenerated) ? (
+                  <Button
+                    backgroundColor={match.teamsGenerated ? '$onzeGreen' : '$onzeSurface'}
+                    borderColor="$onzeGreen"
+                    borderWidth={1}
+                    onPress={() => router.push({
+                      pathname: '/match-teams',
+                      params: { matchId: match.id },
+                    })}
+                  >
+                    <Text color={match.teamsGenerated ? '$onzeSurface' : '$onzeGreen'} fontWeight="900">
+                      {match.teamsGenerated ? 'Ver times formados' : 'Formar times'}
+                    </Text>
+                  </Button>
                 ) : null}
               </YStack>
 
@@ -905,12 +975,39 @@ export default function MatchScreen() {
                 <ConfirmedAttendanceList
                   members={going}
                   rentalGoalkeepers={match.rentalGoalkeepers}
+                  guests={match.guests}
                   canManage={match.canManage && match.status === 'SCHEDULED'}
                   updatingGoalkeeperId={updatingGoalkeeperId}
                   managingRentalId={managingRentalId}
+                  managingGuestId={managingGuestId}
                   onChangeGoalkeeper={setGoalkeeperChange}
                   onRemoveRental={setRentalToRemove}
+                  onRemoveGuest={(guest) => void removeGuest(guest)}
                 />
+                {match.canManage && match.status === 'SCHEDULED' ? (
+                  <YStack gap="$2">
+                    <Button
+                      backgroundColor="$onzeSurface"
+                      borderColor="$onzeGreen"
+                      borderWidth={1}
+                      disabled={match.goingCount >= match.maxPlayers}
+                      onPress={() => router.push({
+                        pathname: '/add-match-guest',
+                        params: {
+                          matchId: match.id,
+                          canEvaluate: String(match.canViewTechnical),
+                        },
+                      })}
+                    >
+                      <Text color="$onzeGreen" fontWeight="900">+ Adicionar convidado</Text>
+                    </Button>
+                    {match.goingCount >= match.maxPlayers ? (
+                      <Text color="$onzeMuted" fontSize={12}>
+                        O limite de jogadores já foi preenchido.
+                      </Text>
+                    ) : null}
+                  </YStack>
+                ) : null}
                 {match.canManage && match.status === 'SCHEDULED' && match.missingGoalkeepers <= 0 ? (
                   <YStack gap="$2">
                     <Button
@@ -1429,21 +1526,27 @@ function isSettlementOpen(status: PaymentSettlementStatus | null) {
 function ConfirmedAttendanceList({
   members,
   rentalGoalkeepers,
+  guests,
   canManage,
   updatingGoalkeeperId,
   managingRentalId,
+  managingGuestId,
   onChangeGoalkeeper,
   onRemoveRental,
+  onRemoveGuest,
 }: {
   members: MatchAttendance[];
   rentalGoalkeepers: RentalGoalkeeper[];
+  guests: MatchGuest[];
   canManage: boolean;
   updatingGoalkeeperId: string | null;
   managingRentalId: string | null;
+  managingGuestId: string | null;
   onChangeGoalkeeper: (attendance: MatchAttendance) => void;
   onRemoveRental: (goalkeeper: RentalGoalkeeper) => void;
+  onRemoveGuest: (guest: MatchGuest) => void;
 }) {
-  const empty = members.length === 0 && rentalGoalkeepers.length === 0;
+  const empty = members.length === 0 && rentalGoalkeepers.length === 0 && guests.length === 0;
   return (
     <YStack gap="$2">
       <Text color="$onzeMuted" fontSize={11} fontWeight="900">VÃO JOGAR</Text>
@@ -1482,6 +1585,35 @@ function ConfirmedAttendanceList({
                 {updatingGoalkeeperId === attendance.userId
                   ? 'Salvando...'
                   : 'Remover'}
+              </Text>
+            </Button>
+          ) : null}
+        </XStack>
+      ))}
+      {guests.map((guest) => (
+        <XStack key={guest.id} alignItems="center" gap="$2">
+          <Text color="$onzeGreen" fontSize={13}>✓</Text>
+          <YStack flex={1} gap="$1">
+            <Text color="$onzeInk" fontSize={14} fontWeight="700">
+              {guest.displayName} — Convidado
+            </Text>
+            <Text color="$onzeMuted" fontSize={11}>
+              {positionLabel(guest.primaryPosition)}
+            </Text>
+            {guest.primaryPosition === 'GOALKEEPER' ? <RoleBadge label="GOLEIRO" /> : null}
+          </YStack>
+          {canManage ? (
+            <Button
+              backgroundColor="$onzeSurface"
+              borderColor="$onzeDanger"
+              borderWidth={1}
+              disabled={Boolean(managingGuestId)}
+              minHeight={36}
+              onPress={() => onRemoveGuest(guest)}
+              paddingHorizontal="$3"
+            >
+              <Text color="$onzeDanger" fontSize={11} fontWeight="900">
+                {managingGuestId === guest.id ? 'Removendo...' : 'Remover'}
               </Text>
             </Button>
           ) : null}
