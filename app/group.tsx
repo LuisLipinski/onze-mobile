@@ -12,6 +12,7 @@ import {
   Group,
   GroupDayOfWeek,
   GroupRole,
+  getOwnSportsProfile,
   hasGroupPermission,
   leaveGroup,
   listGroupMatches,
@@ -78,6 +79,18 @@ export default function GroupScreen() {
         return;
       }
       setGroup(selected);
+      const sportsProfile = await getOwnSportsProfile(token, selected.id);
+      if (!sportsProfile.complete) {
+        router.replace({
+          pathname: '/sports-profile',
+          params: {
+            groupId: selected.id,
+            groupName: selected.name,
+            required: 'true',
+          },
+        });
+        return;
+      }
       setMatches(await listGroupMatches(token, selected.id));
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {

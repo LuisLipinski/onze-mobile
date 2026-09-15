@@ -1,15 +1,71 @@
-export type PlayerPosition = 'DEFENDER' | 'MIDFIELDER' | 'WINGER' | 'STRIKER';
+export type PlayerPosition =
+  | 'GOALKEEPER'
+  | 'DEFENDER'
+  | 'RIGHT_DEFENDER'
+  | 'LEFT_DEFENDER'
+  | 'CENTER_DEFENDER'
+  | 'RIGHT_BACK'
+  | 'LEFT_BACK'
+  | 'DEFENSIVE_MIDFIELDER'
+  | 'MIDFIELDER'
+  | 'RIGHT_MIDFIELDER'
+  | 'LEFT_MIDFIELDER'
+  | 'CENTRAL_MIDFIELDER'
+  | 'PLAYMAKER'
+  | 'ATTACKER'
+  | 'RIGHT_WINGER'
+  | 'LEFT_WINGER'
+  | 'CENTER_FORWARD';
+
 export type DominantFoot = 'RIGHT' | 'LEFT' | 'BOTH';
 
-export const PLAYER_POSITION_OPTIONS: ReadonlyArray<{
+export type PlayerPositionOption = {
   value: PlayerPosition;
   label: string;
+};
+
+export const PLAYER_POSITION_GROUPS: ReadonlyArray<{
+  label: string;
+  options: ReadonlyArray<PlayerPositionOption>;
 }> = [
-  { value: 'DEFENDER', label: 'Zagueiro' },
-  { value: 'MIDFIELDER', label: 'Meio-campo' },
-  { value: 'WINGER', label: 'Ponta' },
-  { value: 'STRIKER', label: 'Atacante' },
+  {
+    label: 'GOLEIRO',
+    options: [{ value: 'GOALKEEPER', label: 'Goleiro' }],
+  },
+  {
+    label: 'DEFESA',
+    options: [
+      { value: 'DEFENDER', label: 'Zagueiro' },
+      { value: 'RIGHT_DEFENDER', label: 'Zagueiro direito' },
+      { value: 'LEFT_DEFENDER', label: 'Zagueiro esquerdo' },
+      { value: 'CENTER_DEFENDER', label: 'Zagueiro central' },
+      { value: 'RIGHT_BACK', label: 'Lateral direito' },
+      { value: 'LEFT_BACK', label: 'Lateral esquerdo' },
+    ],
+  },
+  {
+    label: 'MEIO-CAMPO',
+    options: [
+      { value: 'DEFENSIVE_MIDFIELDER', label: 'Volante' },
+      { value: 'MIDFIELDER', label: 'Meio-campo' },
+      { value: 'RIGHT_MIDFIELDER', label: 'Meia direita' },
+      { value: 'LEFT_MIDFIELDER', label: 'Meia esquerda' },
+      { value: 'CENTRAL_MIDFIELDER', label: 'Meia central' },
+      { value: 'PLAYMAKER', label: 'Armador' },
+    ],
+  },
+  {
+    label: 'ATAQUE',
+    options: [
+      { value: 'ATTACKER', label: 'Atacante' },
+      { value: 'RIGHT_WINGER', label: 'Ponta direita' },
+      { value: 'LEFT_WINGER', label: 'Ponta esquerda' },
+      { value: 'CENTER_FORWARD', label: 'Centroavante' },
+    ],
+  },
 ];
+
+export const PLAYER_POSITION_OPTIONS = PLAYER_POSITION_GROUPS.flatMap((group) => group.options);
 
 export const DOMINANT_FOOT_OPTIONS: ReadonlyArray<{
   value: DominantFoot;
@@ -28,37 +84,45 @@ export const TECHNICAL_LEVEL_OPTIONS = [
   { value: 5, label: 'Destaque' },
 ] as const;
 
-export function togglePlayerPosition(
-  positions: PlayerPosition[],
-  position: PlayerPosition,
-) {
-  return positions.includes(position)
-    ? positions.filter((item) => item !== position)
-    : [...positions, position];
-}
-
 export function getSportsProfileValidationError(
-  positions: PlayerPosition[],
-  canPlayGoalkeeper: boolean,
+  primaryPosition: PlayerPosition | null,
+  secondaryPosition: PlayerPosition | null,
+  wantsSecondaryPosition: boolean,
   dominantFoot: DominantFoot | null,
 ) {
-  if (!positions.length && !canPlayGoalkeeper) {
-    return 'Escolha ao menos uma posição de linha ou marque que joga como goleiro.';
-  }
-  if (!dominantFoot) {
-    return 'Escolha seu pé dominante.';
-  }
+  if (!primaryPosition) return 'Escolha sua posição principal.';
+  if (wantsSecondaryPosition && !secondaryPosition) return 'Escolha sua segunda posição.';
+  if (secondaryPosition === primaryPosition) return 'A segunda posição deve ser diferente da principal.';
+  if (!dominantFoot) return 'Escolha seu pé dominante.';
   return null;
+}
+
+export function shouldOfferGoalkeeperAvailability(
+  primaryPosition: PlayerPosition | null,
+  secondaryPosition: PlayerPosition | null,
+) {
+  return primaryPosition !== 'GOALKEEPER' && secondaryPosition !== 'GOALKEEPER';
+}
+
+export function normalizedCanPlayGoalkeeper(
+  primaryPosition: PlayerPosition | null,
+  secondaryPosition: PlayerPosition | null,
+  requestedValue: boolean,
+) {
+  return shouldOfferGoalkeeperAvailability(primaryPosition, secondaryPosition) && requestedValue;
+}
+
+export function positionLabel(position: PlayerPosition | null | undefined) {
+  if (!position) return 'Não informada';
+  return PLAYER_POSITION_OPTIONS.find((option) => option.value === position)?.label ?? position;
 }
 
 export function formatPlayingRoles(
   positions: PlayerPosition[] | null | undefined,
   canPlayGoalkeeper: boolean | null | undefined,
 ) {
-  const labels = (positions ?? []).map((position) => (
-    PLAYER_POSITION_OPTIONS.find((option) => option.value === position)?.label ?? position
-  ));
-  if (canPlayGoalkeeper) labels.push('Goleiro');
+  const labels = (positions ?? []).map(positionLabel);
+  if (canPlayGoalkeeper) labels.push('Posso jogar no gol');
   return labels.length ? labels.join(' • ') : 'Perfil esportivo não preenchido';
 }
 

@@ -6,26 +6,55 @@ import {
   formatPlayingRoles,
   formatTechnicalLevel,
   getSportsProfileValidationError,
-  togglePlayerPosition,
+  normalizedCanPlayGoalkeeper,
+  PLAYER_POSITION_GROUPS,
+  positionLabel,
+  shouldOfferGoalkeeperAvailability,
 } from './sports-profile.ts';
 
-test('permite selecionar várias posições e remover uma delas', () => {
-  const withDefender = togglePlayerPosition([], 'DEFENDER');
-  const withTwoPositions = togglePlayerPosition(withDefender, 'WINGER');
-
-  assert.deepEqual(withTwoPositions, ['DEFENDER', 'WINGER']);
-  assert.deepEqual(togglePlayerPosition(withTwoPositions, 'DEFENDER'), ['WINGER']);
+test('expõe as 17 posições organizadas por área', () => {
+  const positions = PLAYER_POSITION_GROUPS.flatMap((group) => group.options.map((option) => option.value));
+  assert.equal(positions.length, 17);
+  assert.deepEqual(PLAYER_POSITION_GROUPS.map((group) => group.label), [
+    'GOLEIRO',
+    'DEFESA',
+    'MEIO-CAMPO',
+    'ATAQUE',
+  ]);
+  assert.equal(positionLabel('CENTER_FORWARD'), 'Centroavante');
 });
 
-test('aceita goleiro sem posição de linha e exige pé dominante', () => {
-  assert.equal(getSportsProfileValidationError([], false, 'RIGHT'),
-    'Escolha ao menos uma posição de linha ou marque que joga como goleiro.');
-  assert.equal(getSportsProfileValidationError([], true, null), 'Escolha seu pé dominante.');
-  assert.equal(getSportsProfileValidationError([], true, 'BOTH'), null);
+test('exige principal, aceita secundária opcional e impede repetição', () => {
+  assert.equal(
+    getSportsProfileValidationError(null, null, false, 'RIGHT'),
+    'Escolha sua posição principal.',
+  );
+  assert.equal(
+    getSportsProfileValidationError('DEFENDER', null, true, 'RIGHT'),
+    'Escolha sua segunda posição.',
+  );
+  assert.equal(
+    getSportsProfileValidationError('DEFENDER', 'DEFENDER', true, 'RIGHT'),
+    'A segunda posição deve ser diferente da principal.',
+  );
+  assert.equal(getSportsProfileValidationError('DEFENDER', null, false, null), 'Escolha seu pé dominante.');
+  assert.equal(getSportsProfileValidationError('DEFENDER', 'PLAYMAKER', true, 'BOTH'), null);
 });
 
-test('formata o resumo esportivo e a escala técnica', () => {
-  assert.equal(formatPlayingRoles(['MIDFIELDER', 'STRIKER'], true), 'Meio-campo • Atacante • Goleiro');
+test('não oferece disponibilidade no gol quando goleiro já é uma posição', () => {
+  assert.equal(shouldOfferGoalkeeperAvailability('GOALKEEPER', null), false);
+  assert.equal(shouldOfferGoalkeeperAvailability('DEFENDER', 'GOALKEEPER'), false);
+  assert.equal(shouldOfferGoalkeeperAvailability('DEFENDER', 'PLAYMAKER'), true);
+  assert.equal(normalizedCanPlayGoalkeeper('GOALKEEPER', null, true), false);
+  assert.equal(normalizedCanPlayGoalkeeper('DEFENDER', 'GOALKEEPER', true), false);
+  assert.equal(normalizedCanPlayGoalkeeper('DEFENDER', null, true), true);
+});
+
+test('formata o resumo esportivo sem confundir preferência com papel da partida', () => {
+  assert.equal(
+    formatPlayingRoles(['MIDFIELDER', 'CENTER_FORWARD'], true),
+    'Meio-campo • Centroavante • Posso jogar no gol',
+  );
   assert.equal(formatPlayingRoles([], false), 'Perfil esportivo não preenchido');
   assert.equal(formatDominantFoot('LEFT'), 'Esquerdo');
   assert.equal(formatTechnicalLevel(4), '4 — Avançado');

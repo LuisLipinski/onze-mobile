@@ -85,12 +85,23 @@ export default function JoinGroupScreen() {
             </Text>
             <Text color="$onzeMuted" fontSize={14} lineHeight={21}>
               {result.alreadyMember
-                ? 'Esse grupo já estava vinculado à sua conta.'
-                : 'O grupo foi adicionado à sua conta. Agora ele aparecerá junto das suas peladas.'}
+                ? 'Esse grupo já estava vinculado à sua conta. Confira seu perfil esportivo antes de continuar.'
+                : 'O grupo foi adicionado. Agora preencha seu perfil esportivo para utilizar normalmente a pelada.'}
             </Text>
-            <Button backgroundColor="$onzeGreen" height={50} onPress={() => router.replace('/groups')}>
+            <Button
+              backgroundColor="$onzeGreen"
+              height={50}
+              onPress={() => router.replace({
+                pathname: '/sports-profile',
+                params: {
+                  groupId: result.groupId,
+                  groupName: result.groupName,
+                  required: 'true',
+                },
+              })}
+            >
               <Text color="$onzeSurface" fontWeight="800">
-                Ir para meus grupos
+                Preencher perfil esportivo
               </Text>
             </Button>
           </YStack>

@@ -4,6 +4,7 @@ import { SafeAreaView, ScrollView } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
+import { GoalkeeperPlayerModal } from '../src/components/goalkeeper-player-modal';
 import { PaymentSettlementModal } from '../src/components/payment-settlement-modal';
 import { RentalGoalkeeperModal } from '../src/components/rental-goalkeeper-modal';
 import { ReplacementPlayerModal } from '../src/components/replacement-player-modal';
@@ -20,6 +21,7 @@ import {
   FootballMatch,
   GroupMember,
   getMatch,
+  getOwnSportsProfile,
   listGroupMembers,
   MatchAttendance,
   PaymentSettlementResolution,
@@ -40,11 +42,18 @@ import {
 } from '../src/lib/notifications';
 import { formatCurrency } from '../src/lib/payment';
 import {
+  canRemoveGoalkeeperRole,
+  missingGoalkeepersMessage,
+  secondaryGoalkeeperCandidates,
+  volunteerGoalkeeperCandidates,
+} from '../src/lib/match-goalkeepers';
+import {
   currentMatchAttendance,
   shouldShowCurrentPlayerPayment,
 } from '../src/lib/match-payment';
 
 type ManagementAction = 'cancel-occurrence' | 'end-series' | null;
+type GoalkeeperPicker = 'secondary' | 'volunteer' | null;
 type PaymentBadgeColor = '$onzeGreen' | '$onzeDanger' | '$onzeMuted' | '#8A6414';
 
 function formatDateTime(match: FootballMatch) {
@@ -100,6 +109,7 @@ export default function MatchScreen() {
   const [selectedReplacementUserId, setSelectedReplacementUserId] = useState<string | null>(null);
   const [replacingPlayer, setReplacingPlayer] = useState(false);
   const [goalkeeperChange, setGoalkeeperChange] = useState<MatchAttendance | null>(null);
+  const [goalkeeperPicker, setGoalkeeperPicker] = useState<GoalkeeperPicker>(null);
   const [updatingGoalkeeperId, setUpdatingGoalkeeperId] = useState<string | null>(null);
   const [rentalModalVisible, setRentalModalVisible] = useState(false);
   const [rentalGoalkeeperName, setRentalGoalkeeperName] = useState('');
@@ -139,6 +149,18 @@ export default function MatchScreen() {
         return;
       }
       const loadedMatch = await getMatch(token, params.matchId);
+      const sportsProfile = await getOwnSportsProfile(token, loadedMatch.groupId);
+      if (!sportsProfile.complete) {
+        router.replace({
+          pathname: '/sports-profile',
+          params: {
+            groupId: loadedMatch.groupId,
+            groupName: loadedMatch.groupName,
+            required: 'true',
+          },
+        });
+        return;
+      }
       setMatch(loadedMatch);
       if (loadedMatch.status === 'CANCELLED' && loadedMatch.canManage) {
         setSelectedSettlements(loadedMatch.attendances
@@ -504,6 +526,11 @@ export default function MatchScreen() {
   const showCurrentPayment = match ? shouldShowCurrentPlayerPayment(match) : false;
   const actionIsEndSeries = managementAction === 'end-series';
   const goalkeeperTargetState = goalkeeperChange ? !goalkeeperChange.isGoalkeeper : false;
+  const secondaryCandidates = match ? secondaryGoalkeeperCandidates(match) : [];
+  const volunteerCandidates = match ? volunteerGoalkeeperCandidates(match) : [];
+  const goalkeeperPickerCandidates = goalkeeperPicker === 'secondary'
+    ? secondaryCandidates
+    : volunteerCandidates;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
@@ -568,6 +595,99 @@ export default function MatchScreen() {
                       ? 'Goleiros membros seguem a cobrança normal desta partida.'
                       : 'Goleiros marcados pelo administrador ficam isentos nesta partida.'}
                   </Text>
+                ) : null}
+              </YStack>
+
+              <YStack
+                backgroundColor="$onzeSurface"
+                borderColor={match.missingGoalkeepers > 0 ? '$onzeDanger' : '$onzeBorder'}
+                borderRadius="$6"
+                borderWidth={1}
+                gap="$3"
+                padding="$5"
+              >
+                <YStack gap="$1">
+                  <Text color="$onzeInk" fontSize={18} fontWeight="900">Formato da partida</Text>
+                  {match.matchType === 'INTERNAL' ? (
+                    <Text color="$onzeInk" fontSize={14} fontWeight="800">Times: {match.teamCount}</Text>
+                  ) : (
+                    <Text color="$onzeMuted" fontSize={13}>Contra outro time</Text>
+                  )}
+                  <Text color="$onzeInk" fontSize={14} fontWeight="800">
+                    Goleiros: {match.currentGoalkeepers} de {match.requiredGoalkeepers}
+                  </Text>
+                  {missingGoalkeepersMessage(match.missingGoalkeepers) ? (
+                    <Text color="$onzeDanger" fontSize={13} fontWeight="800">
+                      {missingGoalkeepersMessage(match.missingGoalkeepers)}
+                    </Text>
+                  ) : (
+                    <Text color="$onzeGreen" fontSize={12} fontWeight="800">
+                      Quantidade necessária de goleiros preenchida.
+                    </Text>
+                  )}
+                </YStack>
+
+                {match.canManage
+                    && match.status === 'SCHEDULED'
+                    && match.missingGoalkeepers > 0
+                    && match.secondaryGoalkeeperDecisionRequired ? (
+                  <YStack backgroundColor="#FFF7E6" borderRadius="$4" gap="$2" padding="$4">
+                    <Text color="#8A6414" fontSize={14} fontWeight="900">Escolha quem será o goleiro.</Text>
+                    <Text color="$onzeInk" fontSize={12} lineHeight={18}>
+                      Há mais de um jogador confirmado com goleiro como segunda posição. O Onze não desempata automaticamente.
+                    </Text>
+                    <Button
+                      backgroundColor="$onzeGreen"
+                      disabled={!secondaryCandidates.length || Boolean(updatingGoalkeeperId)}
+                      onPress={() => setGoalkeeperPicker('secondary')}
+                    >
+                      <Text color="$onzeSurface" fontWeight="900">Escolher entre os candidatos</Text>
+                    </Button>
+                  </YStack>
+                ) : null}
+
+                {match.canManage
+                    && match.status === 'SCHEDULED'
+                    && match.missingGoalkeepers > 0
+                    && !match.secondaryGoalkeeperDecisionRequired ? (
+                  <YStack gap="$2">
+                    <Text color="$onzeInk" fontSize={14} fontWeight="900">
+                      Como deseja preencher a vaga de goleiro?
+                    </Text>
+                    <XStack gap="$2">
+                      <Button
+                        backgroundColor="$onzeSurface"
+                        borderColor="$onzeGreen"
+                        borderWidth={1}
+                        disabled={!volunteerCandidates.length || Boolean(updatingGoalkeeperId)}
+                        flex={1}
+                        minHeight={48}
+                        onPress={() => setGoalkeeperPicker('volunteer')}
+                        paddingHorizontal="$2"
+                      >
+                        <Text color="$onzeGreen" fontSize={12} fontWeight="900" textAlign="center">
+                          Escolher jogador
+                        </Text>
+                      </Button>
+                      <Button
+                        backgroundColor="$onzeGreen"
+                        disabled={Boolean(managingRentalId) || match.goingCount >= match.maxPlayers}
+                        flex={1}
+                        minHeight={48}
+                        onPress={openRentalGoalkeeperModal}
+                        paddingHorizontal="$2"
+                      >
+                        <Text color="$onzeSurface" fontSize={12} fontWeight="900" textAlign="center">
+                          Adicionar goleiro de aluguel
+                        </Text>
+                      </Button>
+                    </XStack>
+                    {!volunteerCandidates.length ? (
+                      <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                        Nenhum jogador confirmado marcou “Posso jogar no gol”.
+                      </Text>
+                    ) : null}
+                  </YStack>
                 ) : null}
               </YStack>
 
@@ -791,7 +911,7 @@ export default function MatchScreen() {
                   onChangeGoalkeeper={setGoalkeeperChange}
                   onRemoveRental={setRentalToRemove}
                 />
-                {match.canManage && match.status === 'SCHEDULED' ? (
+                {match.canManage && match.status === 'SCHEDULED' && match.missingGoalkeepers <= 0 ? (
                   <YStack gap="$2">
                     <Button
                       backgroundColor="$onzeSurface"
@@ -1031,6 +1151,22 @@ export default function MatchScreen() {
           )}
         </YStack>
       </ScrollView>
+
+      {match ? (
+        <GoalkeeperPlayerModal
+          visible={goalkeeperPicker != null}
+          title={goalkeeperPicker === 'secondary' ? 'Escolha quem será o goleiro' : 'Escolher jogador'}
+          description={goalkeeperPicker === 'secondary'
+            ? 'Selecione um dos jogadores confirmados que possui goleiro como segunda posição.'
+            : 'São exibidos somente jogadores confirmados que aceitaram jogar no gol quando necessário.'}
+          candidates={goalkeeperPickerCandidates}
+          onSelect={(attendance) => {
+            setGoalkeeperPicker(null);
+            setGoalkeeperChange(attendance);
+          }}
+          onCancel={() => setGoalkeeperPicker(null)}
+        />
+      ) : null}
 
       {match ? (
         <ConfirmActionModal
@@ -1328,10 +1464,10 @@ function ConfirmedAttendanceList({
               </XStack>
             ) : null}
           </YStack>
-          {canManage ? (
+          {canManage && canRemoveGoalkeeperRole(attendance) ? (
             <Button
               backgroundColor="$onzeSurface"
-              borderColor={attendance.isGoalkeeper ? '$onzeDanger' : '$onzeGreen'}
+              borderColor="$onzeDanger"
               borderWidth={1}
               disabled={Boolean(updatingGoalkeeperId)}
               minHeight={36}
@@ -1339,13 +1475,13 @@ function ConfirmedAttendanceList({
               paddingHorizontal="$3"
             >
               <Text
-                color={attendance.isGoalkeeper ? '$onzeDanger' : '$onzeGreen'}
+                color="$onzeDanger"
                 fontSize={11}
                 fontWeight="900"
               >
                 {updatingGoalkeeperId === attendance.userId
                   ? 'Salvando...'
-                  : attendance.isGoalkeeper ? 'Remover' : 'Definir goleiro'}
+                  : 'Remover'}
               </Text>
             </Button>
           ) : null}
