@@ -16,12 +16,10 @@ import { clearSession, getAccessToken } from '../src/lib/auth-storage';
 import {
   DOMINANT_FOOT_OPTIONS,
   DominantFoot,
-  formatTechnicalLevel,
   getSportsProfileValidationError,
   normalizedCanPlayGoalkeeper,
   PlayerPosition,
   shouldOfferGoalkeeperAvailability,
-  TECHNICAL_LEVEL_OPTIONS,
 } from '../src/lib/sports-profile';
 
 export default function SportsProfileScreen() {
@@ -42,7 +40,6 @@ export default function SportsProfileScreen() {
   const [positionPicker, setPositionPicker] = useState<'primary' | 'secondary' | null>(null);
   const [canPlayGoalkeeper, setCanPlayGoalkeeper] = useState(false);
   const [dominantFoot, setDominantFoot] = useState<DominantFoot | null>(null);
-  const [technicalLevel, setTechnicalLevel] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +78,6 @@ export default function SportsProfileScreen() {
       setWantsSecondaryPosition(loadedSecondary != null);
       setCanPlayGoalkeeper(profile.canPlayGoalkeeper);
       setDominantFoot(profile.dominantFoot);
-      setTechnicalLevel(profile.technicalLevel);
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
         await clearSession();
@@ -107,12 +103,6 @@ export default function SportsProfileScreen() {
       setMessage(null);
       return;
     }
-    if (adminMode && technicalLevel == null) {
-      setError('Escolha o nível técnico do jogador.');
-      setMessage(null);
-      return;
-    }
-
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -135,7 +125,6 @@ export default function SportsProfileScreen() {
           secondaryPosition: effectiveSecondary,
           canPlayGoalkeeper: effectiveCanPlayGoalkeeper,
           dominantFoot: dominantFoot!,
-          technicalLevel: technicalLevel!,
         });
       } else {
         await updateOwnSportsProfile(token, params.groupId, {
@@ -317,36 +306,28 @@ export default function SportsProfileScreen() {
             </XStack>
           </ProfileSection>
 
-          {adminMode ? (
+          {adminMode && params.membershipId ? (
             <ProfileSection
-              title="Nível técnico"
-              description="Avaliação administrativa usada para equilibrar os times, de 1 a 5."
+              title="Avaliação técnica privada"
+              description="Avalie 17 habilidades em intervalos de meia estrela. O backend calcula overall, cobertura e aptidão por posição."
             >
-              <YStack gap="$2">
-                {TECHNICAL_LEVEL_OPTIONS.map((option) => (
-                  <ChoiceButton
-                    key={option.value}
-                    label={`${option.value} — ${option.label}`}
-                    selected={technicalLevel === option.value}
-                    fullWidth
-                    onPress={() => {
-                      setTechnicalLevel(option.value);
-                      setError(null);
-                      setMessage(null);
-                    }}
-                  />
-                ))}
-              </YStack>
+              <Button
+                backgroundColor="$onzeSurface"
+                borderColor="$onzeGreen"
+                borderWidth={1}
+                onPress={() => router.push({
+                  pathname: '/technical-profile',
+                  params: {
+                    groupId: params.groupId,
+                    membershipId: params.membershipId,
+                    memberName: displayName,
+                  },
+                })}
+              >
+                <Text color="$onzeGreen" fontWeight="900">Avaliar habilidades e ver overalls</Text>
+              </Button>
             </ProfileSection>
-          ) : (
-            <YStack backgroundColor="$onzeCanvas" borderColor="$onzeBorder" borderRadius="$5" borderWidth={1} gap="$1" padding="$4">
-              <Text color="$onzeMuted" fontSize={11} fontWeight="900">AVALIAÇÃO TÉCNICA</Text>
-              <Text color="$onzeInk" fontSize={15} fontWeight="800">{formatTechnicalLevel(technicalLevel)}</Text>
-              <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                O Administrador Principal ou um admin autorizado define esta avaliação.
-              </Text>
-            </YStack>
-          )}
+          ) : null}
 
           <Button backgroundColor="$onzeGreen" disabled={saving} height={52} onPress={() => void saveProfile()}>
             <Text color="$onzeSurface" fontSize={16} fontWeight="800">

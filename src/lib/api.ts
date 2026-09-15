@@ -102,6 +102,7 @@ export type JoinGroupResponse = {
 
 export type MatchRecurrence = 'NONE' | 'WEEKLY';
 export type MatchType = 'INTERNAL' | 'VERSUS_EXTERNAL';
+export type MatchModality = 'FIELD' | 'FUT7' | 'FUTSAL';
 export type MatchStatus = 'SCHEDULED' | 'CANCELLED';
 export type AttendanceStatus = 'PENDING' | 'GOING' | 'NOT_GOING';
 export type PaymentStatus = 'PENDING' | 'REPORTED' | 'PAID' | 'CANCELLED';
@@ -146,6 +147,117 @@ export type RentalGoalkeeper = {
   createdAt: string;
 };
 
+export type PlayerSkill =
+  | 'PASSING'
+  | 'LONG_PASSING'
+  | 'CROSSING'
+  | 'BALL_CONTROL'
+  | 'DRIBBLING'
+  | 'FINISHING'
+  | 'SPEED'
+  | 'AGILITY'
+  | 'STRENGTH'
+  | 'HEADING'
+  | 'TACKLING'
+  | 'DEFENSIVE_POSITIONING'
+  | 'ATTACKING_POSITIONING'
+  | 'VISION'
+  | 'GOALKEEPER_REFLEXES'
+  | 'GOALKEEPER_POSITIONING'
+  | 'GOALKEEPER_RUSHING_OUT';
+
+export type TechnicalOverall = {
+  overall: number | null;
+  coverage: number;
+  reliable: boolean;
+  estimated: boolean;
+  resolvedPosition: PlayerPosition | null;
+  missingEssentialSkills: PlayerSkill[];
+};
+
+export type PositionTechnicalOverall = TechnicalOverall & {
+  position: PlayerPosition;
+};
+
+export type TechnicalProfile = {
+  membershipId: string;
+  userId: string;
+  displayName: string;
+  primaryPosition: PlayerPosition | null;
+  secondaryPosition: PlayerPosition | null;
+  ratings: Partial<Record<PlayerSkill, number>>;
+  generalOverall: TechnicalOverall;
+  positionOveralls: PositionTechnicalOverall[];
+  importantSkills: Partial<Record<PlayerPosition, PlayerSkill[]>>;
+  technicalProfileUpdatedAt: string | null;
+};
+
+export type TechnicalConfiguration = {
+  positionImportantSkills: Record<PlayerPosition, PlayerSkill[]>;
+  futsalImportantSkills: Record<string, PlayerSkill[]>;
+  minimumRating: number;
+  maximumRating: number;
+  pointsPerRatingUnit: number;
+};
+
+export type MatchGuest = {
+  id: string;
+  displayName: string;
+  primaryPosition: PlayerPosition;
+  secondaryPosition: PlayerPosition | null;
+  evaluated: boolean | null;
+  createdAt: string;
+};
+
+export type GuestTechnicalProfile = Omit<TechnicalProfile, 'membershipId' | 'userId'> & {
+  guestId: string;
+};
+
+export type TeamParticipantType = 'MEMBER' | 'GUEST' | 'RENTAL_GOALKEEPER';
+export type ScoreSource = 'REAL' | 'ESTIMATED';
+export type TeamPositionOrigin = 'PRIMARY' | 'SECONDARY' | 'ALTERNATIVE' | 'GOALKEEPER' | 'MANUAL';
+export type TeamAssignmentReason =
+  | 'PRIMARY_POSITION'
+  | 'SECONDARY_POSITION'
+  | 'BEST_AVAILABLE_POSITION'
+  | 'TEAM_BALANCE'
+  | 'GOALKEEPER_REQUIRED'
+  | 'MANUAL_ADMIN_CHANGE';
+
+export type TeamAssignment = {
+  id: string;
+  participantType: TeamParticipantType;
+  participantId: string;
+  displayName: string;
+  assignedRole: string;
+  overallUsed: number | null;
+  coverage: number | null;
+  scoreSource: ScoreSource | null;
+  positionOrigin: TeamPositionOrigin | null;
+  reason: TeamAssignmentReason | null;
+  manuallyChanged: boolean;
+};
+
+export type GeneratedTeam = {
+  teamNumber: number;
+  estimatedStrength: number | null;
+  realEvaluations: number | null;
+  estimatedEvaluations: number | null;
+  assignments: TeamAssignment[];
+};
+
+export type MatchTeams = {
+  matchId: string;
+  modality: MatchModality;
+  teamCount: number;
+  confirmedPlayers: number;
+  minimumPlayers: number;
+  idealPlayers: number;
+  reducedTeams: boolean;
+  technicalDetailsVisible: boolean;
+  teams: GeneratedTeam[];
+};
+
 export type PlayerCredit = {
   userId: string;
   displayName: string;
@@ -171,6 +283,10 @@ export type FootballMatch = {
   matchType: MatchType;
   teamCount: number | null;
   requiredGoalkeepers: number;
+  modality: MatchModality;
+  minimumPlayers: number;
+  idealPlayers: number;
+  missingMinimumPlayers: number;
   currentGoalkeepers: number;
   missingGoalkeepers: number;
   goalkeeperDecisionRequired: boolean;
@@ -201,6 +317,9 @@ export type FootballMatch = {
   notGoingCount: number;
   attendances: MatchAttendance[];
   rentalGoalkeepers: RentalGoalkeeper[];
+  guests: MatchGuest[];
+  teamsGenerated: boolean;
+  canViewTechnical: boolean;
   canManage: boolean;
 };
 
@@ -213,6 +332,8 @@ export type CreateMatchInput = {
   matchType: MatchType;
   teamCount?: number;
   requiredGoalkeepers: number;
+  modality: MatchModality;
+  minimumPlayers: number;
   signupDeadlineDate: string;
   signupDeadlineTime: string;
   paymentDeadlineDate?: string;
@@ -489,7 +610,7 @@ export function updateMemberSportsProfile(
     secondaryPosition?: PlayerPosition;
     canPlayGoalkeeper: boolean;
     dominantFoot: DominantFoot;
-    technicalLevel: number;
+    technicalLevel?: number;
   },
 ) {
   return request<SportsProfile>(`/api/groups/${groupId}/members/${membershipId}/sports-profile`, {
@@ -500,6 +621,50 @@ export function updateMemberSportsProfile(
       title: 'Salvando o perfil...',
       message: 'Estamos atualizando o perfil e a avaliação técnica do jogador.',
     },
+  });
+}
+
+export function getMemberTechnicalProfile(
+  accessToken: string,
+  groupId: string,
+  membershipId: string,
+) {
+  return request<TechnicalProfile>(
+    `/api/groups/${groupId}/members/${membershipId}/technical-profile`,
+    {
+      headers: authenticatedHeaders(accessToken),
+      loading: {
+        title: 'Carregando avaliação...',
+        message: 'Estamos calculando habilidades, overall e cobertura.',
+      },
+    },
+  );
+}
+
+export function updateMemberTechnicalProfile(
+  accessToken: string,
+  groupId: string,
+  membershipId: string,
+  ratings: Partial<Record<PlayerSkill, number>>,
+) {
+  return request<TechnicalProfile>(
+    `/api/groups/${groupId}/members/${membershipId}/technical-profile`,
+    {
+      method: 'PUT',
+      headers: authenticatedHeaders(accessToken),
+      body: JSON.stringify({ ratings }),
+      loading: {
+        title: 'Salvando avaliação...',
+        message: 'Estamos recalculando os overalls sem preencher habilidades ausentes.',
+      },
+    },
+  );
+}
+
+export function getTechnicalConfiguration(accessToken: string) {
+  return request<TechnicalConfiguration>('/api/technical/configuration', {
+    headers: authenticatedHeaders(accessToken),
+    loading: false,
   });
 }
 
@@ -875,6 +1040,124 @@ export function removeRentalGoalkeeper(
       loading: {
         title: 'Removendo goleiro...',
         message: 'Estamos liberando a vaga desta partida.',
+      },
+    },
+  );
+}
+
+export function updateMatchPlayerConfiguration(
+  accessToken: string,
+  matchId: string,
+  modality: MatchModality,
+  minimumPlayers: number,
+) {
+  return request<FootballMatch>(`/api/matches/${matchId}/player-configuration`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ modality, minimumPlayers }),
+    loading: {
+      title: 'Atualizando a partida...',
+      message: 'Estamos salvando modalidade e quantidade mínima de jogadores.',
+    },
+  });
+}
+
+export function addMatchGuest(
+  accessToken: string,
+  matchId: string,
+  guest: {
+    displayName: string;
+    primaryPosition: PlayerPosition;
+    secondaryPosition?: PlayerPosition;
+    ratings?: Partial<Record<PlayerSkill, number>>;
+  },
+) {
+  return request<FootballMatch>(`/api/matches/${matchId}/guests`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify(guest),
+    loading: {
+      title: 'Adicionando convidado...',
+      message: 'Estamos reservando a vaga e registrando as informações disponíveis.',
+    },
+  });
+}
+
+export function removeMatchGuest(accessToken: string, matchId: string, guestId: string) {
+  return request<FootballMatch>(`/api/matches/${matchId}/guests/${guestId}`, {
+    method: 'DELETE',
+    headers: authenticatedHeaders(accessToken),
+    loading: {
+      title: 'Removendo convidado...',
+      message: 'Estamos liberando a vaga desta partida.',
+    },
+  });
+}
+
+export function getGuestTechnicalProfile(
+  accessToken: string,
+  matchId: string,
+  guestId: string,
+) {
+  return request<GuestTechnicalProfile>(
+    `/api/matches/${matchId}/guests/${guestId}/technical-profile`,
+    { headers: authenticatedHeaders(accessToken) },
+  );
+}
+
+export function updateGuestTechnicalProfile(
+  accessToken: string,
+  matchId: string,
+  guestId: string,
+  ratings: Partial<Record<PlayerSkill, number>>,
+) {
+  return request<GuestTechnicalProfile>(
+    `/api/matches/${matchId}/guests/${guestId}/technical-profile`,
+    {
+      method: 'PUT',
+      headers: authenticatedHeaders(accessToken),
+      body: JSON.stringify({ ratings }),
+    },
+  );
+}
+
+export function getMatchTeams(accessToken: string, matchId: string) {
+  return request<MatchTeams>(`/api/matches/${matchId}/teams`, {
+    headers: authenticatedHeaders(accessToken),
+    loading: {
+      title: 'Carregando os times...',
+      message: 'Estamos atualizando escalações e indicadores.',
+    },
+  });
+}
+
+export function generateMatchTeams(accessToken: string, matchId: string) {
+  return request<MatchTeams>(`/api/matches/${matchId}/teams/generate`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    loading: {
+      title: 'Formando os times...',
+      message: 'Estamos preenchendo funções e equilibrando força e incerteza.',
+    },
+  });
+}
+
+export function updateMatchTeamAssignment(
+  accessToken: string,
+  matchId: string,
+  assignmentId: string,
+  teamNumber: number,
+  assignedRole: string,
+) {
+  return request<MatchTeams>(
+    `/api/matches/${matchId}/teams/assignments/${assignmentId}`,
+    {
+      method: 'PUT',
+      headers: authenticatedHeaders(accessToken),
+      body: JSON.stringify({ teamNumber, assignedRole }),
+      loading: {
+        title: 'Alterando o time...',
+        message: 'Estamos recalculando a força estimada das equipes.',
       },
     },
   );
