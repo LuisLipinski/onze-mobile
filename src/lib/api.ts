@@ -64,6 +64,8 @@ export type GroupMember = {
   role: GroupRole;
   permissions: GroupAdminPermission[];
   currentUser: boolean;
+  primaryPosition: PlayerPosition | null;
+  secondaryPosition: PlayerPosition | null;
   positions: PlayerPosition[];
   canPlayGoalkeeper: boolean;
   dominantFoot: DominantFoot | null;
@@ -75,6 +77,8 @@ export type SportsProfile = {
   membershipId: string;
   userId: string;
   displayName: string;
+  primaryPosition: PlayerPosition | null;
+  secondaryPosition: PlayerPosition | null;
   positions: PlayerPosition[];
   canPlayGoalkeeper: boolean;
   dominantFoot: DominantFoot | null;
@@ -97,6 +101,7 @@ export type JoinGroupResponse = {
 };
 
 export type MatchRecurrence = 'NONE' | 'WEEKLY';
+export type MatchType = 'INTERNAL' | 'VERSUS_EXTERNAL';
 export type MatchStatus = 'SCHEDULED' | 'CANCELLED';
 export type AttendanceStatus = 'PENDING' | 'GOING' | 'NOT_GOING';
 export type PaymentStatus = 'PENDING' | 'REPORTED' | 'PAID' | 'CANCELLED';
@@ -114,6 +119,9 @@ export type MatchAttendance = {
   userId: string;
   displayName: string;
   status: AttendanceStatus;
+  primaryPosition: PlayerPosition | null;
+  secondaryPosition: PlayerPosition | null;
+  canPlayGoalkeeper: boolean;
   isGoalkeeper: boolean;
   paymentExempt: boolean;
   paymentStatus: PaymentStatus | null;
@@ -160,6 +168,13 @@ export type FootballMatch = {
   timeZone: string;
   venue: string;
   maxPlayers: number;
+  matchType: MatchType;
+  teamCount: number | null;
+  requiredGoalkeepers: number;
+  currentGoalkeepers: number;
+  missingGoalkeepers: number;
+  goalkeeperDecisionRequired: boolean;
+  secondaryGoalkeeperDecisionRequired: boolean;
   paymentRequired: boolean;
   goalkeeperPays: boolean;
   paymentAmount: number | null;
@@ -195,6 +210,9 @@ export type CreateMatchInput = {
   timeZone: string;
   venue: string;
   maxPlayers: number;
+  matchType: MatchType;
+  teamCount?: number;
+  requiredGoalkeepers: number;
   signupDeadlineDate: string;
   signupDeadlineTime: string;
   paymentDeadlineDate?: string;
@@ -431,7 +449,8 @@ export function updateOwnSportsProfile(
   accessToken: string,
   groupId: string,
   profile: {
-    positions: PlayerPosition[];
+    primaryPosition: PlayerPosition;
+    secondaryPosition?: PlayerPosition;
     canPlayGoalkeeper: boolean;
     dominantFoot: DominantFoot;
   },
@@ -466,7 +485,8 @@ export function updateMemberSportsProfile(
   groupId: string,
   membershipId: string,
   profile: {
-    positions: PlayerPosition[];
+    primaryPosition: PlayerPosition;
+    secondaryPosition?: PlayerPosition;
     canPlayGoalkeeper: boolean;
     dominantFoot: DominantFoot;
     technicalLevel: number;

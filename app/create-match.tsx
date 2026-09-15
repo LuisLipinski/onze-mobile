@@ -9,8 +9,12 @@ import {
 } from 'react-native';
 import { Button, Input, Text, TextArea, XStack, YStack } from 'tamagui';
 
-import { createMatch } from '../src/lib/api';
+import { createMatch, MatchType } from '../src/lib/api';
 import { getAccessToken } from '../src/lib/auth-storage';
+import {
+  getMatchFormatValidationError,
+  requiredGoalkeepersAfterTeamCountChange,
+} from '../src/lib/match-format';
 import {
   parsePaymentAmount,
   paymentAmountInputValue,
@@ -87,6 +91,9 @@ export default function CreateMatchScreen() {
   const [paymentDeadlineTime, setPaymentDeadlineTime] = useState('18:00');
   const [venue, setVenue] = useState(params.venue ?? '');
   const [maxPlayers, setMaxPlayers] = useState('14');
+  const [matchType, setMatchType] = useState<MatchType>('INTERNAL');
+  const [teamCount, setTeamCount] = useState('2');
+  const [requiredGoalkeepers, setRequiredGoalkeepers] = useState('2');
   const [paymentRequired, setPaymentRequired] = useState(
     Boolean(params.paymentAmount && params.pixKey),
   );
@@ -101,6 +108,32 @@ export default function CreateMatchScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function selectMatchType(nextMatchType: MatchType) {
+    setMatchType(nextMatchType);
+    if (nextMatchType === 'VERSUS_EXTERNAL') {
+      setRequiredGoalkeepers('1');
+      return;
+    }
+    const parsedTeamCount = Number.parseInt(teamCount, 10);
+    const minimum = Number.isInteger(parsedTeamCount) && parsedTeamCount >= 2 ? parsedTeamCount : 2;
+    setRequiredGoalkeepers((current) => String(requiredGoalkeepersAfterTeamCountChange(
+      Number.parseInt(current, 10) || 0,
+      minimum,
+    )));
+  }
+
+  function changeTeamCount(value: string) {
+    const normalized = value.replace(/\D/g, '').slice(0, 2);
+    setTeamCount(normalized);
+    const parsed = Number.parseInt(normalized, 10);
+    if (Number.isInteger(parsed) && parsed >= 2) {
+      setRequiredGoalkeepers((current) => String(requiredGoalkeepersAfterTeamCountChange(
+        Number.parseInt(current, 10) || 0,
+        parsed,
+      )));
+    }
+  }
+
   async function submit() {
     if (loading) return;
     setError(null);
@@ -112,6 +145,8 @@ export default function CreateMatchScreen() {
     const parsedPaymentDeadlineDate = paymentRequired ? parseDate(paymentDeadlineDate) : null;
     const parsedPaymentDeadlineTime = paymentRequired ? parseTime(paymentDeadlineTime) : null;
     const parsedMaxPlayers = Number.parseInt(maxPlayers, 10);
+    const parsedTeamCount = matchType === 'INTERNAL' ? Number.parseInt(teamCount, 10) : null;
+    const parsedRequiredGoalkeepers = Number.parseInt(requiredGoalkeepers, 10);
     if (!parsedDate) {
       setError('Informe a data no formato DD/MM/AAAA.');
       return;
@@ -153,6 +188,15 @@ export default function CreateMatchScreen() {
       setError('O limite deve ficar entre 2 e 100 jogadores.');
       return;
     }
+    const matchFormatError = getMatchFormatValidationError(
+      matchType,
+      parsedTeamCount,
+      parsedRequiredGoalkeepers,
+    );
+    if (matchFormatError) {
+      setError(matchFormatError);
+      return;
+    }
     const parsedPaymentAmount = paymentRequired ? parsePaymentAmount(paymentAmount) : null;
     if (paymentRequired && parsedPaymentAmount == null) {
       setError('Informe um valor por jogador válido, como 25,00.');
@@ -180,6 +224,9 @@ export default function CreateMatchScreen() {
         timeZone: MATCH_TIME_ZONE,
         venue: venue.trim(),
         maxPlayers: parsedMaxPlayers,
+        matchType,
+        teamCount: parsedTeamCount ?? undefined,
+        requiredGoalkeepers: parsedRequiredGoalkeepers,
         signupDeadlineDate: parsedSignupDeadlineDate,
         signupDeadlineTime: parsedSignupDeadlineTime,
         paymentDeadlineDate: parsedPaymentDeadlineDate ?? undefined,
@@ -357,6 +404,60 @@ export default function CreateMatchScreen() {
                 />
               </Field>
 
+              <YStack gap="$3">
+                <Text color="$onzeMuted" fontSize={11} fontWeight="900">TIPO DE PARTIDA</Text>
+                <XStack gap="$2">
+                  <MatchTypeButton
+                    label="Entre os membros"
+                    selected={matchType === 'INTERNAL'}
+                    onPress={() => selectMatchType('INTERNAL')}
+                  />
+                  <MatchTypeButton
+                    label="Contra outro time"
+                    selected={matchType === 'VERSUS_EXTERNAL'}
+                    onPress={() => selectMatchType('VERSUS_EXTERNAL')}
+                  />
+                </XStack>
+              </YStack>
+
+              {matchType === 'INTERNAL' ? (
+                <Field label="QUANTOS TIMES SERÃO FORMADOS?">
+                  <Input
+                    accessibilityLabel="Quantos times serão formados?"
+                    backgroundColor="$onzeSurface"
+                    borderColor="$onzeBorder"
+                    color="$onzeInk"
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    onChangeText={changeTeamCount}
+                    placeholder="2"
+                    placeholderTextColor="$onzeMuted"
+                    value={teamCount}
+                  />
+                  <Text color="$onzeMuted" fontSize={12} lineHeight={18}>Mínimo de 2 times.</Text>
+                </Field>
+              ) : null}
+
+              <Field label="QUANTIDADE DE GOLEIROS NECESSÁRIOS">
+                <Input
+                  accessibilityLabel="Quantidade de goleiros necessários"
+                  backgroundColor="$onzeSurface"
+                  borderColor="$onzeBorder"
+                  color="$onzeInk"
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  onChangeText={(value) => setRequiredGoalkeepers(value.replace(/\D/g, '').slice(0, 2))}
+                  placeholder={matchType === 'INTERNAL' ? teamCount || '2' : '1'}
+                  placeholderTextColor="$onzeMuted"
+                  value={requiredGoalkeepers}
+                />
+                <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                  {matchType === 'INTERNAL'
+                    ? `Deve ser igual ou maior que a quantidade de times (${teamCount || '2'}).`
+                    : 'O Onze organiza um dos lados; informe pelo menos 1 goleiro.'}
+                </Text>
+              </Field>
+
               <Field label="OBSERVAÇÕES (OPCIONAL)">
                 <TextArea
                   backgroundColor="$onzeSurface"
@@ -465,7 +566,7 @@ export default function CreateMatchScreen() {
                 <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$4">
                   <Text color="$onzeGreen" fontSize={13} fontWeight="900">Como funciona</Text>
                   <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                    No dia seguinte a cada jogo, às 09:00, a presença da próxima semana será liberada e os membros receberão uma notificação.
+                    No dia seguinte a cada jogo, às 09:00, a presença da próxima semana será liberada. Tipo, times e quantidade de goleiros serão mantidos; goleiros de aluguel não serão copiados.
                   </Text>
                 </YStack>
               ) : null}
@@ -499,5 +600,32 @@ function Field({
       <Text color="$onzeMuted" fontSize={11} fontWeight="900">{label}</Text>
       {children}
     </YStack>
+  );
+}
+
+function MatchTypeButton({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Button
+      accessibilityState={{ selected }}
+      backgroundColor={selected ? '$onzeGreen' : '$onzeSurface'}
+      borderColor="$onzeGreen"
+      borderWidth={1}
+      flex={1}
+      minHeight={52}
+      onPress={onPress}
+      paddingHorizontal="$2"
+    >
+      <Text color={selected ? '$onzeSurface' : '$onzeGreen'} fontSize={12} fontWeight="900" textAlign="center">
+        {label}
+      </Text>
+    </Button>
   );
 }

@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { SafeAreaView, ScrollView, Switch } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
+import { PlayerPositionSelect } from '../src/components/player-position-select';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
@@ -17,10 +18,10 @@ import {
   DominantFoot,
   formatTechnicalLevel,
   getSportsProfileValidationError,
-  PLAYER_POSITION_OPTIONS,
+  normalizedCanPlayGoalkeeper,
   PlayerPosition,
+  shouldOfferGoalkeeperAvailability,
   TECHNICAL_LEVEL_OPTIONS,
-  togglePlayerPosition,
 } from '../src/lib/sports-profile';
 
 export default function SportsProfileScreen() {
@@ -30,10 +31,15 @@ export default function SportsProfileScreen() {
     groupName?: string;
     membershipId?: string;
     memberName?: string;
+    required?: string;
   }>();
   const adminMode = Boolean(params.membershipId);
+  const requiredMode = !adminMode && params.required === 'true';
   const [displayName, setDisplayName] = useState(params.memberName?.trim() || 'Jogador');
-  const [positions, setPositions] = useState<PlayerPosition[]>([]);
+  const [primaryPosition, setPrimaryPosition] = useState<PlayerPosition | null>(null);
+  const [secondaryPosition, setSecondaryPosition] = useState<PlayerPosition | null>(null);
+  const [wantsSecondaryPosition, setWantsSecondaryPosition] = useState(false);
+  const [positionPicker, setPositionPicker] = useState<'primary' | 'secondary' | null>(null);
   const [canPlayGoalkeeper, setCanPlayGoalkeeper] = useState(false);
   const [dominantFoot, setDominantFoot] = useState<DominantFoot | null>(null);
   const [technicalLevel, setTechnicalLevel] = useState<number | null>(null);
@@ -68,7 +74,11 @@ export default function SportsProfileScreen() {
         ? await getMemberSportsProfile(token, params.groupId, params.membershipId)
         : await getOwnSportsProfile(token, params.groupId);
       setDisplayName(profile.displayName);
-      setPositions(profile.positions ?? []);
+      const loadedPrimary = profile.primaryPosition ?? profile.positions?.[0] ?? null;
+      const loadedSecondary = profile.secondaryPosition ?? profile.positions?.[1] ?? null;
+      setPrimaryPosition(loadedPrimary);
+      setSecondaryPosition(loadedSecondary);
+      setWantsSecondaryPosition(loadedSecondary != null);
       setCanPlayGoalkeeper(profile.canPlayGoalkeeper);
       setDominantFoot(profile.dominantFoot);
       setTechnicalLevel(profile.technicalLevel);
@@ -87,8 +97,9 @@ export default function SportsProfileScreen() {
   async function saveProfile() {
     if (!params.groupId || saving) return;
     const validationError = getSportsProfileValidationError(
-      positions,
-      canPlayGoalkeeper,
+      primaryPosition,
+      secondaryPosition,
+      wantsSecondaryPosition,
       dominantFoot,
     );
     if (validationError) {
@@ -112,19 +123,31 @@ export default function SportsProfileScreen() {
         return;
       }
 
+      const effectiveSecondary = wantsSecondaryPosition ? secondaryPosition ?? undefined : undefined;
+      const effectiveCanPlayGoalkeeper = normalizedCanPlayGoalkeeper(
+        primaryPosition,
+        effectiveSecondary ?? null,
+        canPlayGoalkeeper,
+      );
       if (adminMode && params.membershipId) {
         await updateMemberSportsProfile(token, params.groupId, params.membershipId, {
-          positions,
-          canPlayGoalkeeper,
+          primaryPosition: primaryPosition!,
+          secondaryPosition: effectiveSecondary,
+          canPlayGoalkeeper: effectiveCanPlayGoalkeeper,
           dominantFoot: dominantFoot!,
           technicalLevel: technicalLevel!,
         });
       } else {
         await updateOwnSportsProfile(token, params.groupId, {
-          positions,
-          canPlayGoalkeeper,
+          primaryPosition: primaryPosition!,
+          secondaryPosition: effectiveSecondary,
+          canPlayGoalkeeper: effectiveCanPlayGoalkeeper,
           dominantFoot: dominantFoot!,
         });
+      }
+      if (requiredMode) {
+        router.replace({ pathname: '/group', params: { groupId: params.groupId } });
+        return;
       }
       setMessage(adminMode
         ? 'Perfil e avaliação técnica atualizados.'
@@ -145,11 +168,20 @@ export default function SportsProfileScreen() {
     return <ServerLoadingScreen title="Carregando perfil..." message="Buscando posições e preferências do jogador." />;
   }
 
+  const showGoalkeeperAvailability = shouldOfferGoalkeeperAvailability(
+    primaryPosition,
+    wantsSecondaryPosition ? secondaryPosition : null,
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 44 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <Button alignSelf="flex-start" backgroundColor="transparent" onPress={() => router.back()}>
+          <Button
+            alignSelf="flex-start"
+            backgroundColor="transparent"
+            onPress={() => requiredMode ? router.replace('/groups') : router.back()}
+          >
             <Text color="$onzeGreen" fontWeight="700">← Voltar</Text>
           </Button>
 
@@ -177,45 +209,96 @@ export default function SportsProfileScreen() {
           ) : null}
 
           <ProfileSection
-            title="Posições de linha"
-            description="Você pode escolher mais de uma."
+            title="Posições"
+            description="Defina uma posição principal e, se quiser, uma segunda posição diferente."
           >
-            <XStack flexWrap="wrap" gap="$2">
-              {PLAYER_POSITION_OPTIONS.map((option) => (
-                <ChoiceButton
-                  key={option.value}
-                  label={option.label}
-                  selected={positions.includes(option.value)}
-                  onPress={() => {
-                    setPositions((current) => togglePlayerPosition(current, option.value));
-                    setError(null);
-                    setMessage(null);
-                  }}
-                />
-              ))}
-            </XStack>
-          </ProfileSection>
+            <YStack gap="$2">
+              <Text color="$onzeMuted" fontSize={11} fontWeight="900">POSIÇÃO PRINCIPAL *</Text>
+              <PlayerPositionSelect
+                label="Posição principal"
+                value={primaryPosition}
+                visible={positionPicker === 'primary'}
+                disabledPosition={wantsSecondaryPosition ? secondaryPosition : null}
+                disabled={saving}
+                onOpen={() => setPositionPicker('primary')}
+                onClose={() => setPositionPicker(null)}
+                onSelect={(position) => {
+                  setPrimaryPosition(position);
+                  if (position === secondaryPosition) {
+                    setSecondaryPosition(null);
+                  }
+                  if (position === 'GOALKEEPER') setCanPlayGoalkeeper(false);
+                  setError(null);
+                  setMessage(null);
+                }}
+              />
+            </YStack>
 
-          <ProfileSection
-            title="Goleiro"
-            description="Esta opção é independente e pode ser combinada com posições de linha."
-          >
-            <XStack alignItems="center" justifyContent="space-between" gap="$4">
-              <Text color="$onzeInk" flex={1} fontSize={14} fontWeight="700">Também jogo como goleiro</Text>
+            <XStack alignItems="center" gap="$4" justifyContent="space-between">
+              <Text color="$onzeInk" flex={1} fontSize={14} fontWeight="700">
+                Deseja adicionar uma segunda posição?
+              </Text>
               <Switch
-                accessibilityLabel="Também jogo como goleiro"
+                accessibilityLabel="Deseja adicionar uma segunda posição?"
                 disabled={saving}
                 onValueChange={(enabled) => {
-                  setCanPlayGoalkeeper(enabled);
+                  setWantsSecondaryPosition(enabled);
+                  if (!enabled) setSecondaryPosition(null);
                   setError(null);
                   setMessage(null);
                 }}
                 thumbColor="#FFFFFF"
                 trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
-                value={canPlayGoalkeeper}
+                value={wantsSecondaryPosition}
               />
             </XStack>
+
+            {wantsSecondaryPosition ? (
+              <YStack gap="$2">
+                <Text color="$onzeMuted" fontSize={11} fontWeight="900">SEGUNDA POSIÇÃO *</Text>
+                <PlayerPositionSelect
+                  label="Segunda posição"
+                  value={secondaryPosition}
+                  visible={positionPicker === 'secondary'}
+                  disabledPosition={primaryPosition}
+                  disabled={saving}
+                  onOpen={() => setPositionPicker('secondary')}
+                  onClose={() => setPositionPicker(null)}
+                  onSelect={(position) => {
+                    setSecondaryPosition(position);
+                    if (position === 'GOALKEEPER') setCanPlayGoalkeeper(false);
+                    setError(null);
+                    setMessage(null);
+                  }}
+                />
+              </YStack>
+            ) : null}
           </ProfileSection>
+
+          {showGoalkeeperAvailability ? (
+            <ProfileSection
+              title="Disponibilidade no gol"
+              description="Isso só informa que você aceita jogar no gol quando necessário; o administrador ainda define seu papel em cada partida."
+            >
+              <XStack alignItems="center" justifyContent="space-between" gap="$4">
+                <Text color="$onzeInk" flex={1} fontSize={14} fontWeight="700">
+                  Posso jogar no gol quando necessário
+                </Text>
+                <Switch
+                  accessibilityLabel="Posso jogar no gol quando necessário"
+                  disabled={saving}
+                  onValueChange={(enabled) => {
+                    setCanPlayGoalkeeper(enabled);
+                    setError(null);
+                    setMessage(null);
+                  }}
+                  thumbColor="#FFFFFF"
+                  trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
+                  value={canPlayGoalkeeper}
+                />
+              </XStack>
+            </ProfileSection>
+          ) : null}
 
           <ProfileSection title="Pé dominante" description="Escolha a opção que melhor representa seu jogo.">
             <XStack flexWrap="wrap" gap="$2">
