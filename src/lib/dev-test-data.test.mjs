@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   DEV_TEST_PLAYER_PRESETS,
   DEV_TEST_SCENARIOS,
-} from './dev-test-data.ts';
+} from './dev-test-data-catalog.ts';
 
 test('offers the expected player presets for futsal, fut7 and field', () => {
   assert.deepEqual(
