@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, ScrollView } from 'react-native';
-import { Button, Input, Text, XStack, YStack } from 'tamagui';
+import { Button, Input, Text, YStack } from 'tamagui';
 
 import {
   FootballMatch,
   getMatch,
   MatchModality,
-  updateMatchPlayerConfiguration,
 } from '../src/lib/api';
 import { getAccessToken } from '../src/lib/auth-storage';
+import { updateMatchPlayerConfiguration } from '../src/lib/match-player-configuration-api';
 import {
   idealPlayers,
   MATCH_MODALITY_OPTIONS,
+  maximumPlayersValidationError,
   minimumPlayersValidationError,
 } from '../src/lib/match-modality';
 
@@ -22,6 +23,8 @@ export default function EditMatchPlayerConfigScreen() {
   const [match, setMatch] = useState<FootballMatch | null>(null);
   const [modality, setModality] = useState<MatchModality>('FUT7');
   const [minimumPlayers, setMinimumPlayers] = useState('');
+  const [maxPlayers, setMaxPlayers] = useState('');
+  const [maxPlayersCustomized, setMaxPlayersCustomized] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,17 +42,51 @@ export default function EditMatchPlayerConfigScreen() {
       setMatch(loaded);
       setModality(loaded.modality);
       setMinimumPlayers(String(loaded.minimumPlayers));
+      setMaxPlayers(String(loaded.maxPlayers));
+      setMaxPlayersCustomized(loaded.maxPlayers !== loaded.minimumPlayers);
     }).catch((exception) => {
       setError(exception instanceof Error ? exception.message : 'Não foi possível carregar a partida.');
     });
   }, [params.matchId, router]);
 
+  function selectModality(nextModality: MatchModality) {
+    if (!match) {
+      setModality(nextModality);
+      return;
+    }
+    const nextIdeal = idealPlayers(nextModality, match.matchType, match.teamCount);
+    setModality(nextModality);
+    setMinimumPlayers(String(nextIdeal));
+    setMaxPlayers(String(nextIdeal));
+    setMaxPlayersCustomized(false);
+    setError(null);
+  }
+
+  function changeMinimumPlayers(value: string) {
+    const normalized = value.replace(/\D/g, '').slice(0, 9);
+    setMinimumPlayers(normalized);
+    if (!maxPlayersCustomized) {
+      setMaxPlayers(normalized);
+    }
+  }
+
+  function changeMaxPlayers(value: string) {
+    setMaxPlayers(value.replace(/\D/g, '').slice(0, 9));
+    setMaxPlayersCustomized(true);
+  }
+
   async function submit() {
     if (!params.matchId || !match || saving) return;
     const parsedMinimum = Number.parseInt(minimumPlayers, 10);
-    const validation = minimumPlayersValidationError(parsedMinimum, match.maxPlayers);
-    if (validation) {
-      setError(validation);
+    const parsedMaximum = Number.parseInt(maxPlayers, 10);
+    const maximumValidation = maximumPlayersValidationError(parsedMaximum);
+    if (maximumValidation) {
+      setError(maximumValidation);
+      return;
+    }
+    const minimumValidation = minimumPlayersValidationError(parsedMinimum, parsedMaximum);
+    if (minimumValidation) {
+      setError(minimumValidation);
       return;
     }
     setSaving(true);
@@ -60,7 +97,13 @@ export default function EditMatchPlayerConfigScreen() {
         router.replace('/');
         return;
       }
-      await updateMatchPlayerConfiguration(token, params.matchId, modality, parsedMinimum);
+      await updateMatchPlayerConfiguration(
+        token,
+        params.matchId,
+        modality,
+        parsedMinimum,
+        parsedMaximum,
+      );
       router.back();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível salvar.');
@@ -82,7 +125,7 @@ export default function EditMatchPlayerConfigScreen() {
           </Button>
           <YStack gap="$1">
             <Text color="$onzeGreen" fontSize={13} fontWeight="900">CONFIGURAÇÃO DE JOGADORES</Text>
-            <Text color="$onzeInk" fontSize={28} fontWeight="900">Modalidade e mínimo</Text>
+            <Text color="$onzeInk" fontSize={28} fontWeight="900">Modalidade e jogadores</Text>
           </YStack>
           <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
             <Text color="$onzeMuted" fontSize={11} fontWeight="900">MODALIDADE *</Text>
@@ -94,7 +137,7 @@ export default function EditMatchPlayerConfigScreen() {
                   borderColor={modality === option.value ? '$onzeGreen' : '$onzeBorder'}
                   borderWidth={modality === option.value ? 2 : 1}
                   justifyContent="flex-start"
-                  onPress={() => setModality(option.value)}
+                  onPress={() => selectModality(option.value)}
                 >
                   <Text color="$onzeInk" fontWeight="800">
                     {modality === option.value ? '✓ ' : ''}{option.label}
@@ -109,11 +152,27 @@ export default function EditMatchPlayerConfigScreen() {
                 borderColor="$onzeBorder"
                 color="$onzeInk"
                 inputMode="numeric"
-                onChangeText={(value) => setMinimumPlayers(value.replace(/\D/g, '').slice(0, 3))}
+                maxLength={9}
+                onChangeText={changeMinimumPlayers}
                 value={minimumPlayers}
               />
               <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                Ideal para esta configuração: {suggestedIdeal}. O mínimo pode ser menor, mas nunca ultrapassar {match?.maxPlayers ?? 'o limite'}.
+                Ideal para esta configuração: {suggestedIdeal}. Ao trocar a modalidade, o mínimo é atualizado automaticamente.
+              </Text>
+            </YStack>
+            <YStack gap="$2">
+              <Text color="$onzeMuted" fontSize={11} fontWeight="900">QUANTIDADE MÁXIMA *</Text>
+              <Input
+                backgroundColor="$onzeSurface"
+                borderColor="$onzeBorder"
+                color="$onzeInk"
+                inputMode="numeric"
+                maxLength={9}
+                onChangeText={changeMaxPlayers}
+                value={maxPlayers}
+              />
+              <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                Por padrão acompanha o mínimo. Se precisar, defina qualquer quantidade maior, como 1000 jogadores.
               </Text>
             </YStack>
           </YStack>
