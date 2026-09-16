@@ -174,11 +174,23 @@ export default function MatchTeamsScreen() {
           ) : null}
 
           {data?.technicalDetailsVisible ? (
-            <Button backgroundColor="$onzeGreen" disabled={generating} height={52} onPress={() => void generate()}>
-              <Text color="$onzeSurface" fontWeight="900">
-                {generating ? 'Formando...' : hasTeams ? 'Gerar novamente' : 'Formar times automaticamente'}
-              </Text>
-            </Button>
+            <YStack gap="$2">
+              <Button backgroundColor="$onzeGreen" disabled={generating} height={52} onPress={() => void generate()}>
+                <Text color="$onzeSurface" fontWeight="900">
+                  {generating ? 'Formando...' : hasTeams ? 'Gerar novamente' : 'Formar times automaticamente'}
+                </Text>
+              </Button>
+              <Button
+                backgroundColor="$onzeCanvas"
+                height={46}
+                onPress={() => {
+                  if (!params.matchId) return;
+                  router.push({ pathname: '/dev-test-data', params: { matchId: params.matchId } });
+                }}
+              >
+                <Text color="$onzeGreen" fontWeight="900">🧪 Ferramentas de teste</Text>
+              </Button>
+            </YStack>
           ) : null}
 
           {!loading && data && !hasTeams ? (
