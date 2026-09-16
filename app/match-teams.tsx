@@ -165,10 +165,17 @@ export default function MatchTeamsScreen() {
 
           {loading ? <Text color="$onzeMuted">Carregando...</Text> : null}
 
-          {data?.reducedTeams ? (
+          {data && data.confirmedPlayers < data.minimumPlayers ? (
+            <YStack backgroundColor="#FFF7E6" borderColor="#D8A331" borderRadius="$5" borderWidth={1} gap="$1" padding="$4">
+              <Text color="#8A6414" fontSize={13} fontWeight="900">Partida abaixo do mínimo</Text>
+              <Text color="$onzeInk" fontSize={12} lineHeight={18}>
+                Há {data.confirmedPlayers} de {data.minimumPlayers} jogadores mínimos. Se o administrador autorizou continuar, o formador tentará equilibrar os disponíveis, mas posições e força podem não ficar ideais. Revise os times antes de confirmar.
+              </Text>
+            </YStack>
+          ) : data?.reducedTeams ? (
             <YStack backgroundColor="#FFF7E6" borderRadius="$5" padding="$4">
               <Text color="#8A6414" fontSize={13} fontWeight="800">
-                O mínimo foi atingido, mas ainda há vagas até o ideal de {data.idealPlayers}. Os times serão reduzidos.
+                Há menos jogadores que o ideal de {data.idealPlayers}. O formador usará os confirmados disponíveis.
               </Text>
             </YStack>
           ) : null}
