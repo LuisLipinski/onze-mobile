@@ -15,6 +15,7 @@ import { getAccessToken } from '../src/lib/auth-storage';
 import { modalityLabel } from '../src/lib/match-modality';
 import { positionLabel } from '../src/lib/sports-profile';
 import { teamAssignmentReasonText } from '../src/lib/technical-ratings';
+import { calculateTeamLineStrengths } from '../src/lib/team-line-strength';
 
 const FUTSAL_ROLE_LABELS: Record<string, string> = {
   GOALKEEPER: 'Goleiro',
@@ -37,6 +38,22 @@ function originLabel(origin: TeamAssignment['positionOrigin']) {
     case 'MANUAL': return 'Alterado pelo administrador';
     default: return '';
   }
+}
+
+function StrengthMetric({ label, value }: { label: string; value: number | null }) {
+  return (
+    <YStack
+      backgroundColor="$onzeCanvas"
+      borderRadius="$4"
+      flex={1}
+      gap="$1"
+      minWidth={0}
+      padding="$3"
+    >
+      <Text color="$onzeMuted" fontSize={10} fontWeight="800">{label}</Text>
+      <Text color="$onzeInk" fontSize={15} fontWeight="900">{value ?? '—'}/50</Text>
+    </YStack>
+  );
 }
 
 export default function MatchTeamsScreen() {
@@ -173,57 +190,67 @@ export default function MatchTeamsScreen() {
             </YStack>
           ) : null}
 
-          {data?.teams.map((team) => (
-            <YStack key={team.teamNumber} backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
-              <XStack alignItems="center" justifyContent="space-between">
-                <Text color="$onzeInk" fontSize={20} fontWeight="900">Time {team.teamNumber}</Text>
-                {data.technicalDetailsVisible ? (
-                  <Text color="$onzeGreen" fontSize={12} fontWeight="900">
-                    Força {team.estimatedStrength ?? '—'}/50
-                  </Text>
-                ) : null}
-              </XStack>
-              {data.technicalDetailsVisible ? (
-                <Text color="$onzeMuted" fontSize={11}>
-                  {team.realEvaluations ?? 0} reais • {team.estimatedEvaluations ?? 0} estimadas
-                </Text>
-              ) : null}
-              {team.assignments.map((assignment) => (
-                <YStack key={assignment.id} borderTopColor="$onzeBorder" borderTopWidth={1} gap="$2" paddingTop="$3">
-                  <XStack alignItems="center" gap="$3" justifyContent="space-between">
-                    <YStack flex={1} gap="$1">
-                      <Text color="$onzeInk" fontSize={15} fontWeight="900">{assignment.displayName}</Text>
-                      <Text color="$onzeGreen" fontSize={12} fontWeight="800">{roleLabel(assignment.assignedRole)}</Text>
-                    </YStack>
-                    {data.technicalDetailsVisible ? (
-                      <Button
-                        backgroundColor="$onzeCanvas"
-                        disabled={Boolean(movingId)}
-                        minHeight={38}
-                        onPress={() => void move(assignment, team.teamNumber)}
-                        paddingHorizontal="$3"
-                      >
-                        <Text color="$onzeGreen" fontSize={11} fontWeight="900">
-                          {movingId === assignment.id ? 'Movendo...' : 'Próximo time'}
-                        </Text>
-                      </Button>
-                    ) : null}
-                  </XStack>
+          {data?.teams.map((team) => {
+            const lineStrengths = calculateTeamLineStrengths(team.assignments);
+            return (
+              <YStack key={team.teamNumber} backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
+                <XStack alignItems="center" justifyContent="space-between">
+                  <Text color="$onzeInk" fontSize={20} fontWeight="900">Time {team.teamNumber}</Text>
                   {data.technicalDetailsVisible ? (
-                    <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$3">
-                      <Text color="$onzeInk" fontSize={12} fontWeight="800">
-                        Overall usado: {assignment.overallUsed ?? '—'}/50 • {assignment.scoreSource === 'REAL' ? 'Real' : 'Estimado'}
-                      </Text>
-                      <Text color="$onzeMuted" fontSize={12}>{originLabel(assignment.positionOrigin)}</Text>
-                      <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                        Motivo: {teamAssignmentReasonText(assignment.reason)}
-                      </Text>
-                    </YStack>
+                    <Text color="$onzeGreen" fontSize={12} fontWeight="900">
+                      Força {team.estimatedStrength ?? '—'}/50
+                    </Text>
                   ) : null}
-                </YStack>
-              ))}
-            </YStack>
-          ))}
+                </XStack>
+                {data.technicalDetailsVisible ? (
+                  <>
+                    <XStack gap="$2">
+                      <StrengthMetric label="DEFESA" value={lineStrengths.defense} />
+                      <StrengthMetric label="MEIO" value={lineStrengths.midfield} />
+                      <StrengthMetric label="ATAQUE" value={lineStrengths.attack} />
+                    </XStack>
+                    <Text color="$onzeMuted" fontSize={11}>
+                      {team.realEvaluations ?? 0} reais • {team.estimatedEvaluations ?? 0} estimadas
+                    </Text>
+                  </>
+                ) : null}
+                {team.assignments.map((assignment) => (
+                  <YStack key={assignment.id} borderTopColor="$onzeBorder" borderTopWidth={1} gap="$2" paddingTop="$3">
+                    <XStack alignItems="center" gap="$3" justifyContent="space-between">
+                      <YStack flex={1} gap="$1">
+                        <Text color="$onzeInk" fontSize={15} fontWeight="900">{assignment.displayName}</Text>
+                        <Text color="$onzeGreen" fontSize={12} fontWeight="800">{roleLabel(assignment.assignedRole)}</Text>
+                      </YStack>
+                      {data.technicalDetailsVisible ? (
+                        <Button
+                          backgroundColor="$onzeCanvas"
+                          disabled={Boolean(movingId)}
+                          minHeight={38}
+                          onPress={() => void move(assignment, team.teamNumber)}
+                          paddingHorizontal="$3"
+                        >
+                          <Text color="$onzeGreen" fontSize={11} fontWeight="900">
+                            {movingId === assignment.id ? 'Movendo...' : 'Próximo time'}
+                          </Text>
+                        </Button>
+                      ) : null}
+                    </XStack>
+                    {data.technicalDetailsVisible ? (
+                      <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$3">
+                        <Text color="$onzeInk" fontSize={12} fontWeight="800">
+                          Overall usado: {assignment.overallUsed ?? '—'}/50 • {assignment.scoreSource === 'REAL' ? 'Real' : 'Estimado'}
+                        </Text>
+                        <Text color="$onzeMuted" fontSize={12}>{originLabel(assignment.positionOrigin)}</Text>
+                        <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                          Motivo: {teamAssignmentReasonText(assignment.reason)}
+                        </Text>
+                      </YStack>
+                    ) : null}
+                  </YStack>
+                ))}
+              </YStack>
+            );
+          })}
         </YStack>
       </ScrollView>
     </SafeAreaView>
