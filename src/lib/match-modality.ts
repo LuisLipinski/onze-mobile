@@ -23,12 +23,19 @@ export function idealPlayers(
   return playersPerTeam(modality) * sides;
 }
 
+export function maximumPlayersValidationError(maxPlayers: number) {
+  if (!Number.isInteger(maxPlayers) || maxPlayers < 2) {
+    return 'A quantidade máxima deve ser de pelo menos 2 jogadores.';
+  }
+  return null;
+}
+
 export function minimumPlayersValidationError(minimumPlayers: number, maxPlayers: number) {
   if (!Number.isInteger(minimumPlayers) || minimumPlayers <= 0) {
     return 'A quantidade mínima deve ser maior que zero.';
   }
   if (minimumPlayers > maxPlayers) {
-    return 'A quantidade mínima não pode ultrapassar o limite de jogadores.';
+    return 'A quantidade mínima não pode ultrapassar a quantidade máxima de jogadores.';
   }
   return null;
 }
