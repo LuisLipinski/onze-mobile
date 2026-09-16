@@ -18,6 +18,7 @@ import {
 import {
   idealPlayers,
   MATCH_MODALITY_OPTIONS,
+  maximumPlayersValidationError,
   minimumPlayersValidationError,
 } from '../src/lib/match-modality';
 import {
@@ -152,15 +153,9 @@ export default function CreateMatchScreen() {
     nextType: MatchType,
     nextTeamCount: number | null,
   ) {
-    const currentTeamCount = matchType === 'INTERNAL' ? Number.parseInt(teamCount, 10) || 2 : null;
-    const currentIdeal = idealPlayers(modality, matchType, currentTeamCount);
     const nextIdeal = idealPlayers(nextModality, nextType, nextTeamCount);
-    setMaxPlayers((current) => Number.parseInt(current, 10) === currentIdeal
-      ? String(nextIdeal)
-      : current);
-    setMinimumPlayers((current) => Number.parseInt(current, 10) === currentIdeal
-      ? String(nextIdeal)
-      : current);
+    setMinimumPlayers(String(nextIdeal));
+    setMaxPlayers(String(nextIdeal));
   }
 
   function selectModality(nextModality: MatchModality) {
@@ -223,8 +218,9 @@ export default function CreateMatchScreen() {
       setError('Informe o local do jogo.');
       return;
     }
-    if (!Number.isInteger(parsedMaxPlayers) || parsedMaxPlayers < 2 || parsedMaxPlayers > 100) {
-      setError('O limite deve ficar entre 2 e 100 jogadores.');
+    const maximumError = maximumPlayersValidationError(parsedMaxPlayers);
+    if (maximumError) {
+      setError(maximumError);
       return;
     }
     const minimumError = minimumPlayersValidationError(parsedMinimumPlayers, parsedMaxPlayers);
@@ -448,18 +444,21 @@ export default function CreateMatchScreen() {
                 ))}
               </YStack>
 
-              <Field label="LIMITE DE JOGADORES">
+              <Field label="QUANTIDADE MÁXIMA DE JOGADORES">
                 <Input
                   backgroundColor="$onzeSurface"
                   borderColor="$onzeBorder"
                   color="$onzeInk"
                   keyboardType="number-pad"
-                  maxLength={3}
-                  onChangeText={(value) => setMaxPlayers(value.replace(/\D/g, ''))}
-                  placeholder="14"
+                  maxLength={9}
+                  onChangeText={(value) => setMaxPlayers(value.replace(/\D/g, '').slice(0, 9))}
+                  placeholder={minimumPlayers || '14'}
                   placeholderTextColor="$onzeMuted"
                   value={maxPlayers}
                 />
+                <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                  Por padrão é igual ao mínimo, mas você pode aumentar livremente conforme a necessidade do grupo.
+                </Text>
               </Field>
 
               <Field label="QUANTIDADE MÍNIMA DE JOGADORES">
@@ -469,8 +468,8 @@ export default function CreateMatchScreen() {
                   borderColor="$onzeBorder"
                   color="$onzeInk"
                   keyboardType="number-pad"
-                  maxLength={3}
-                  onChangeText={(value) => setMinimumPlayers(value.replace(/\D/g, ''))}
+                  maxLength={9}
+                  onChangeText={(value) => setMinimumPlayers(value.replace(/\D/g, '').slice(0, 9))}
                   placeholder={String(idealPlayers(
                     modality,
                     matchType,
@@ -484,7 +483,7 @@ export default function CreateMatchScreen() {
                     modality,
                     matchType,
                     matchType === 'INTERNAL' ? Number.parseInt(teamCount, 10) || 2 : null,
-                  )}. A formação automática fica bloqueada abaixo do mínimo.
+                  )}. Ao trocar modalidade, tipo de partida ou quantidade de times, o mínimo e o máximo voltam para este valor ideal.
                 </Text>
               </Field>
 
@@ -650,7 +649,7 @@ export default function CreateMatchScreen() {
                 <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$4">
                   <Text color="$onzeGreen" fontSize={13} fontWeight="900">Como funciona</Text>
                   <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                    No dia seguinte a cada jogo, às 09:00, a presença da próxima semana será liberada. Tipo, modalidade, times, mínimo e goleiros serão mantidos; convidados e goleiros de aluguel não serão copiados.
+                    No dia seguinte a cada jogo, às 09:00, a presença da próxima semana será liberada. Tipo, modalidade, times, mínimo, máximo e goleiros serão mantidos; convidados e goleiros de aluguel não serão copiados.
                   </Text>
                 </YStack>
               ) : null}
