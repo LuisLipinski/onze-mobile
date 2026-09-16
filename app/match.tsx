@@ -5,6 +5,7 @@ import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { GoalkeeperPlayerModal } from '../src/components/goalkeeper-player-modal';
+import { MinimumPlayerDecisionCard } from '../src/components/minimum-player-decision-card';
 import { PaymentSettlementModal } from '../src/components/payment-settlement-modal';
 import { RentalGoalkeeperModal } from '../src/components/rental-goalkeeper-modal';
 import { ReplacementPlayerModal } from '../src/components/replacement-player-modal';
@@ -623,6 +624,11 @@ export default function MatchScreen() {
                 ) : null}
               </YStack>
 
+              <MinimumPlayerDecisionCard
+                match={match}
+                onCancelMatch={() => setManagementAction('cancel-occurrence')}
+              />
+
               <YStack
                 backgroundColor="$onzeSurface"
                 borderColor={match.missingGoalkeepers > 0 ? '$onzeDanger' : '$onzeBorder'}
@@ -649,11 +655,11 @@ export default function MatchScreen() {
                   </Text>
                   {match.missingMinimumPlayers > 0 ? (
                     <Text color="$onzeDanger" fontSize={13} fontWeight="800">
-                      Faltam {match.missingMinimumPlayers} {match.missingMinimumPlayers === 1 ? 'jogador' : 'jogadores'} para formar os times.
+                      Faltam {match.missingMinimumPlayers} {match.missingMinimumPlayers === 1 ? 'jogador' : 'jogadores'} para atingir o mínimo configurado.
                     </Text>
                   ) : match.goingCount < match.idealPlayers ? (
                     <Text color="#8A6414" fontSize={12} fontWeight="800">
-                      O mínimo foi atingido; ainda há vagas e as equipes podem ser formadas reduzidas.
+                      O mínimo foi atingido, mas ainda há menos jogadores que o ideal configurado.
                     </Text>
                   ) : null}
                   {missingGoalkeepersMessage(match.missingGoalkeepers) ? (
