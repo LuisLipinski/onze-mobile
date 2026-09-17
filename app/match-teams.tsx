@@ -26,6 +26,10 @@ const FUTSAL_ROLE_LABELS: Record<string, string> = {
   PIVOT: 'Pivô',
 };
 
+type MatchTeamsView = MatchTeams & {
+  generationNotice?: string | null;
+};
+
 function roleLabel(role: string) {
   return FUTSAL_ROLE_LABELS[role] ?? positionLabel(role as never);
 }
@@ -120,7 +124,7 @@ function FormationPitch({
 export default function MatchTeamsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ matchId?: string }>();
-  const [data, setData] = useState<MatchTeams | null>(null);
+  const [data, setData] = useState<MatchTeamsView | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [movingId, setMovingId] = useState<string | null>(null);
