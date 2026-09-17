@@ -47,36 +47,38 @@ const FUTSAL_ROLE_ORDER: Record<string, number> = {
   PIVOT: 30,
 };
 
+// Horizontal field: goalkeeper on the left, attack on the right.
+// Vertical spacing inside each line keeps even an 11-player formation readable on mobile.
 const FIELD_SLOTS: readonly FormationSlot[] = [
-  { id: 'gk', x: 50, y: 91, roles: ['GOALKEEPER'] },
-  { id: 'rb', x: 82, y: 70, roles: ['RIGHT_BACK', 'RIGHT_DEFENDER', 'DEFENDER'] },
-  { id: 'rcb', x: 61, y: 74, roles: ['CENTER_DEFENDER', 'RIGHT_DEFENDER', 'DEFENDER'] },
-  { id: 'lcb', x: 39, y: 74, roles: ['CENTER_DEFENDER', 'LEFT_DEFENDER', 'DEFENDER'] },
-  { id: 'lb', x: 18, y: 70, roles: ['LEFT_BACK', 'LEFT_DEFENDER', 'DEFENDER'] },
-  { id: 'rm', x: 76, y: 47, roles: ['RIGHT_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
-  { id: 'cm', x: 50, y: 51, roles: ['CENTRAL_MIDFIELDER', 'DEFENSIVE_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
-  { id: 'lm', x: 24, y: 47, roles: ['LEFT_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
-  { id: 'rw', x: 78, y: 22, roles: ['RIGHT_WINGER', 'ATTACKER'] },
-  { id: 'cf', x: 50, y: 16, roles: ['CENTER_FORWARD', 'ATTACKER'] },
-  { id: 'lw', x: 22, y: 22, roles: ['LEFT_WINGER', 'ATTACKER'] },
+  { id: 'gk', x: 8, y: 50, roles: ['GOALKEEPER'] },
+  { id: 'rb', x: 30, y: 84, roles: ['RIGHT_BACK', 'RIGHT_DEFENDER', 'DEFENDER'] },
+  { id: 'rcb', x: 30, y: 62, roles: ['CENTER_DEFENDER', 'RIGHT_DEFENDER', 'DEFENDER'] },
+  { id: 'lcb', x: 30, y: 38, roles: ['CENTER_DEFENDER', 'LEFT_DEFENDER', 'DEFENDER'] },
+  { id: 'lb', x: 30, y: 16, roles: ['LEFT_BACK', 'LEFT_DEFENDER', 'DEFENDER'] },
+  { id: 'rm', x: 55, y: 78, roles: ['RIGHT_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
+  { id: 'cm', x: 55, y: 50, roles: ['CENTRAL_MIDFIELDER', 'DEFENSIVE_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
+  { id: 'lm', x: 55, y: 22, roles: ['LEFT_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
+  { id: 'rw', x: 82, y: 78, roles: ['RIGHT_WINGER', 'ATTACKER'] },
+  { id: 'cf', x: 82, y: 50, roles: ['CENTER_FORWARD', 'ATTACKER'] },
+  { id: 'lw', x: 82, y: 22, roles: ['LEFT_WINGER', 'ATTACKER'] },
 ];
 
 const FUT7_SLOTS: readonly FormationSlot[] = [
-  { id: 'gk', x: 50, y: 91, roles: ['GOALKEEPER'] },
-  { id: 'rd', x: 68, y: 70, roles: ['RIGHT_DEFENDER', 'RIGHT_BACK', 'CENTER_DEFENDER', 'DEFENDER'] },
-  { id: 'ld', x: 32, y: 70, roles: ['LEFT_DEFENDER', 'LEFT_BACK', 'CENTER_DEFENDER', 'DEFENDER'] },
-  { id: 'rm', x: 75, y: 45, roles: ['RIGHT_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
-  { id: 'cm', x: 50, y: 49, roles: ['CENTRAL_MIDFIELDER', 'DEFENSIVE_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
-  { id: 'lm', x: 25, y: 45, roles: ['LEFT_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
-  { id: 'cf', x: 50, y: 18, roles: ['CENTER_FORWARD', 'ATTACKER', 'RIGHT_WINGER', 'LEFT_WINGER'] },
+  { id: 'gk', x: 8, y: 50, roles: ['GOALKEEPER'] },
+  { id: 'rd', x: 32, y: 68, roles: ['RIGHT_DEFENDER', 'RIGHT_BACK', 'CENTER_DEFENDER', 'DEFENDER'] },
+  { id: 'ld', x: 32, y: 32, roles: ['LEFT_DEFENDER', 'LEFT_BACK', 'CENTER_DEFENDER', 'DEFENDER'] },
+  { id: 'rm', x: 58, y: 78, roles: ['RIGHT_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
+  { id: 'cm', x: 58, y: 50, roles: ['CENTRAL_MIDFIELDER', 'DEFENSIVE_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
+  { id: 'lm', x: 58, y: 22, roles: ['LEFT_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
+  { id: 'cf', x: 84, y: 50, roles: ['CENTER_FORWARD', 'ATTACKER', 'RIGHT_WINGER', 'LEFT_WINGER'] },
 ];
 
 const FUTSAL_SLOTS: readonly FormationSlot[] = [
-  { id: 'gk', x: 50, y: 90, roles: ['GOALKEEPER'] },
-  { id: 'fixo', x: 50, y: 67, roles: ['FIXO'] },
-  { id: 'ala-r', x: 74, y: 44, roles: ['RIGHT_WINGER_FUTSAL'] },
-  { id: 'ala-l', x: 26, y: 44, roles: ['LEFT_WINGER_FUTSAL'] },
-  { id: 'pivot', x: 50, y: 18, roles: ['PIVOT'] },
+  { id: 'gk', x: 8, y: 50, roles: ['GOALKEEPER'] },
+  { id: 'fixo', x: 32, y: 50, roles: ['FIXO'] },
+  { id: 'ala-r', x: 58, y: 72, roles: ['RIGHT_WINGER_FUTSAL'] },
+  { id: 'ala-l', x: 58, y: 28, roles: ['LEFT_WINGER_FUTSAL'] },
+  { id: 'pivot', x: 84, y: 50, roles: ['PIVOT'] },
 ];
 
 function roleOrder(modality: MatchModality, role: string) {
@@ -97,6 +99,21 @@ export function sortTeamAssignments(
   });
 }
 
+function formationOrder(
+  assignments: readonly TeamAssignment[],
+  modality: MatchModality,
+): TeamAssignment[] {
+  return [...assignments].sort((left, right) => {
+    const roleDifference = roleOrder(modality, left.assignedRole) - roleOrder(modality, right.assignedRole);
+    if (roleDifference !== 0) return roleDifference;
+    const strengthDifference = (right.overallUsed ?? -1) - (left.overallUsed ?? -1);
+    if (strengthDifference !== 0) return strengthDifference;
+    const nameDifference = left.displayName.localeCompare(right.displayName, 'pt-BR');
+    if (nameDifference !== 0) return nameDifference;
+    return left.id.localeCompare(right.id);
+  });
+}
+
 function slotsFor(modality: MatchModality) {
   if (modality === 'FIELD') return FIELD_SLOTS;
   if (modality === 'FUTSAL') return FUTSAL_SLOTS;
@@ -106,13 +123,19 @@ function slotsFor(modality: MatchModality) {
 export function buildTeamFormation(
   assignments: readonly TeamAssignment[],
   modality: MatchModality,
+  reserveAssignmentIds: ReadonlySet<string> = new Set<string>(),
 ): TeamFormation {
-  const sorted = sortTeamAssignments(assignments, modality);
+  const sorted = formationOrder(assignments, modality);
   const availableSlots = slotsFor(modality).map((slot) => ({ ...slot, occupied: false }));
   const fieldPlayers: FormationPlayer[] = [];
   const reserves: TeamAssignment[] = [];
 
   for (const assignment of sorted) {
+    if (reserveAssignmentIds.has(assignment.id)) {
+      reserves.push(assignment);
+      continue;
+    }
+
     const slot = availableSlots.find((candidate) => (
       !candidate.occupied && candidate.roles.includes(assignment.assignedRole)
     ));
@@ -129,5 +152,8 @@ export function buildTeamFormation(
     });
   }
 
-  return { fieldPlayers, reserves };
+  return {
+    fieldPlayers,
+    reserves: sortTeamAssignments(reserves, modality),
+  };
 }
