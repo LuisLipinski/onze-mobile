@@ -12,12 +12,7 @@ export type TeamFormation = {
   reserves: TeamAssignment[];
 };
 
-type FormationSlot = {
-  id: string;
-  x: number;
-  y: number;
-  roles: readonly string[];
-};
+type FormationSector = 'GOALKEEPER' | 'DEFENSE' | 'MIDFIELD' | 'ATTACK';
 
 const OUTDOOR_ROLE_ORDER: Record<string, number> = {
   GOALKEEPER: 0,
@@ -47,39 +42,16 @@ const FUTSAL_ROLE_ORDER: Record<string, number> = {
   PIVOT: 30,
 };
 
-// Horizontal field: goalkeeper on the left, attack on the right.
-// Vertical spacing inside each line keeps even an 11-player formation readable on mobile.
-const FIELD_SLOTS: readonly FormationSlot[] = [
-  { id: 'gk', x: 8, y: 50, roles: ['GOALKEEPER'] },
-  { id: 'rb', x: 30, y: 84, roles: ['RIGHT_BACK', 'RIGHT_DEFENDER', 'DEFENDER'] },
-  { id: 'rcb', x: 30, y: 62, roles: ['CENTER_DEFENDER', 'RIGHT_DEFENDER', 'DEFENDER'] },
-  { id: 'lcb', x: 30, y: 38, roles: ['CENTER_DEFENDER', 'LEFT_DEFENDER', 'DEFENDER'] },
-  { id: 'lb', x: 30, y: 16, roles: ['LEFT_BACK', 'LEFT_DEFENDER', 'DEFENDER'] },
-  { id: 'rm', x: 55, y: 78, roles: ['RIGHT_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
-  { id: 'cm', x: 55, y: 50, roles: ['CENTRAL_MIDFIELDER', 'DEFENSIVE_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
-  { id: 'lm', x: 55, y: 22, roles: ['LEFT_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
-  { id: 'rw', x: 82, y: 78, roles: ['RIGHT_WINGER', 'ATTACKER'] },
-  { id: 'cf', x: 82, y: 50, roles: ['CENTER_FORWARD', 'ATTACKER'] },
-  { id: 'lw', x: 82, y: 22, roles: ['LEFT_WINGER', 'ATTACKER'] },
-];
-
-const FUT7_SLOTS: readonly FormationSlot[] = [
-  { id: 'gk', x: 8, y: 50, roles: ['GOALKEEPER'] },
-  { id: 'rd', x: 32, y: 68, roles: ['RIGHT_DEFENDER', 'RIGHT_BACK', 'CENTER_DEFENDER', 'DEFENDER'] },
-  { id: 'ld', x: 32, y: 32, roles: ['LEFT_DEFENDER', 'LEFT_BACK', 'CENTER_DEFENDER', 'DEFENDER'] },
-  { id: 'rm', x: 58, y: 78, roles: ['RIGHT_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
-  { id: 'cm', x: 58, y: 50, roles: ['CENTRAL_MIDFIELDER', 'DEFENSIVE_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
-  { id: 'lm', x: 58, y: 22, roles: ['LEFT_MIDFIELDER', 'MIDFIELDER', 'PLAYMAKER'] },
-  { id: 'cf', x: 84, y: 50, roles: ['CENTER_FORWARD', 'ATTACKER', 'RIGHT_WINGER', 'LEFT_WINGER'] },
-];
-
-const FUTSAL_SLOTS: readonly FormationSlot[] = [
-  { id: 'gk', x: 8, y: 50, roles: ['GOALKEEPER'] },
-  { id: 'fixo', x: 32, y: 50, roles: ['FIXO'] },
-  { id: 'ala-r', x: 58, y: 72, roles: ['RIGHT_WINGER_FUTSAL'] },
-  { id: 'ala-l', x: 58, y: 28, roles: ['LEFT_WINGER_FUTSAL'] },
-  { id: 'pivot', x: 84, y: 50, roles: ['PIVOT'] },
-];
+const DEFENSE_ROLES = new Set([
+  'DEFENDER', 'RIGHT_DEFENDER', 'LEFT_DEFENDER', 'CENTER_DEFENDER', 'RIGHT_BACK', 'LEFT_BACK', 'FIXO',
+]);
+const MIDFIELD_ROLES = new Set([
+  'DEFENSIVE_MIDFIELDER', 'MIDFIELDER', 'RIGHT_MIDFIELDER', 'LEFT_MIDFIELDER',
+  'CENTRAL_MIDFIELDER', 'PLAYMAKER', 'RIGHT_WINGER_FUTSAL', 'LEFT_WINGER_FUTSAL',
+]);
+const ATTACK_ROLES = new Set([
+  'ATTACKER', 'RIGHT_WINGER', 'LEFT_WINGER', 'CENTER_FORWARD', 'PIVOT',
+]);
 
 function roleOrder(modality: MatchModality, role: string) {
   const order = modality === 'FUTSAL' ? FUTSAL_ROLE_ORDER : OUTDOOR_ROLE_ORDER;
@@ -114,10 +86,54 @@ function formationOrder(
   });
 }
 
-function slotsFor(modality: MatchModality) {
-  if (modality === 'FIELD') return FIELD_SLOTS;
-  if (modality === 'FUTSAL') return FUTSAL_SLOTS;
-  return FUT7_SLOTS;
+function fieldCapacity(modality: MatchModality) {
+  if (modality === 'FIELD') return 11;
+  if (modality === 'FUTSAL') return 5;
+  return 7;
+}
+
+function sectorForRole(role: string): FormationSector {
+  if (role === 'GOALKEEPER') return 'GOALKEEPER';
+  if (DEFENSE_ROLES.has(role)) return 'DEFENSE';
+  if (MIDFIELD_ROLES.has(role)) return 'MIDFIELD';
+  if (ATTACK_ROLES.has(role)) return 'ATTACK';
+  return 'MIDFIELD';
+}
+
+function baseX(sector: FormationSector) {
+  switch (sector) {
+    case 'GOALKEEPER': return 11;
+    case 'DEFENSE': return 32;
+    case 'MIDFIELD': return 58;
+    case 'ATTACK': return 86;
+  }
+}
+
+function distributeSector(
+  assignments: TeamAssignment[],
+  sector: FormationSector,
+): FormationPlayer[] {
+  if (!assignments.length) return [];
+  const maxRows = 4;
+  const columns = Math.ceil(assignments.length / maxRows);
+  const players: FormationPlayer[] = [];
+  let cursor = 0;
+
+  for (let column = 0; column < columns; column++) {
+    const remaining = assignments.length - cursor;
+    const rows = Math.min(maxRows, remaining);
+    const xOffset = columns === 1 ? 0 : (column - (columns - 1) / 2) * 8;
+    for (let row = 0; row < rows; row++) {
+      const assignment = assignments[cursor++];
+      players.push({
+        assignment,
+        slotId: `${sector.toLowerCase()}-${column}-${row}`,
+        x: Math.max(8, Math.min(92, baseX(sector) + xOffset)),
+        y: ((row + 1) * 100) / (rows + 1),
+      });
+    }
+  }
+  return players;
 }
 
 export function buildTeamFormation(
@@ -126,34 +142,45 @@ export function buildTeamFormation(
   reserveAssignmentIds: ReadonlySet<string> = new Set<string>(),
 ): TeamFormation {
   const sorted = formationOrder(assignments, modality);
-  const availableSlots = slotsFor(modality).map((slot) => ({ ...slot, occupied: false }));
-  const fieldPlayers: FormationPlayer[] = [];
-  const reserves: TeamAssignment[] = [];
+  const explicitReserves = sorted.filter((assignment) => reserveAssignmentIds.has(assignment.id));
+  const active = sorted.filter((assignment) => !reserveAssignmentIds.has(assignment.id));
+  const capacity = fieldCapacity(modality);
 
-  for (const assignment of sorted) {
-    if (reserveAssignmentIds.has(assignment.id)) {
-      reserves.push(assignment);
-      continue;
-    }
+  // Safety fallback for stale/missing reserve state: never squeeze more players than the modality supports.
+  // Stronger players stay on the field; the backend normally persists the authoritative reserve choice.
+  const rankedActive = [...active].sort((left, right) => {
+    const strengthDifference = (right.overallUsed ?? -1) - (left.overallUsed ?? -1);
+    if (strengthDifference !== 0) return strengthDifference;
+    return left.id.localeCompare(right.id);
+  });
+  const activeIds = new Set(rankedActive.slice(0, capacity).map((assignment) => assignment.id));
+  const fieldAssignments = active.filter((assignment) => activeIds.has(assignment.id));
+  const overflowReserves = active.filter((assignment) => !activeIds.has(assignment.id));
 
-    const slot = availableSlots.find((candidate) => (
-      !candidate.occupied && candidate.roles.includes(assignment.assignedRole)
-    ));
-    if (!slot) {
-      reserves.push(assignment);
-      continue;
-    }
-    slot.occupied = true;
-    fieldPlayers.push({
-      assignment,
-      slotId: slot.id,
-      x: slot.x,
-      y: slot.y,
-    });
+  const bySector = new Map<FormationSector, TeamAssignment[]>([
+    ['GOALKEEPER', []],
+    ['DEFENSE', []],
+    ['MIDFIELD', []],
+    ['ATTACK', []],
+  ]);
+  for (const assignment of fieldAssignments) {
+    bySector.get(sectorForRole(assignment.assignedRole))?.push(assignment);
   }
+  bySector.forEach((items) => items.sort((left, right) => {
+    const orderDifference = roleOrder(modality, left.assignedRole) - roleOrder(modality, right.assignedRole);
+    if (orderDifference !== 0) return orderDifference;
+    return left.displayName.localeCompare(right.displayName, 'pt-BR');
+  }));
+
+  const fieldPlayers: FormationPlayer[] = [
+    ...distributeSector(bySector.get('GOALKEEPER') ?? [], 'GOALKEEPER'),
+    ...distributeSector(bySector.get('DEFENSE') ?? [], 'DEFENSE'),
+    ...distributeSector(bySector.get('MIDFIELD') ?? [], 'MIDFIELD'),
+    ...distributeSector(bySector.get('ATTACK') ?? [], 'ATTACK'),
+  ];
 
   return {
     fieldPlayers,
-    reserves: sortTeamAssignments(reserves, modality),
+    reserves: sortTeamAssignments([...explicitReserves, ...overflowReserves], modality),
   };
 }
