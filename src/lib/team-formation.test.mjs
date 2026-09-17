@@ -93,7 +93,7 @@ test('FIELD mapeia 4-3-3 horizontal e envia duplicata excedente para reservas', 
   assert.deepEqual(formation.reserves.map((item) => item.displayName), ['CA reserva']);
   const goalkeeper = formation.fieldPlayers.find((item) => item.assignment.displayName === 'Goleiro');
   const striker = formation.fieldPlayers.find((item) => item.assignment.displayName === 'CA');
-  assert.equal(goalkeeper?.slotId, 'gk');
+  assert.ok(goalkeeper?.slotId.startsWith('goalkeeper-'));
   assert.ok((goalkeeper?.x ?? 100) < (striker?.x ?? 0));
 });
 
@@ -127,7 +127,7 @@ test('FUTSAL mapeia função atribuída e overflow para reservas', () => {
 
   assert.equal(formation.fieldPlayers.length, 5);
   assert.deepEqual(formation.reserves.map((item) => item.displayName), ['Segundo pivô']);
-  assert.equal(formation.fieldPlayers.find((item) => item.assignment.displayName === 'Pivô')?.slotId, 'pivot');
+  assert.ok(formation.fieldPlayers.find((item) => item.assignment.displayName === 'Pivô')?.slotId.startsWith('attack-'));
 });
 
 test('reserva definida pelo administrador prevalece mesmo se for o jogador mais forte', () => {
@@ -142,4 +142,20 @@ test('reserva definida pelo administrador prevalece mesmo se for o jogador mais 
 
   assert.deepEqual(formation.reserves.map((item) => item.id), ['strong']);
   assert.deepEqual(formation.fieldPlayers.map((item) => item.assignment.id), ['weak']);
+});
+
+test('ajuste manual pode mudar a quantidade de jogadores por setor sem sobreposição de slot', () => {
+  const formation = buildTeamFormation([
+    assignment('1', 'GOL', 'GOALKEEPER'),
+    assignment('2', 'Atacante 1', 'CENTER_FORWARD'),
+    assignment('3', 'Atacante 2', 'CENTER_FORWARD'),
+    assignment('4', 'Atacante 3', 'LEFT_WINGER'),
+    assignment('5', 'Meia', 'CENTRAL_MIDFIELDER'),
+    assignment('6', 'Zagueiro', 'CENTER_DEFENDER'),
+    assignment('7', 'Lateral', 'RIGHT_BACK'),
+  ], 'FUT7');
+
+  assert.equal(formation.fieldPlayers.length, 7);
+  assert.equal(new Set(formation.fieldPlayers.map((item) => item.slotId)).size, 7);
+  assert.equal(formation.reserves.length, 0);
 });
