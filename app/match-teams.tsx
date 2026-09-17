@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { SafeAreaView, ScrollView } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import {
@@ -14,6 +14,7 @@ import {
 import { getAccessToken } from '../src/lib/auth-storage';
 import { modalityLabel } from '../src/lib/match-modality';
 import { positionLabel } from '../src/lib/sports-profile';
+import { buildTeamFormation, sortTeamAssignments } from '../src/lib/team-formation';
 import { teamAssignmentReasonText } from '../src/lib/technical-ratings';
 import { calculateTeamLineStrengths } from '../src/lib/team-line-strength';
 
@@ -23,6 +24,10 @@ const FUTSAL_ROLE_LABELS: Record<string, string> = {
   RIGHT_WINGER_FUTSAL: 'Ala direita',
   LEFT_WINGER_FUTSAL: 'Ala esquerda',
   PIVOT: 'Pivô',
+};
+
+type MatchTeamsView = MatchTeams & {
+  generationNotice?: string | null;
 };
 
 function roleLabel(role: string) {
@@ -56,10 +61,70 @@ function StrengthMetric({ label, value }: { label: string; value: number | null 
   );
 }
 
+function FormationPitch({
+  assignments,
+  modality,
+}: {
+  assignments: TeamAssignment[];
+  modality: MatchTeams['modality'];
+}) {
+  const formation = buildTeamFormation(assignments, modality);
+
+  return (
+    <YStack gap="$2">
+      <Text color="$onzeMuted" fontSize={11} fontWeight="800">FORMAÇÃO EM CAMPO</Text>
+      <XStack alignItems="stretch" gap="$3">
+        <View style={styles.pitch}>
+          <View style={styles.halfwayLine} />
+          <View style={styles.centerCircle} />
+          <View style={styles.topArea} />
+          <View style={styles.bottomArea} />
+          {formation.fieldPlayers.map((player) => (
+            <View
+              key={player.assignment.id}
+              style={[
+                styles.playerChip,
+                {
+                  left: `${player.x}%`,
+                  top: `${player.y}%`,
+                  transform: [{ translateX: -34 }, { translateY: -19 }],
+                },
+              ]}
+            >
+              <Text color="#123B2A" fontSize={9} fontWeight="900" numberOfLines={1} textAlign="center">
+                {player.assignment.displayName}
+              </Text>
+              <Text color="#2F6B50" fontSize={8} fontWeight="800" numberOfLines={1} textAlign="center">
+                {roleLabel(player.assignment.assignedRole)}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {formation.reserves.length ? (
+          <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$2" padding="$2" width={104}>
+            <Text color="$onzeMuted" fontSize={10} fontWeight="900">RESERVAS</Text>
+            {formation.reserves.map((assignment) => (
+              <YStack key={assignment.id} backgroundColor="$onzeSurface" borderRadius="$3" gap={2} padding="$2">
+                <Text color="$onzeInk" fontSize={10} fontWeight="900" numberOfLines={2}>
+                  {assignment.displayName}
+                </Text>
+                <Text color="$onzeGreen" fontSize={9} fontWeight="800" numberOfLines={2}>
+                  {roleLabel(assignment.assignedRole)}
+                </Text>
+              </YStack>
+            ))}
+          </YStack>
+        ) : null}
+      </XStack>
+    </YStack>
+  );
+}
+
 export default function MatchTeamsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ matchId?: string }>();
-  const [data, setData] = useState<MatchTeams | null>(null);
+  const [data, setData] = useState<MatchTeamsView | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [movingId, setMovingId] = useState<string | null>(null);
@@ -163,6 +228,12 @@ export default function MatchTeamsScreen() {
             </YStack>
           ) : null}
 
+          {data?.generationNotice ? (
+            <YStack backgroundColor="#FFF7E6" borderColor="#D8A331" borderRadius="$5" borderWidth={1} padding="$4">
+              <Text color="#8A6414" fontSize={13} lineHeight={19}>{data.generationNotice}</Text>
+            </YStack>
+          ) : null}
+
           {loading ? <Text color="$onzeMuted">Carregando...</Text> : null}
 
           {data && data.confirmedPlayers < data.minimumPlayers ? (
@@ -211,6 +282,7 @@ export default function MatchTeamsScreen() {
 
           {data?.teams.map((team) => {
             const lineStrengths = calculateTeamLineStrengths(team.assignments);
+            const sortedAssignments = sortTeamAssignments(team.assignments, data.modality);
             return (
               <YStack key={team.teamNumber} backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
                 <XStack alignItems="center" justifyContent="space-between">
@@ -233,40 +305,48 @@ export default function MatchTeamsScreen() {
                     </Text>
                   </>
                 ) : null}
-                {team.assignments.map((assignment) => (
-                  <YStack key={assignment.id} borderTopColor="$onzeBorder" borderTopWidth={1} gap="$2" paddingTop="$3">
-                    <XStack alignItems="center" gap="$3" justifyContent="space-between">
-                      <YStack flex={1} gap="$1">
-                        <Text color="$onzeInk" fontSize={15} fontWeight="900">{assignment.displayName}</Text>
-                        <Text color="$onzeGreen" fontSize={12} fontWeight="800">{roleLabel(assignment.assignedRole)}</Text>
-                      </YStack>
+
+                {team.assignments.length ? (
+                  <FormationPitch assignments={team.assignments} modality={data.modality} />
+                ) : null}
+
+                <YStack gap="$1">
+                  <Text color="$onzeMuted" fontSize={11} fontWeight="800">LISTA DA ESCALAÇÃO</Text>
+                  {sortedAssignments.map((assignment) => (
+                    <YStack key={assignment.id} borderTopColor="$onzeBorder" borderTopWidth={1} gap="$2" paddingTop="$3">
+                      <XStack alignItems="center" gap="$3" justifyContent="space-between">
+                        <YStack flex={1} gap="$1">
+                          <Text color="$onzeInk" fontSize={15} fontWeight="900">{assignment.displayName}</Text>
+                          <Text color="$onzeGreen" fontSize={12} fontWeight="800">{roleLabel(assignment.assignedRole)}</Text>
+                        </YStack>
+                        {data.technicalDetailsVisible ? (
+                          <Button
+                            backgroundColor="$onzeCanvas"
+                            disabled={Boolean(movingId)}
+                            minHeight={38}
+                            onPress={() => void move(assignment, team.teamNumber)}
+                            paddingHorizontal="$3"
+                          >
+                            <Text color="$onzeGreen" fontSize={11} fontWeight="900">
+                              {movingId === assignment.id ? 'Movendo...' : 'Próximo time'}
+                            </Text>
+                          </Button>
+                        ) : null}
+                      </XStack>
                       {data.technicalDetailsVisible ? (
-                        <Button
-                          backgroundColor="$onzeCanvas"
-                          disabled={Boolean(movingId)}
-                          minHeight={38}
-                          onPress={() => void move(assignment, team.teamNumber)}
-                          paddingHorizontal="$3"
-                        >
-                          <Text color="$onzeGreen" fontSize={11} fontWeight="900">
-                            {movingId === assignment.id ? 'Movendo...' : 'Próximo time'}
+                        <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$3">
+                          <Text color="$onzeInk" fontSize={12} fontWeight="800">
+                            Overall usado: {assignment.overallUsed ?? '—'}/50 • {assignment.scoreSource === 'REAL' ? 'Real' : 'Estimado'}
                           </Text>
-                        </Button>
+                          <Text color="$onzeMuted" fontSize={12}>{originLabel(assignment.positionOrigin)}</Text>
+                          <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                            Motivo: {teamAssignmentReasonText(assignment.reason)}
+                          </Text>
+                        </YStack>
                       ) : null}
-                    </XStack>
-                    {data.technicalDetailsVisible ? (
-                      <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$3">
-                        <Text color="$onzeInk" fontSize={12} fontWeight="800">
-                          Overall usado: {assignment.overallUsed ?? '—'}/50 • {assignment.scoreSource === 'REAL' ? 'Real' : 'Estimado'}
-                        </Text>
-                        <Text color="$onzeMuted" fontSize={12}>{originLabel(assignment.positionOrigin)}</Text>
-                        <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                          Motivo: {teamAssignmentReasonText(assignment.reason)}
-                        </Text>
-                      </YStack>
-                    ) : null}
-                  </YStack>
-                ))}
+                    </YStack>
+                  ))}
+                </YStack>
               </YStack>
             );
           })}
@@ -275,3 +355,74 @@ export default function MatchTeamsScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  pitch: {
+    aspectRatio: 0.64,
+    backgroundColor: '#DDEFE4',
+    borderColor: '#79A98D',
+    borderRadius: 14,
+    borderWidth: 1,
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  halfwayLine: {
+    borderTopColor: 'rgba(63, 122, 88, 0.45)',
+    borderTopWidth: 1,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: '50%',
+  },
+  centerCircle: {
+    borderColor: 'rgba(63, 122, 88, 0.45)',
+    borderRadius: 42,
+    borderWidth: 1,
+    height: 84,
+    left: '50%',
+    marginLeft: -42,
+    marginTop: -42,
+    position: 'absolute',
+    top: '50%',
+    width: 84,
+  },
+  topArea: {
+    borderBottomColor: 'rgba(63, 122, 88, 0.45)',
+    borderBottomWidth: 1,
+    borderLeftColor: 'rgba(63, 122, 88, 0.45)',
+    borderLeftWidth: 1,
+    borderRightColor: 'rgba(63, 122, 88, 0.45)',
+    borderRightWidth: 1,
+    height: '14%',
+    left: '25%',
+    position: 'absolute',
+    top: 0,
+    width: '50%',
+  },
+  bottomArea: {
+    borderLeftColor: 'rgba(63, 122, 88, 0.45)',
+    borderLeftWidth: 1,
+    borderRightColor: 'rgba(63, 122, 88, 0.45)',
+    borderRightWidth: 1,
+    borderTopColor: 'rgba(63, 122, 88, 0.45)',
+    borderTopWidth: 1,
+    bottom: 0,
+    height: '14%',
+    left: '25%',
+    position: 'absolute',
+    width: '50%',
+  },
+  playerChip: {
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderColor: '#8EB79D',
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 38,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    position: 'absolute',
+    width: 68,
+  },
+});
