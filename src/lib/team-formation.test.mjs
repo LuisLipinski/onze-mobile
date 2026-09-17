@@ -73,7 +73,7 @@ test('FUTSAL ordena GOL, FIXO, alas e PIVÔ', () => {
   ]);
 });
 
-test('FIELD mapeia 4-3-3 horizontal e envia duplicata excedente para reservas', () => {
+test('FIELD mapeia 4-3-3 horizontal e respeita a reserva persistida', () => {
   const formation = buildTeamFormation([
     assignment('1', 'Goleiro', 'GOALKEEPER'),
     assignment('2', 'LD', 'RIGHT_BACK'),
@@ -87,7 +87,7 @@ test('FIELD mapeia 4-3-3 horizontal e envia duplicata excedente para reservas', 
     assignment('10', 'CA', 'CENTER_FORWARD', 40),
     assignment('11', 'PE', 'LEFT_WINGER'),
     assignment('12', 'CA reserva', 'CENTER_FORWARD', 20),
-  ], 'FIELD');
+  ], 'FIELD', new Set(['12']));
 
   assert.equal(formation.fieldPlayers.length, 11);
   assert.deepEqual(formation.reserves.map((item) => item.displayName), ['CA reserva']);
@@ -97,7 +97,7 @@ test('FIELD mapeia 4-3-3 horizontal e envia duplicata excedente para reservas', 
   assert.ok((goalkeeper?.x ?? 100) < (striker?.x ?? 0));
 });
 
-test('FUT7 usa 2-3-1 e não sobrepõe excedentes', () => {
+test('FUT7 usa 2-3-1 e respeita os excedentes marcados como reservas', () => {
   const formation = buildTeamFormation([
     assignment('1', 'GOL', 'GOALKEEPER'),
     assignment('2', 'ZD', 'RIGHT_DEFENDER'),
@@ -108,14 +108,14 @@ test('FUT7 usa 2-3-1 e não sobrepõe excedentes', () => {
     assignment('7', 'CA', 'CENTER_FORWARD', 40),
     assignment('8', 'Outro CA', 'CENTER_FORWARD', 30),
     assignment('9', 'Terceiro CA', 'CENTER_FORWARD', 20),
-  ], 'FUT7');
+  ], 'FUT7', new Set(['8', '9']));
 
   assert.equal(formation.fieldPlayers.length, 7);
   assert.deepEqual(formation.reserves.map((item) => item.displayName), ['Outro CA', 'Terceiro CA']);
   assert.equal(new Set(formation.fieldPlayers.map((item) => item.slotId)).size, 7);
 });
 
-test('FUTSAL mapeia função atribuída e overflow para reservas', () => {
+test('FUTSAL mapeia função atribuída e reserva persistida', () => {
   const formation = buildTeamFormation([
     assignment('1', 'GOL', 'GOALKEEPER'),
     assignment('2', 'Fixo', 'FIXO'),
@@ -123,7 +123,7 @@ test('FUTSAL mapeia função atribuída e overflow para reservas', () => {
     assignment('4', 'AE', 'LEFT_WINGER_FUTSAL'),
     assignment('5', 'Pivô', 'PIVOT', 40),
     assignment('6', 'Segundo pivô', 'PIVOT', 20),
-  ], 'FUTSAL');
+  ], 'FUTSAL', new Set(['6']));
 
   assert.equal(formation.fieldPlayers.length, 5);
   assert.deepEqual(formation.reserves.map((item) => item.displayName), ['Segundo pivô']);
@@ -158,4 +158,22 @@ test('ajuste manual pode mudar a quantidade de jogadores por setor sem sobreposi
   assert.equal(formation.fieldPlayers.length, 7);
   assert.equal(new Set(formation.fieldPlayers.map((item) => item.slotId)).size, 7);
   assert.equal(formation.reserves.length, 0);
+});
+
+test('fallback não sobrepõe jogadores quando o estado de reservas estiver temporariamente ausente', () => {
+  const formation = buildTeamFormation([
+    assignment('1', 'GOL', 'GOALKEEPER', 30),
+    assignment('2', 'A', 'CENTER_FORWARD', 40),
+    assignment('3', 'B', 'CENTER_FORWARD', 39),
+    assignment('4', 'C', 'CENTER_FORWARD', 38),
+    assignment('5', 'D', 'CENTER_FORWARD', 37),
+    assignment('6', 'E', 'CENTER_FORWARD', 36),
+    assignment('7', 'F', 'CENTER_FORWARD', 35),
+    assignment('8', 'G', 'CENTER_FORWARD', 10),
+  ], 'FUT7');
+
+  assert.equal(formation.fieldPlayers.length, 7);
+  assert.equal(formation.reserves.length, 1);
+  assert.equal(formation.reserves[0].id, '8');
+  assert.equal(new Set(formation.fieldPlayers.map((item) => item.slotId)).size, 7);
 });
