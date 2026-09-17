@@ -3,14 +3,14 @@ import test from 'node:test';
 
 import { buildTeamFormation, sortTeamAssignments } from './team-formation.ts';
 
-function assignment(id, displayName, assignedRole) {
+function assignment(id, displayName, assignedRole, overallUsed = 25) {
   return {
     id,
     participantType: 'MEMBER',
     participantId: id,
     displayName,
     assignedRole,
-    overallUsed: 25,
+    overallUsed,
     coverage: 100,
     scoreSource: 'REAL',
     positionOrigin: 'PRIMARY',
@@ -73,7 +73,7 @@ test('FUTSAL ordena GOL, FIXO, alas e PIVÔ', () => {
   ]);
 });
 
-test('FIELD mapeia 4-3-3 e envia duplicata excedente para reservas', () => {
+test('FIELD mapeia 4-3-3 horizontal e envia duplicata excedente para reservas', () => {
   const formation = buildTeamFormation([
     assignment('1', 'Goleiro', 'GOALKEEPER'),
     assignment('2', 'LD', 'RIGHT_BACK'),
@@ -84,14 +84,17 @@ test('FIELD mapeia 4-3-3 e envia duplicata excedente para reservas', () => {
     assignment('7', 'MC', 'CENTRAL_MIDFIELDER'),
     assignment('8', 'ME', 'LEFT_MIDFIELDER'),
     assignment('9', 'PD', 'RIGHT_WINGER'),
-    assignment('10', 'CA', 'CENTER_FORWARD'),
+    assignment('10', 'CA', 'CENTER_FORWARD', 40),
     assignment('11', 'PE', 'LEFT_WINGER'),
-    assignment('12', 'CA reserva', 'CENTER_FORWARD'),
+    assignment('12', 'CA reserva', 'CENTER_FORWARD', 20),
   ], 'FIELD');
 
   assert.equal(formation.fieldPlayers.length, 11);
   assert.deepEqual(formation.reserves.map((item) => item.displayName), ['CA reserva']);
-  assert.equal(formation.fieldPlayers.find((item) => item.assignment.displayName === 'Goleiro')?.slotId, 'gk');
+  const goalkeeper = formation.fieldPlayers.find((item) => item.assignment.displayName === 'Goleiro');
+  const striker = formation.fieldPlayers.find((item) => item.assignment.displayName === 'CA');
+  assert.equal(goalkeeper?.slotId, 'gk');
+  assert.ok((goalkeeper?.x ?? 100) < (striker?.x ?? 0));
 });
 
 test('FUT7 usa 2-3-1 e não sobrepõe excedentes', () => {
@@ -102,9 +105,9 @@ test('FUT7 usa 2-3-1 e não sobrepõe excedentes', () => {
     assignment('4', 'MD', 'RIGHT_MIDFIELDER'),
     assignment('5', 'MC', 'CENTRAL_MIDFIELDER'),
     assignment('6', 'ME', 'LEFT_MIDFIELDER'),
-    assignment('7', 'CA', 'CENTER_FORWARD'),
-    assignment('8', 'Outro CA', 'CENTER_FORWARD'),
-    assignment('9', 'Terceiro CA', 'CENTER_FORWARD'),
+    assignment('7', 'CA', 'CENTER_FORWARD', 40),
+    assignment('8', 'Outro CA', 'CENTER_FORWARD', 30),
+    assignment('9', 'Terceiro CA', 'CENTER_FORWARD', 20),
   ], 'FUT7');
 
   assert.equal(formation.fieldPlayers.length, 7);
@@ -118,11 +121,25 @@ test('FUTSAL mapeia função atribuída e overflow para reservas', () => {
     assignment('2', 'Fixo', 'FIXO'),
     assignment('3', 'AD', 'RIGHT_WINGER_FUTSAL'),
     assignment('4', 'AE', 'LEFT_WINGER_FUTSAL'),
-    assignment('5', 'Pivô', 'PIVOT'),
-    assignment('6', 'Segundo pivô', 'PIVOT'),
+    assignment('5', 'Pivô', 'PIVOT', 40),
+    assignment('6', 'Segundo pivô', 'PIVOT', 20),
   ], 'FUTSAL');
 
   assert.equal(formation.fieldPlayers.length, 5);
   assert.deepEqual(formation.reserves.map((item) => item.displayName), ['Segundo pivô']);
   assert.equal(formation.fieldPlayers.find((item) => item.assignment.displayName === 'Pivô')?.slotId, 'pivot');
+});
+
+test('reserva definida pelo administrador prevalece mesmo se for o jogador mais forte', () => {
+  const strong = assignment('strong', 'Forte', 'CENTER_FORWARD', 45);
+  const weak = assignment('weak', 'Fraco', 'CENTER_FORWARD', 20);
+
+  const formation = buildTeamFormation(
+    [strong, weak],
+    'FUT7',
+    new Set(['strong']),
+  );
+
+  assert.deepEqual(formation.reserves.map((item) => item.id), ['strong']);
+  assert.deepEqual(formation.fieldPlayers.map((item) => item.assignment.id), ['weak']);
 });
