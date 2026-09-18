@@ -24,7 +24,7 @@ import {
   updateMatchTeamReserves,
 } from '../src/lib/team-lineup-api';
 import { teamAssignmentReasonText } from '../src/lib/technical-ratings';
-import { calculateTeamLineStrengths } from '../src/lib/team-line-strength';
+import { calculateTeamLineStrengths, calculateTeamStrength } from '../src/lib/team-line-strength';
 
 const FUTSAL_ROLE_LABELS: Record<string, string> = {
   GOALKEEPER: 'Goleiro',
@@ -82,14 +82,6 @@ function originLabel(origin: TeamAssignment['positionOrigin']) {
     case 'MANUAL': return 'Alterado pelo administrador';
     default: return '';
   }
-}
-
-function averageStrength(assignments: TeamAssignment[]) {
-  const values = assignments
-    .map((assignment) => assignment.overallUsed)
-    .filter((value): value is number => value != null);
-  if (!values.length) return null;
-  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
 function StrengthMetric({ label, value }: { label: string; value: number | null }) {
@@ -500,8 +492,8 @@ export default function MatchTeamsScreen() {
 
           {data?.teams.map((team) => {
             const activeAssignments = team.assignments.filter((assignment) => !reserveIds.has(assignment.id));
-            const lineStrengths = calculateTeamLineStrengths(activeAssignments);
-            const fieldStrength = averageStrength(activeAssignments);
+            const lineStrengths = calculateTeamLineStrengths(activeAssignments, data.modality);
+            const fieldStrength = calculateTeamStrength(activeAssignments, data.modality);
             const sortedAssignments = sortTeamAssignments(team.assignments, data.modality)
               .sort((left, right) => Number(reserveIds.has(left.id)) - Number(reserveIds.has(right.id)));
             const realEvaluations = activeAssignments.filter((assignment) => assignment.scoreSource === 'REAL').length;
@@ -526,6 +518,9 @@ export default function MatchTeamsScreen() {
                     </XStack>
                     <Text color="$onzeMuted" fontSize={11}>
                       {realEvaluations} reais • {estimatedEvaluations} estimadas em campo
+                    </Text>
+                    <Text color="$onzeMuted" fontSize={10} lineHeight={15}>
+                      A força considera a qualidade dos jogadores e a cobertura esperada da formação.
                     </Text>
                   </>
                 ) : null}
