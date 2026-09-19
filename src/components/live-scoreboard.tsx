@@ -7,11 +7,11 @@ import { formatMatchTimer, liveMatchElapsedSeconds, liveScoreSideLabel } from '.
 type Props = {
   match: FootballMatch;
   state: LiveMatchState;
-  updatingSide: number | null;
+  updatingSides: number[];
   onChangeScore: (sideNumber: number, score: number) => void;
 };
 
-export function LiveScoreboard({ match, state, updatingSide, onChangeScore }: Props) {
+export function LiveScoreboard({ match, state, updatingSides, onChangeScore }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(() => liveMatchElapsedSeconds(state));
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export function LiveScoreboard({ match, state, updatingSide, onChangeScore }: Pr
 
       <YStack gap="$3">
         {state.scores.map((side) => {
-          const isUpdating = updatingSide === side.sideNumber;
+          const isUpdating = updatingSides.includes(side.sideNumber);
           return (
             <XStack
               key={side.sideNumber}

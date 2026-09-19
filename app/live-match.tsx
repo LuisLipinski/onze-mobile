@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
@@ -27,7 +27,8 @@ export default function LiveMatchScreen() {
   const [liveState, setLiveState] = useState<LiveMatchState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [updatingScoreSide, setUpdatingScoreSide] = useState<number | null>(null);
+  const [updatingScoreSides, setUpdatingScoreSides] = useState<number[]>([]);
+  const updatingScoreSidesRef = useRef(new Set<number>());
   const [managementAction, setManagementAction] = useState<LiveManagementAction>(null);
   const [managing, setManaging] = useState(false);
 
@@ -67,9 +68,10 @@ export default function LiveMatchScreen() {
   useFocusEffect(useCallback(() => { void loadLiveMatch(); }, [loadLiveMatch]));
 
   async function changeScore(sideNumber: number, score: number) {
-    if (!match || !liveState || updatingScoreSide != null) return;
+    if (!match || !liveState || updatingScoreSidesRef.current.has(sideNumber)) return;
     const previousState = liveState;
-    setUpdatingScoreSide(sideNumber);
+    updatingScoreSidesRef.current.add(sideNumber);
+    setUpdatingScoreSides((current) => [...current, sideNumber]);
     setError(null);
     setLiveState({
       ...liveState,
@@ -83,7 +85,8 @@ export default function LiveMatchScreen() {
       setLiveState(previousState);
       setError(exception instanceof Error ? exception.message : 'Não foi possível atualizar o placar.');
     } finally {
-      setUpdatingScoreSide(null);
+      updatingScoreSidesRef.current.delete(sideNumber);
+      setUpdatingScoreSides((current) => current.filter((side) => side !== sideNumber));
     }
   }
 
@@ -138,7 +141,7 @@ export default function LiveMatchScreen() {
               <LiveScoreboard
                 match={match}
                 state={liveState}
-                updatingSide={updatingScoreSide}
+                updatingSides={updatingScoreSides}
                 onChangeScore={(sideNumber, score) => void changeScore(sideNumber, score)}
               />
 
