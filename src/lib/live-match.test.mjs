@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { formatMatchTimer, liveMatchElapsedSeconds, liveScoreSideLabel } from './live-match.ts';
+
+test('formata o cronômetro abaixo e acima de uma hora', () => {
+  assert.equal(formatMatchTimer(65), '01:05');
+  assert.equal(formatMatchTimer(3661), '01:01:01');
+  assert.equal(formatMatchTimer(-1), '00:00');
+});
+
+test('calcula tempo ao vivo e congela no encerramento', () => {
+  const running = { startedAt: '2026-09-19T18:00:00Z', finishedAt: null };
+  assert.equal(liveMatchElapsedSeconds(running, Date.parse('2026-09-19T18:02:03Z')), 123);
+
+  const finished = { ...running, finishedAt: '2026-09-19T18:10:00Z' };
+  assert.equal(liveMatchElapsedSeconds(finished, Date.parse('2026-09-20T18:00:00Z')), 600);
+});
+
+test('nomeia times internos e adversário externo', () => {
+  assert.equal(liveScoreSideLabel({ matchType: 'INTERNAL' }, 2), 'Time 2');
+  assert.equal(liveScoreSideLabel({ matchType: 'VERSUS_EXTERNAL', groupName: 'Onze FC' }, 1), 'Onze FC');
+  assert.equal(liveScoreSideLabel({ matchType: 'VERSUS_EXTERNAL', groupName: 'Onze FC' }, 2), 'Adversário');
+});

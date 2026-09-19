@@ -5,6 +5,7 @@ import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { GoalkeeperPlayerModal } from '../src/components/goalkeeper-player-modal';
+import { LiveScoreboard } from '../src/components/live-scoreboard';
 import { MinimumPlayerDecisionCard } from '../src/components/minimum-player-decision-card';
 import { PaymentSettlementModal } from '../src/components/payment-settlement-modal';
 import { RentalGoalkeeperModal } from '../src/components/rental-goalkeeper-modal';
@@ -23,10 +24,12 @@ import {
   FootballMatch,
   GroupMember,
   getMatch,
+  getLiveMatch,
   getOwnSportsProfile,
   listGroupMembers,
   MatchAttendance,
   MatchGuest,
+  LiveMatchState,
   PaymentSettlementResolution,
   PaymentSettlementStatus,
   PaymentStatus,
@@ -39,6 +42,7 @@ import {
   startLiveMatch,
   updateMatchAttendance,
   updateMatchGoalkeeper,
+  updateLiveMatchScore,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
 import {
@@ -127,6 +131,8 @@ export default function MatchScreen() {
   const [managingGuestId, setManagingGuestId] = useState<string | null>(null);
   const [managementAction, setManagementAction] = useState<ManagementAction>(null);
   const [liveAction, setLiveAction] = useState<LiveAction>(null);
+  const [liveState, setLiveState] = useState<LiveMatchState | null>(null);
+  const [updatingScoreSide, setUpdatingScoreSide] = useState<number | null>(null);
   const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -141,11 +147,27 @@ export default function MatchScreen() {
         ? await startLiveMatch(token, match.id)
         : await finishLiveMatch(token, match.id);
       setMatch(updated);
+      setLiveState(await getLiveMatch(token, match.id));
       setLiveAction(null);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível atualizar a partida.');
     } finally {
       setManaging(false);
+    }
+  }
+
+  async function changeLiveScore(sideNumber: number, score: number) {
+    if (!match || updatingScoreSide != null) return;
+    setUpdatingScoreSide(sideNumber);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      setLiveState(await updateLiveMatchScore(token, match.id, sideNumber, score));
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : 'Não foi possível atualizar o placar.');
+    } finally {
+      setUpdatingScoreSide(null);
     }
   }
 
@@ -191,6 +213,11 @@ export default function MatchScreen() {
         return;
       }
       setMatch(loadedMatch);
+      setLiveState(
+        loadedMatch.status === 'IN_PROGRESS' || loadedMatch.status === 'FINISHED'
+          ? await getLiveMatch(token, loadedMatch.id)
+          : null,
+      );
       if (loadedMatch.status === 'CANCELLED' && loadedMatch.canManage) {
         setSelectedSettlements(loadedMatch.attendances
           .filter((attendance) => isSettlementOpen(attendance.paymentSettlementStatus))
@@ -790,17 +817,13 @@ export default function MatchScreen() {
                 ) : null}
               </YStack>
 
-              {match.status === 'IN_PROGRESS' || match.status === 'FINISHED' ? (
-                <YStack backgroundColor={match.status === 'IN_PROGRESS' ? '#E8F7EE' : '$onzeSurface'} borderColor="$onzeGreen" borderRadius="$6" borderWidth={1} gap="$2" padding="$5">
-                  <Text color="$onzeGreen" fontSize={18} fontWeight="900">
-                    {match.status === 'IN_PROGRESS' ? 'Partida em andamento' : 'Partida finalizada'}
-                  </Text>
-                  <Text color="$onzeInk" fontSize={13} lineHeight={19}>
-                    {match.status === 'IN_PROGRESS'
-                      ? 'O jogo ao vivo foi iniciado. Placar e eventos serão adicionados nas próximas etapas desta fase.'
-                      : 'O encerramento foi salvo e esta partida agora faz parte do histórico.'}
-                  </Text>
-                </YStack>
+              {liveState ? (
+                <LiveScoreboard
+                  match={match}
+                  state={liveState}
+                  updatingSide={updatingScoreSide}
+                  onChangeScore={(sideNumber, score) => void changeLiveScore(sideNumber, score)}
+                />
               ) : null}
 
               {match.status === 'CANCELLED' ? (
@@ -1325,7 +1348,7 @@ export default function MatchScreen() {
           title={liveAction === 'start' ? 'Iniciar esta partida?' : 'Finalizar esta partida?'}
           message={liveAction === 'start'
             ? 'As confirmações serão encerradas e o jogo passará para Em andamento.'
-            : 'A partida será encerrada e salva no histórico. Eventos ao vivo não poderão ser incluídos até a etapa de placar.'}
+            : 'A partida será encerrada, o cronômetro ficará congelado e o placar será salvo no histórico.'}
           confirmLabel={liveAction === 'start' ? 'Iniciar partida' : 'Finalizar partida'}
           loading={managing}
           onCancel={() => setLiveAction(null)}
