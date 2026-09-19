@@ -926,6 +926,14 @@ export function finishLiveMatch(accessToken: string, matchId: string) {
   });
 }
 
+export function resetLiveMatch(accessToken: string, matchId: string) {
+  return request<FootballMatch>(`/api/matches/${matchId}/live/reset`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    loading: { title: 'Resetando a partida...', message: 'Estamos voltando o jogo para agendado.' },
+  });
+}
+
 export function getLiveMatch(accessToken: string, matchId: string) {
   return request<LiveMatchState>(`/api/matches/${matchId}/live`, {
     headers: authenticatedHeaders(accessToken),

@@ -60,12 +60,15 @@ export function LiveScoreboard({ match, state, updatingSide, onChangeScore }: Pr
               {state.canManage && state.status === 'IN_PROGRESS' ? (
                 <Button
                   accessibilityLabel={`Diminuir placar de ${liveScoreSideLabel(match, side.sideNumber)}`}
-                  circular
+                  borderRadius="$5"
                   disabled={isUpdating || side.score === 0}
+                  height={52}
+                  hitSlop={12}
                   onPress={() => onChangeScore(side.sideNumber, side.score - 1)}
-                  size="$3"
+                  pressStyle={{ opacity: 0.65, scale: 0.96 }}
+                  width={52}
                 >
-                  −
+                  <Text fontSize={24} fontWeight="900">−</Text>
                 </Button>
               ) : null}
               <Text color="$onzeGreen" fontSize={32} fontVariant={['tabular-nums']} fontWeight="900" minWidth={44} textAlign="center">
@@ -74,12 +77,16 @@ export function LiveScoreboard({ match, state, updatingSide, onChangeScore }: Pr
               {state.canManage && state.status === 'IN_PROGRESS' ? (
                 <Button
                   accessibilityLabel={`Aumentar placar de ${liveScoreSideLabel(match, side.sideNumber)}`}
-                  circular
+                  backgroundColor="$onzeGreen"
+                  borderRadius="$5"
                   disabled={isUpdating}
+                  height={52}
+                  hitSlop={12}
                   onPress={() => onChangeScore(side.sideNumber, side.score + 1)}
-                  size="$3"
+                  pressStyle={{ backgroundColor: '$onzeGreenPress', opacity: 0.8, scale: 0.96 }}
+                  width={52}
                 >
-                  +
+                  <Text color="$onzeSurface" fontSize={24} fontWeight="900">+</Text>
                 </Button>
               ) : null}
             </XStack>

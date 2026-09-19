@@ -5,7 +5,6 @@ import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { GoalkeeperPlayerModal } from '../src/components/goalkeeper-player-modal';
-import { LiveScoreboard } from '../src/components/live-scoreboard';
 import { MinimumPlayerDecisionCard } from '../src/components/minimum-player-decision-card';
 import { PaymentSettlementModal } from '../src/components/payment-settlement-modal';
 import { RentalGoalkeeperModal } from '../src/components/rental-goalkeeper-modal';
@@ -20,16 +19,13 @@ import {
   confirmMatchPayment,
   CreditAllocationStatus,
   endMatchSeries,
-  finishLiveMatch,
   FootballMatch,
   GroupMember,
   getMatch,
-  getLiveMatch,
   getOwnSportsProfile,
   listGroupMembers,
   MatchAttendance,
   MatchGuest,
-  LiveMatchState,
   PaymentSettlementResolution,
   PaymentSettlementStatus,
   PaymentStatus,
@@ -42,7 +38,6 @@ import {
   startLiveMatch,
   updateMatchAttendance,
   updateMatchGoalkeeper,
-  updateLiveMatchScore,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
 import {
@@ -64,7 +59,7 @@ import { modalityLabel } from '../src/lib/match-modality';
 import { positionLabel } from '../src/lib/sports-profile';
 
 type ManagementAction = 'cancel-occurrence' | 'end-series' | null;
-type LiveAction = 'start' | 'finish' | null;
+type LiveAction = 'start' | null;
 type GoalkeeperPicker = 'secondary' | 'volunteer' | null;
 type PaymentBadgeColor = '$onzeGreen' | '$onzeDanger' | '$onzeMuted' | '#8A6414';
 
@@ -131,8 +126,6 @@ export default function MatchScreen() {
   const [managingGuestId, setManagingGuestId] = useState<string | null>(null);
   const [managementAction, setManagementAction] = useState<ManagementAction>(null);
   const [liveAction, setLiveAction] = useState<LiveAction>(null);
-  const [liveState, setLiveState] = useState<LiveMatchState | null>(null);
-  const [updatingScoreSide, setUpdatingScoreSide] = useState<number | null>(null);
   const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -143,31 +136,14 @@ export default function MatchScreen() {
     try {
       const token = await getAccessToken();
       if (!token) { goToLogin(); return; }
-      const updated = liveAction === 'start'
-        ? await startLiveMatch(token, match.id)
-        : await finishLiveMatch(token, match.id);
+      const updated = await startLiveMatch(token, match.id);
       setMatch(updated);
-      setLiveState(await getLiveMatch(token, match.id));
       setLiveAction(null);
+      router.push({ pathname: '/live-match', params: { matchId: match.id } });
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível atualizar a partida.');
     } finally {
       setManaging(false);
-    }
-  }
-
-  async function changeLiveScore(sideNumber: number, score: number) {
-    if (!match || updatingScoreSide != null) return;
-    setUpdatingScoreSide(sideNumber);
-    setError(null);
-    try {
-      const token = await getAccessToken();
-      if (!token) { goToLogin(); return; }
-      setLiveState(await updateLiveMatchScore(token, match.id, sideNumber, score));
-    } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível atualizar o placar.');
-    } finally {
-      setUpdatingScoreSide(null);
     }
   }
 
@@ -213,11 +189,6 @@ export default function MatchScreen() {
         return;
       }
       setMatch(loadedMatch);
-      setLiveState(
-        loadedMatch.status === 'IN_PROGRESS' || loadedMatch.status === 'FINISHED'
-          ? await getLiveMatch(token, loadedMatch.id)
-          : null,
-      );
       if (loadedMatch.status === 'CANCELLED' && loadedMatch.canManage) {
         setSelectedSettlements(loadedMatch.attendances
           .filter((attendance) => isSettlementOpen(attendance.paymentSettlementStatus))
@@ -817,13 +788,25 @@ export default function MatchScreen() {
                 ) : null}
               </YStack>
 
-              {liveState ? (
-                <LiveScoreboard
-                  match={match}
-                  state={liveState}
-                  updatingSide={updatingScoreSide}
-                  onChangeScore={(sideNumber, score) => void changeLiveScore(sideNumber, score)}
-                />
+              {match.status === 'IN_PROGRESS' || match.status === 'FINISHED' ? (
+                <YStack backgroundColor="$onzeSurface" borderColor="$onzeGreen" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
+                  <Text color="$onzeGreen" fontSize={18} fontWeight="900">
+                    {match.status === 'IN_PROGRESS' ? 'Partida em andamento' : 'Partida finalizada'}
+                  </Text>
+                  <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                    O placar e o cronômetro ficam em uma tela própria para facilitar o acompanhamento.
+                  </Text>
+                  <Button
+                    backgroundColor="$onzeGreen"
+                    height={52}
+                    onPress={() => router.push({ pathname: '/live-match', params: { matchId: match.id } })}
+                    pressStyle={{ backgroundColor: '$onzeGreenPress', opacity: 0.85 }}
+                  >
+                    <Text color="$onzeSurface" fontWeight="900">
+                      {match.status === 'IN_PROGRESS' ? 'Acompanhar partida' : 'Ver partida'}
+                    </Text>
+                  </Button>
+                </YStack>
               ) : null}
 
               {match.status === 'CANCELLED' ? (
@@ -1306,14 +1289,6 @@ export default function MatchScreen() {
                 </YStack>
               ) : null}
 
-              {match.canManage && match.status === 'IN_PROGRESS' ? (
-                <YStack backgroundColor="$onzeSurface" borderColor="$onzeGreen" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
-                  <Text color="$onzeInk" fontSize={17} fontWeight="900">Jogo ao vivo</Text>
-                  <Button backgroundColor="$onzeGreen" height={48} onPress={() => setLiveAction('finish')}>
-                    <Text color="$onzeSurface" fontWeight="900">Finalizar partida</Text>
-                  </Button>
-                </YStack>
-              ) : null}
             </>
           ) : (
             <YStack backgroundColor="$onzeSurface" borderColor="$onzeDanger" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
@@ -1345,11 +1320,9 @@ export default function MatchScreen() {
       {match ? (
         <ConfirmActionModal
           visible={liveAction != null}
-          title={liveAction === 'start' ? 'Iniciar esta partida?' : 'Finalizar esta partida?'}
-          message={liveAction === 'start'
-            ? 'As confirmações serão encerradas e o jogo passará para Em andamento.'
-            : 'A partida será encerrada, o cronômetro ficará congelado e o placar será salvo no histórico.'}
-          confirmLabel={liveAction === 'start' ? 'Iniciar partida' : 'Finalizar partida'}
+          title="Iniciar esta partida?"
+          message="As confirmações serão encerradas e o placar será aberto em uma tela própria."
+          confirmLabel="Iniciar partida"
           loading={managing}
           onCancel={() => setLiveAction(null)}
           onConfirm={() => void confirmLiveAction()}
