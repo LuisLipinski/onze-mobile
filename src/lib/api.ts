@@ -103,7 +103,7 @@ export type JoinGroupResponse = {
 export type MatchRecurrence = 'NONE' | 'WEEKLY';
 export type MatchType = 'INTERNAL' | 'VERSUS_EXTERNAL';
 export type MatchModality = 'FIELD' | 'FUT7' | 'FUTSAL';
-export type MatchStatus = 'SCHEDULED' | 'CANCELLED';
+export type MatchStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELLED';
 export type AttendanceStatus = 'PENDING' | 'GOING' | 'NOT_GOING';
 export type PaymentStatus = 'PENDING' | 'REPORTED' | 'PAID' | 'CANCELLED';
 export type CreditAllocationStatus = 'RESERVED' | 'APPLIED';
@@ -297,6 +297,8 @@ export type FootballMatch = {
   pixKey: string | null;
   notes: string | null;
   status: MatchStatus;
+  startedAt: string | null;
+  finishedAt: string | null;
   attendanceOpensAt: string;
   attendanceOpen: boolean;
   signupDeadline: string;
@@ -896,6 +898,22 @@ export function getMatch(accessToken: string, matchId: string) {
       title: 'Carregando o jogo...',
       message: 'Estamos atualizando presença, pagamentos e vagas.',
     },
+  });
+}
+
+export function startLiveMatch(accessToken: string, matchId: string) {
+  return request<FootballMatch>(`/api/matches/${matchId}/live/start`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    loading: { title: 'Iniciando a partida...', message: 'Estamos abrindo o jogo ao vivo.' },
+  });
+}
+
+export function finishLiveMatch(accessToken: string, matchId: string) {
+  return request<FootballMatch>(`/api/matches/${matchId}/live/finish`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    loading: { title: 'Finalizando a partida...', message: 'Estamos salvando o encerramento do jogo.' },
   });
 }
 
