@@ -368,6 +368,7 @@ type ApiError = {
 
 type ApiRequestOptions = RequestInit & {
   loading?: GlobalLoadingOptions | false;
+  timeoutMs?: number;
 };
 
 export class ApiRequestError extends Error {
@@ -393,11 +394,12 @@ function getApiUrl() {
 async function request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const {
     loading = {},
+    timeoutMs = REQUEST_TIMEOUT_MS,
     ...requestOptions
   } = options;
   const finishLoading = loading === false ? null : beginGlobalLoading(loading);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const isMultipart = typeof FormData !== 'undefined' && requestOptions.body instanceof FormData;
 
   try {
@@ -952,6 +954,7 @@ export function updateLiveMatchScore(
     headers: authenticatedHeaders(accessToken),
     body: JSON.stringify({ sideNumber, score }),
     loading: false,
+    timeoutMs: 10_000,
   });
 }
 
