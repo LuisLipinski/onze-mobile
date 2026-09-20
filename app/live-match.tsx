@@ -13,6 +13,7 @@ import {
   getLiveMatch,
   getMatch,
   LiveMatchState,
+  listGroups,
   resetLiveMatch,
   updateLiveMatchScore,
 } from '../src/lib/api';
@@ -25,6 +26,7 @@ export default function LiveMatchScreen() {
   const params = useLocalSearchParams<{ matchId?: string }>();
   const [match, setMatch] = useState<FootballMatch | null>(null);
   const [liveState, setLiveState] = useState<LiveMatchState | null>(null);
+  const [teamImageUrl, setTeamImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingScoreSides, setUpdatingScoreSides] = useState<number[]>([]);
@@ -47,12 +49,14 @@ export default function LiveMatchScreen() {
     try {
       const token = await getAccessToken();
       if (!token) { goToLogin(); return; }
-      const [loadedMatch, loadedLiveState] = await Promise.all([
+      const [loadedMatch, loadedLiveState, groups] = await Promise.all([
         getMatch(token, params.matchId),
         getLiveMatch(token, params.matchId),
+        listGroups(token),
       ]);
       setMatch(loadedMatch);
       setLiveState(loadedLiveState);
+      setTeamImageUrl(groups.find((group) => group.id === loadedMatch.groupId)?.photoUrl ?? null);
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
         await clearSession();
@@ -141,6 +145,7 @@ export default function LiveMatchScreen() {
               <LiveScoreboard
                 match={match}
                 state={liveState}
+                teamImageUrl={teamImageUrl}
                 updatingSides={updatingScoreSides}
                 onChangeScore={(sideNumber, score) => void changeScore(sideNumber, score)}
               />
