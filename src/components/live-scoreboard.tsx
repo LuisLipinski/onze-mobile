@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Image } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import type { FootballMatch, LiveMatchState, LiveScoreSide } from '../lib/api';
@@ -7,93 +8,97 @@ import { formatMatchTimer, liveMatchElapsedSeconds, liveScoreSideLabel } from '.
 type Props = {
   match: FootballMatch;
   state: LiveMatchState;
+  teamImageUrl: string | null;
   updatingSides: number[];
   onChangeScore: (sideNumber: number, score: number) => void;
 };
 
-type TeamScoreProps = {
+type TeamIdentityProps = {
+  imageUrl: string | null;
   label: string;
-  side: LiveScoreSide;
-  canManage: boolean;
-  isUpdating: boolean;
-  onChangeScore: Props['onChangeScore'];
+  sideNumber: number;
 };
 
-function TeamScore({ label, side, canManage, isUpdating, onChangeScore }: TeamScoreProps) {
+function TeamIdentity({ imageUrl, label, sideNumber }: TeamIdentityProps) {
   return (
     <YStack alignItems="center" flex={1} gap="$2" minWidth={0}>
-      <YStack
-        alignItems="center"
-        backgroundColor="#DDF3E7"
-        borderColor="$onzeGreen"
-        borderRadius={999}
-        borderWidth={1}
-        height={46}
-        justifyContent="center"
-        width={46}
-      >
-        <Text color="$onzeGreen" fontSize={14} fontWeight="900">T{side.sideNumber}</Text>
-      </YStack>
-
-      <Text
-        color="$onzeInk"
-        fontSize={16}
-        fontWeight="900"
-        minHeight={44}
-        numberOfLines={2}
-        textAlign="center"
-      >
+      {imageUrl ? (
+        <Image
+          accessibilityLabel={`Símbolo de ${label}`}
+          resizeMode="cover"
+          source={{ uri: imageUrl }}
+          style={{ width: 58, height: 58, borderRadius: 14 }}
+        />
+      ) : (
+        <YStack
+          alignItems="center"
+          backgroundColor="#DDF3E7"
+          borderColor="$onzeGreen"
+          borderRadius="$4"
+          borderWidth={1}
+          height={58}
+          justifyContent="center"
+          width={58}
+        >
+          <Text color="$onzeGreen" fontSize={18} fontWeight="900">T{sideNumber}</Text>
+        </YStack>
+      )}
+      <Text color="$onzeInk" fontSize={14} fontWeight="900" numberOfLines={2} textAlign="center">
         {label}
       </Text>
-
-      <Text
-        color="$onzeGreen"
-        fontSize={64}
-        fontVariant={['tabular-nums']}
-        fontWeight="900"
-        lineHeight={72}
-        textAlign="center"
-      >
-        {side.score}
-      </Text>
-
-      {canManage ? (
-        <XStack gap="$2">
-          <Button
-            accessibilityLabel={`Diminuir placar de ${label}`}
-            backgroundColor="$onzeSurface"
-            borderColor="$onzeBorder"
-            borderRadius="$4"
-            borderWidth={1}
-            disabled={isUpdating || side.score === 0}
-            height={48}
-            hitSlop={10}
-            onPress={() => onChangeScore(side.sideNumber, side.score - 1)}
-            pressStyle={{ opacity: 0.65, scale: 0.96 }}
-            width={48}
-          >
-            <Text color="$onzeInk" fontSize={25} fontWeight="900">−</Text>
-          </Button>
-          <Button
-            accessibilityLabel={`Aumentar placar de ${label}`}
-            backgroundColor="$onzeGreen"
-            borderRadius="$4"
-            disabled={isUpdating}
-            height={48}
-            hitSlop={10}
-            onPress={() => onChangeScore(side.sideNumber, side.score + 1)}
-            pressStyle={{ backgroundColor: '$onzeGreenPress', opacity: 0.8, scale: 0.96 }}
-            width={48}
-          >
-            <Text color="$onzeSurface" fontSize={25} fontWeight="900">+</Text>
-          </Button>
-        </XStack>
-      ) : null}
     </YStack>
   );
 }
 
-export function LiveScoreboard({ match, state, updatingSides, onChangeScore }: Props) {
+type ScoreControlsProps = {
+  label: string;
+  side: LiveScoreSide;
+  isUpdating: boolean;
+  onChangeScore: Props['onChangeScore'];
+};
+
+function ScoreControls({ label, side, isUpdating, onChangeScore }: ScoreControlsProps) {
+  return (
+    <XStack gap="$2" justifyContent="center">
+      <Button
+        accessibilityLabel={`Diminuir placar de ${label}`}
+        backgroundColor="$onzeSurface"
+        borderColor="$onzeBorder"
+        borderRadius="$4"
+        borderWidth={1}
+        disabled={isUpdating || side.score === 0}
+        height={48}
+        hitSlop={10}
+        onPress={() => onChangeScore(side.sideNumber, side.score - 1)}
+        pressStyle={{ opacity: 0.65, scale: 0.96 }}
+        width={48}
+      >
+        <Text color="$onzeInk" fontSize={25} fontWeight="900">−</Text>
+      </Button>
+      <Button
+        accessibilityLabel={`Aumentar placar de ${label}`}
+        backgroundColor="$onzeGreen"
+        borderRadius="$4"
+        disabled={isUpdating}
+        height={48}
+        hitSlop={10}
+        onPress={() => onChangeScore(side.sideNumber, side.score + 1)}
+        pressStyle={{ backgroundColor: '$onzeGreenPress', opacity: 0.8, scale: 0.96 }}
+        width={48}
+      >
+        <Text color="$onzeSurface" fontSize={25} fontWeight="900">+</Text>
+      </Button>
+    </XStack>
+  );
+}
+
+export function LiveScoreboard({
+  match,
+  state,
+  teamImageUrl,
+  updatingSides,
+  onChangeScore,
+}: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(() => liveMatchElapsedSeconds(state));
   const canManage = state.canManage && state.status === 'IN_PROGRESS';
 
@@ -103,6 +108,11 @@ export function LiveScoreboard({ match, state, updatingSides, onChangeScore }: P
     const interval = setInterval(() => setElapsedSeconds(liveMatchElapsedSeconds(state)), 1_000);
     return () => clearInterval(interval);
   }, [state]);
+
+  const firstSide = state.scores[0];
+  const secondSide = state.scores[1];
+  const firstLabel = firstSide ? liveScoreSideLabel(match, firstSide.sideNumber) : '';
+  const secondLabel = secondSide ? liveScoreSideLabel(match, secondSide.sideNumber) : '';
 
   return (
     <YStack
@@ -137,45 +147,73 @@ export function LiveScoreboard({ match, state, updatingSides, onChangeScore }: P
         </Text>
       </XStack>
 
-      {state.scores.length === 2 ? (
-        <XStack alignItems="center" gap="$2" paddingHorizontal="$3" paddingVertical="$5">
-          <TeamScore
-            label={liveScoreSideLabel(match, state.scores[0].sideNumber)}
-            side={state.scores[0]}
-            canManage={canManage}
-            isUpdating={updatingSides.includes(state.scores[0].sideNumber)}
-            onChangeScore={onChangeScore}
-          />
-          <Text color="$onzeMuted" fontSize={42} fontWeight="700" marginTop={58}>:</Text>
-          <TeamScore
-            label={liveScoreSideLabel(match, state.scores[1].sideNumber)}
-            side={state.scores[1]}
-            canManage={canManage}
-            isUpdating={updatingSides.includes(state.scores[1].sideNumber)}
-            onChangeScore={onChangeScore}
-          />
-        </XStack>
+      {state.scores.length === 2 && firstSide && secondSide ? (
+        <YStack gap="$4" paddingHorizontal="$3" paddingVertical="$5">
+          <XStack alignItems="center" gap="$2">
+            <TeamIdentity imageUrl={teamImageUrl} label={firstLabel} sideNumber={firstSide.sideNumber} />
+            <XStack alignItems="center" justifyContent="center" minWidth={142}>
+              <Text color="$onzeGreen" fontSize={52} fontVariant={['tabular-nums']} fontWeight="900" lineHeight={60}>
+                {firstSide.score}
+              </Text>
+              <Text color="$onzeMuted" fontSize={36} fontWeight="700" paddingHorizontal="$2">:</Text>
+              <Text color="$onzeGreen" fontSize={52} fontVariant={['tabular-nums']} fontWeight="900" lineHeight={60}>
+                {secondSide.score}
+              </Text>
+            </XStack>
+            <TeamIdentity imageUrl={teamImageUrl} label={secondLabel} sideNumber={secondSide.sideNumber} />
+          </XStack>
+
+          {canManage ? (
+            <XStack gap="$3">
+              <YStack flex={1}>
+                <ScoreControls
+                  label={firstLabel}
+                  side={firstSide}
+                  isUpdating={updatingSides.includes(firstSide.sideNumber)}
+                  onChangeScore={onChangeScore}
+                />
+              </YStack>
+              <YStack flex={1}>
+                <ScoreControls
+                  label={secondLabel}
+                  side={secondSide}
+                  isUpdating={updatingSides.includes(secondSide.sideNumber)}
+                  onChangeScore={onChangeScore}
+                />
+              </YStack>
+            </XStack>
+          ) : null}
+        </YStack>
       ) : (
         <YStack gap="$3" padding="$4">
-          {state.scores.map((side) => (
-            <XStack
-              key={side.sideNumber}
-              alignItems="center"
-              backgroundColor="#F7FAF8"
-              borderColor="$onzeBorder"
-              borderRadius="$5"
-              borderWidth={1}
-              padding="$3"
-            >
-              <TeamScore
-                label={liveScoreSideLabel(match, side.sideNumber)}
-                side={side}
-                canManage={canManage}
-                isUpdating={updatingSides.includes(side.sideNumber)}
-                onChangeScore={onChangeScore}
-              />
-            </XStack>
-          ))}
+          {state.scores.map((side) => {
+            const label = liveScoreSideLabel(match, side.sideNumber);
+            return (
+              <YStack
+                key={side.sideNumber}
+                alignItems="center"
+                backgroundColor="#F7FAF8"
+                borderColor="$onzeBorder"
+                borderRadius="$5"
+                borderWidth={1}
+                gap="$2"
+                padding="$3"
+              >
+                <TeamIdentity imageUrl={teamImageUrl} label={label} sideNumber={side.sideNumber} />
+                <Text color="$onzeGreen" fontSize={48} fontVariant={['tabular-nums']} fontWeight="900">
+                  {side.score}
+                </Text>
+                {canManage ? (
+                  <ScoreControls
+                    label={label}
+                    side={side}
+                    isUpdating={updatingSides.includes(side.sideNumber)}
+                    onChangeScore={onChangeScore}
+                  />
+                ) : null}
+              </YStack>
+            );
+          })}
         </YStack>
       )}
     </YStack>
