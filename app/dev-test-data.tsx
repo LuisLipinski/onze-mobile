@@ -115,7 +115,7 @@ export default function DevTestDataScreen() {
             <Text color="#8A6414" fontSize={13} fontWeight="900">AMBIENTE DE TESTE</Text>
             <Text color="$onzeInk" fontSize={28} fontWeight="900">Massa de jogadores</Text>
             <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
-              Crie jogadores fictícios uma vez e reutilize os mesmos perfis em várias partidas.
+              Crie uma massa nova, variada e com goleiros para validar a formação dos times.
             </Text>
           </YStack>
 
@@ -164,7 +164,7 @@ export default function DevTestDataScreen() {
             <YStack gap="$1">
               <Text color="$onzeInk" fontSize={17} fontWeight="900">1. Gerar jogadores</Text>
               <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                O botão garante pelo menos essa quantidade no grupo. Quem já existe é reaproveitado e não tem suas alterações manuais apagadas.
+                Ao gerar, todos os jogadores Teste XX anteriores deste grupo são removidos e substituídos por jogadores novos, com níveis variados e goleiros.
               </Text>
             </YStack>
             <XStack flexWrap="wrap" gap="$2">
