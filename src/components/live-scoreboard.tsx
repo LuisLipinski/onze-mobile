@@ -10,6 +10,7 @@ type Props = {
   state: LiveMatchState;
   teamImageUrl: string | null;
   onChangeScore: (sideNumber: number, score: number) => void;
+  onRegisterGoal: (sideNumber: number) => void;
 };
 
 type TeamIdentityProps = {
@@ -53,9 +54,10 @@ type ScoreControlsProps = {
   label: string;
   side: LiveScoreSide;
   onChangeScore: Props['onChangeScore'];
+  onRegisterGoal: Props['onRegisterGoal'];
 };
 
-function ScoreControls({ label, side, onChangeScore }: ScoreControlsProps) {
+function ScoreControls({ label, side, onChangeScore, onRegisterGoal }: ScoreControlsProps) {
   return (
     <XStack gap="$2" justifyContent="center">
       <Pressable
@@ -80,7 +82,7 @@ function ScoreControls({ label, side, onChangeScore }: ScoreControlsProps) {
       <Pressable
         accessibilityLabel={`Aumentar placar de ${label}`}
         hitSlop={12}
-        onPress={() => onChangeScore(side.sideNumber, 1)}
+        onPress={() => onRegisterGoal(side.sideNumber)}
         style={({ pressed }) => ({
           alignItems: 'center',
           backgroundColor: pressed ? '#0F6D3B' : '#148A4A',
@@ -102,6 +104,7 @@ export function LiveScoreboard({
   state,
   teamImageUrl,
   onChangeScore,
+  onRegisterGoal,
 }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(() => liveMatchElapsedSeconds(state));
   const canManage = state.canManage && state.status === 'IN_PROGRESS';
@@ -174,6 +177,7 @@ export function LiveScoreboard({
                   label={firstLabel}
                   side={firstSide}
                   onChangeScore={onChangeScore}
+                  onRegisterGoal={onRegisterGoal}
                 />
               </YStack>
               <YStack flex={1}>
@@ -181,6 +185,7 @@ export function LiveScoreboard({
                   label={secondLabel}
                   side={secondSide}
                   onChangeScore={onChangeScore}
+                  onRegisterGoal={onRegisterGoal}
                 />
               </YStack>
             </XStack>
@@ -210,6 +215,7 @@ export function LiveScoreboard({
                     label={label}
                     side={side}
                     onChangeScore={onChangeScore}
+                    onRegisterGoal={onRegisterGoal}
                   />
                 ) : null}
               </YStack>

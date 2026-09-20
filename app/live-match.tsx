@@ -6,6 +6,7 @@ import { Button, Text, XStack, YStack } from 'tamagui';
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { GoalEventModal } from '../src/components/goal-event-modal';
 import { LiveScoreboard } from '../src/components/live-scoreboard';
+import { GoalTimeline } from '../src/components/goal-timeline';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
@@ -138,13 +139,15 @@ export default function LiveMatchScreen() {
     }
   }
 
-  function openGoalModal() {
-    const firstTeam = matchTeams?.teams.find((team) => team.assignments.length > 0);
-    if (!firstTeam) {
+  function openGoalModal(sideNumber: number) {
+    const selectedTeam = matchTeams?.teams.find(
+      (team) => team.teamNumber === sideNumber && team.assignments.length > 0,
+    );
+    if (!selectedTeam) {
       setError('Gere os times e adicione os jogadores antes de registrar um gol.');
       return;
     }
-    setGoalTeamNumber(firstTeam.teamNumber);
+    setGoalTeamNumber(selectedTeam.teamNumber);
     setScorerAssignmentId(null);
     setAssistAssignmentId(null);
     setPenaltyGoal(false);
@@ -246,21 +249,13 @@ export default function LiveMatchScreen() {
                 state={liveState}
                 teamImageUrl={teamImageUrl}
                 onChangeScore={changeScore}
+                onRegisterGoal={openGoalModal}
               />
+
+              <GoalTimeline events={liveState.goalEvents ?? []} match={match} />
 
               {liveState.canManage && liveState.status === 'IN_PROGRESS' ? (
                 <YStack gap="$3">
-                  <Button
-                    backgroundColor="$onzeSurface"
-                    borderColor="$onzeGreen"
-                    borderWidth={2}
-                    disabled={scoreSaving}
-                    height={54}
-                    onPress={openGoalModal}
-                    pressStyle={{ opacity: 0.7 }}
-                  >
-                    <Text color="$onzeGreen" fontWeight="900">⚽ Registrar gol</Text>
-                  </Button>
                   <Button
                     backgroundColor="$onzeGreen"
                     height={54}
@@ -310,11 +305,6 @@ export default function LiveMatchScreen() {
         assistAssignmentId={assistAssignmentId}
         penalty={penaltyGoal}
         saving={savingGoal}
-        onSelectTeam={(teamNumber) => {
-          setGoalTeamNumber(teamNumber);
-          setScorerAssignmentId(null);
-          setAssistAssignmentId(null);
-        }}
         onSelectScorer={(assignmentId) => {
           setScorerAssignmentId(assignmentId);
           if (assistAssignmentId === assignmentId) setAssistAssignmentId(null);

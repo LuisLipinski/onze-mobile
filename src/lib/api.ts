@@ -111,6 +111,7 @@ export type LiveMatchState = {
   startedAt: string | null;
   finishedAt: string | null;
   scores: LiveScoreSide[];
+  goalEvents: GoalEvent[];
   canManage: boolean;
 };
 export type GoalEvent = {
@@ -120,9 +121,11 @@ export type GoalEvent = {
   scorerAssignmentId: string;
   scorerParticipantType: TeamParticipantType;
   scorerParticipantId: string;
+  scorerDisplayName: string | null;
   assistAssignmentId: string | null;
   assistParticipantType: TeamParticipantType | null;
   assistParticipantId: string | null;
+  assistDisplayName: string | null;
   penalty: boolean;
   elapsedSeconds: number;
   createdAt: string;
