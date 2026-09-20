@@ -113,6 +113,21 @@ export type LiveMatchState = {
   scores: LiveScoreSide[];
   canManage: boolean;
 };
+export type GoalEvent = {
+  id: string;
+  matchId: string;
+  sideNumber: number;
+  scorerAssignmentId: string;
+  scorerParticipantType: TeamParticipantType;
+  scorerParticipantId: string;
+  assistAssignmentId: string | null;
+  assistParticipantType: TeamParticipantType | null;
+  assistParticipantId: string | null;
+  penalty: boolean;
+  elapsedSeconds: number;
+  createdAt: string;
+};
+export type CreateGoalEventResponse = { event: GoalEvent; liveMatch: LiveMatchState };
 export type AttendanceStatus = 'PENDING' | 'GOING' | 'NOT_GOING';
 export type PaymentStatus = 'PENDING' | 'REPORTED' | 'PAID' | 'CANCELLED';
 export type CreditAllocationStatus = 'RESERVED' | 'APPLIED';
@@ -953,6 +968,22 @@ export function updateLiveMatchScore(
     method: 'PUT',
     headers: authenticatedHeaders(accessToken),
     body: JSON.stringify({ sideNumber, score }),
+    loading: false,
+    timeoutMs: 10_000,
+  });
+}
+
+export function createGoalEvent(
+  accessToken: string,
+  matchId: string,
+  scorerAssignmentId: string,
+  assistAssignmentId: string | null,
+  penalty: boolean,
+) {
+  return request<CreateGoalEventResponse>(`/api/matches/${matchId}/live/goals`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ scorerAssignmentId, assistAssignmentId, penalty }),
     loading: false,
     timeoutMs: 10_000,
   });
