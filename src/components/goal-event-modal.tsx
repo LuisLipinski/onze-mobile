@@ -11,7 +11,6 @@ type Props = {
   assistAssignmentId: string | null;
   penalty: boolean;
   saving: boolean;
-  onSelectTeam: (teamNumber: number) => void;
   onSelectScorer: (assignmentId: string) => void;
   onSelectAssist: (assignmentId: string | null) => void;
   onChangePenalty: (penalty: boolean) => void;
@@ -93,16 +92,14 @@ export function GoalEventModal(props: Props) {
 
               <YStack gap="$2">
                 <Text color="$onzeInk" fontWeight="900">Time</Text>
-                <XStack flexWrap="wrap" gap="$2">
-                  {props.teams.map((team) => (
-                    <Choice
-                      key={team.teamNumber}
-                      label={`Time ${team.teamNumber}`}
-                      selected={props.selectedTeamNumber === team.teamNumber}
-                      onPress={() => props.onSelectTeam(team.teamNumber)}
-                    />
-                  ))}
-                </XStack>
+                <YStack backgroundColor="#E8F7EE" borderRadius="$4" padding="$3">
+                  <Text color="$onzeGreen" fontSize={16} fontWeight="900">
+                    Time {props.selectedTeamNumber}
+                  </Text>
+                  <Text color="$onzeMuted" fontSize={12}>
+                    Definido pelo botão + que você tocou.
+                  </Text>
+                </YStack>
               </YStack>
 
               {selectedTeam ? (
