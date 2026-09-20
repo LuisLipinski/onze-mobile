@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Image } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Image, Pressable } from 'react-native';
+import { Text, XStack, YStack } from 'tamagui';
 
 import type { FootballMatch, LiveMatchState, LiveScoreSide } from '../lib/api';
 import { formatMatchTimer, liveMatchElapsedSeconds, liveScoreSideLabel } from '../lib/live-match';
@@ -9,7 +9,6 @@ type Props = {
   match: FootballMatch;
   state: LiveMatchState;
   teamImageUrl: string | null;
-  updatingSides: number[];
   onChangeScore: (sideNumber: number, score: number) => void;
 };
 
@@ -53,41 +52,47 @@ function TeamIdentity({ imageUrl, label, sideNumber }: TeamIdentityProps) {
 type ScoreControlsProps = {
   label: string;
   side: LiveScoreSide;
-  isUpdating: boolean;
   onChangeScore: Props['onChangeScore'];
 };
 
-function ScoreControls({ label, side, isUpdating, onChangeScore }: ScoreControlsProps) {
+function ScoreControls({ label, side, onChangeScore }: ScoreControlsProps) {
   return (
     <XStack gap="$2" justifyContent="center">
-      <Button
+      <Pressable
         accessibilityLabel={`Diminuir placar de ${label}`}
-        backgroundColor="$onzeSurface"
-        borderColor="$onzeBorder"
-        borderRadius="$4"
-        borderWidth={1}
-        disabled={isUpdating || side.score === 0}
-        height={48}
-        hitSlop={10}
-        onPress={() => onChangeScore(side.sideNumber, side.score - 1)}
-        pressStyle={{ opacity: 0.65, scale: 0.96 }}
-        width={48}
+        disabled={side.score === 0}
+        hitSlop={12}
+        onPress={() => onChangeScore(side.sideNumber, -1)}
+        style={({ pressed }) => ({
+          alignItems: 'center',
+          backgroundColor: '#FFFFFF',
+          borderColor: '#DDE6E1',
+          borderRadius: 12,
+          borderWidth: 1,
+          height: 54,
+          justifyContent: 'center',
+          opacity: side.score === 0 ? 0.4 : pressed ? 0.65 : 1,
+          width: 54,
+        })}
       >
-        <Text color="$onzeInk" fontSize={25} fontWeight="900">−</Text>
-      </Button>
-      <Button
+        <Text color="$onzeInk" fontSize={30} fontWeight="900" lineHeight={34}>−</Text>
+      </Pressable>
+      <Pressable
         accessibilityLabel={`Aumentar placar de ${label}`}
-        backgroundColor="$onzeGreen"
-        borderRadius="$4"
-        disabled={isUpdating}
-        height={48}
-        hitSlop={10}
-        onPress={() => onChangeScore(side.sideNumber, side.score + 1)}
-        pressStyle={{ backgroundColor: '$onzeGreenPress', opacity: 0.8, scale: 0.96 }}
-        width={48}
+        hitSlop={12}
+        onPress={() => onChangeScore(side.sideNumber, 1)}
+        style={({ pressed }) => ({
+          alignItems: 'center',
+          backgroundColor: pressed ? '#0F6D3B' : '#148A4A',
+          borderRadius: 12,
+          height: 54,
+          justifyContent: 'center',
+          opacity: pressed ? 0.82 : 1,
+          width: 54,
+        })}
       >
-        <Text color="$onzeSurface" fontSize={25} fontWeight="900">+</Text>
-      </Button>
+        <Text color="$onzeSurface" fontSize={30} fontWeight="900" lineHeight={34}>+</Text>
+      </Pressable>
     </XStack>
   );
 }
@@ -96,7 +101,6 @@ export function LiveScoreboard({
   match,
   state,
   teamImageUrl,
-  updatingSides,
   onChangeScore,
 }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(() => liveMatchElapsedSeconds(state));
@@ -169,7 +173,6 @@ export function LiveScoreboard({
                 <ScoreControls
                   label={firstLabel}
                   side={firstSide}
-                  isUpdating={updatingSides.includes(firstSide.sideNumber)}
                   onChangeScore={onChangeScore}
                 />
               </YStack>
@@ -177,7 +180,6 @@ export function LiveScoreboard({
                 <ScoreControls
                   label={secondLabel}
                   side={secondSide}
-                  isUpdating={updatingSides.includes(secondSide.sideNumber)}
                   onChangeScore={onChangeScore}
                 />
               </YStack>
@@ -207,7 +209,6 @@ export function LiveScoreboard({
                   <ScoreControls
                     label={label}
                     side={side}
-                    isUpdating={updatingSides.includes(side.sideNumber)}
                     onChangeScore={onChangeScore}
                   />
                 ) : null}

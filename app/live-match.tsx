@@ -29,8 +29,9 @@ export default function LiveMatchScreen() {
   const [teamImageUrl, setTeamImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [updatingScoreSides, setUpdatingScoreSides] = useState<number[]>([]);
-  const updatingScoreSidesRef = useRef(new Set<number>());
+  const desiredScoresRef = useRef(new Map<number, number>());
+  const confirmedScoresRef = useRef(new Map<number, number>());
+  const scoreRequestRunningRef = useRef(new Set<number>());
   const [managementAction, setManagementAction] = useState<LiveManagementAction>(null);
   const [managing, setManaging] = useState(false);
 
@@ -56,6 +57,9 @@ export default function LiveMatchScreen() {
       ]);
       setMatch(loadedMatch);
       setLiveState(loadedLiveState);
+      desiredScoresRef.current = new Map(loadedLiveState.scores.map((side) => [side.sideNumber, side.score]));
+      confirmedScoresRef.current = new Map(loadedLiveState.scores.map((side) => [side.sideNumber, side.score]));
+      scoreRequestRunningRef.current.clear();
       setTeamImageUrl(groups.find((group) => group.id === loadedMatch.groupId)?.photoUrl ?? null);
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
@@ -71,27 +75,68 @@ export default function LiveMatchScreen() {
 
   useFocusEffect(useCallback(() => { void loadLiveMatch(); }, [loadLiveMatch]));
 
-  async function changeScore(sideNumber: number, score: number) {
-    if (!match || !liveState || updatingScoreSidesRef.current.has(sideNumber)) return;
-    const previousState = liveState;
-    updatingScoreSidesRef.current.add(sideNumber);
-    setUpdatingScoreSides((current) => [...current, sideNumber]);
+  function applyDesiredScores(state: LiveMatchState) {
+    return {
+      ...state,
+      scores: state.scores.map((side) => ({
+        ...side,
+        score: desiredScoresRef.current.get(side.sideNumber) ?? side.score,
+      })),
+    };
+  }
+
+  async function flushScoreUpdates(sideNumber: number) {
+    if (!match || scoreRequestRunningRef.current.has(sideNumber)) return;
+    scoreRequestRunningRef.current.add(sideNumber);
     setError(null);
-    setLiveState({
-      ...liveState,
-      scores: liveState.scores.map((side) => side.sideNumber === sideNumber ? { ...side, score } : side),
-    });
     try {
       const token = await getAccessToken();
       if (!token) { goToLogin(); return; }
-      setLiveState(await updateLiveMatchScore(token, match.id, sideNumber, score));
+
+      while (true) {
+        const targetScore = desiredScoresRef.current.get(sideNumber);
+        if (targetScore == null) break;
+
+        const updatedState = await updateLiveMatchScore(token, match.id, sideNumber, targetScore);
+        updatedState.scores.forEach((side) => {
+          confirmedScoresRef.current.set(side.sideNumber, side.score);
+        });
+        setLiveState(applyDesiredScores(updatedState));
+
+        if (desiredScoresRef.current.get(sideNumber) === targetScore) break;
+      }
     } catch (exception) {
-      setLiveState(previousState);
+      const confirmedScore = confirmedScoresRef.current.get(sideNumber);
+      if (confirmedScore != null) {
+        desiredScoresRef.current.set(sideNumber, confirmedScore);
+        setLiveState((current) => current ? {
+          ...current,
+          scores: current.scores.map((side) => side.sideNumber === sideNumber
+            ? { ...side, score: confirmedScore }
+            : side),
+        } : current);
+      }
       setError(exception instanceof Error ? exception.message : 'Não foi possível atualizar o placar.');
     } finally {
-      updatingScoreSidesRef.current.delete(sideNumber);
-      setUpdatingScoreSides((current) => current.filter((side) => side !== sideNumber));
+      scoreRequestRunningRef.current.delete(sideNumber);
     }
+  }
+
+  function changeScore(sideNumber: number, delta: number) {
+    if (!match || !liveState) return;
+    const displayedScore = liveState.scores.find((side) => side.sideNumber === sideNumber)?.score ?? 0;
+    const currentScore = desiredScoresRef.current.get(sideNumber) ?? displayedScore;
+    const nextScore = Math.max(0, currentScore + delta);
+    if (nextScore === currentScore) return;
+
+    desiredScoresRef.current.set(sideNumber, nextScore);
+    setLiveState((current) => current ? {
+      ...current,
+      scores: current.scores.map((side) => side.sideNumber === sideNumber
+        ? { ...side, score: nextScore }
+        : side),
+    } : current);
+    void flushScoreUpdates(sideNumber);
   }
 
   async function confirmManagementAction() {
@@ -146,8 +191,7 @@ export default function LiveMatchScreen() {
                 match={match}
                 state={liveState}
                 teamImageUrl={teamImageUrl}
-                updatingSides={updatingScoreSides}
-                onChangeScore={(sideNumber, score) => void changeScore(sideNumber, score)}
+                onChangeScore={changeScore}
               />
 
               {liveState.canManage && liveState.status === 'IN_PROGRESS' ? (
