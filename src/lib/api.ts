@@ -112,6 +112,7 @@ export type LiveMatchState = {
   finishedAt: string | null;
   scores: LiveScoreSide[];
   goalEvents: GoalEvent[];
+  cardEvents: CardEvent[];
   canManage: boolean;
 };
 export type GoalEvent = {
@@ -131,6 +132,20 @@ export type GoalEvent = {
   createdAt: string;
 };
 export type CreateGoalEventResponse = { event: GoalEvent; liveMatch: LiveMatchState };
+export type MatchCardType = 'YELLOW' | 'RED';
+export type CardEvent = {
+  id: string;
+  matchId: string;
+  sideNumber: number;
+  playerAssignmentId: string;
+  playerParticipantType: TeamParticipantType;
+  playerParticipantId: string;
+  playerDisplayName: string;
+  cardType: MatchCardType;
+  elapsedSeconds: number;
+  createdAt: string;
+};
+export type CreateCardEventResponse = { event: CardEvent; liveMatch: LiveMatchState };
 export type AttendanceStatus = 'PENDING' | 'GOING' | 'NOT_GOING';
 export type PaymentStatus = 'PENDING' | 'REPORTED' | 'PAID' | 'CANCELLED';
 export type CreditAllocationStatus = 'RESERVED' | 'APPLIED';
@@ -987,6 +1002,21 @@ export function createGoalEvent(
     method: 'POST',
     headers: authenticatedHeaders(accessToken),
     body: JSON.stringify({ scorerAssignmentId, assistAssignmentId, penalty }),
+    loading: false,
+    timeoutMs: 10_000,
+  });
+}
+
+export function createCardEvent(
+  accessToken: string,
+  matchId: string,
+  playerAssignmentId: string,
+  cardType: MatchCardType,
+) {
+  return request<CreateCardEventResponse>(`/api/matches/${matchId}/live/cards`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ playerAssignmentId, cardType }),
     loading: false,
     timeoutMs: 10_000,
   });

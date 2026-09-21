@@ -1,15 +1,17 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
+import { CardEventModal } from '../src/components/card-event-modal';
 import { GoalEventModal } from '../src/components/goal-event-modal';
 import { LiveScoreboard } from '../src/components/live-scoreboard';
 import { GoalTimeline } from '../src/components/goal-timeline';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
+  createCardEvent,
   createGoalEvent,
   finishLiveMatch,
   FootballMatch,
@@ -18,6 +20,7 @@ import {
   getMatchTeams,
   MatchTeams,
   LiveMatchState,
+  MatchCardType,
   listGroups,
   resetLiveMatch,
   updateLiveMatchScore,
@@ -47,6 +50,11 @@ export default function LiveMatchScreen() {
   const [assistAssignmentId, setAssistAssignmentId] = useState<string | null>(null);
   const [penaltyGoal, setPenaltyGoal] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
+  const [cardModalVisible, setCardModalVisible] = useState(false);
+  const [cardTeamNumber, setCardTeamNumber] = useState<number | null>(null);
+  const [cardPlayerAssignmentId, setCardPlayerAssignmentId] = useState<string | null>(null);
+  const [cardType, setCardType] = useState<MatchCardType>('YELLOW');
+  const [savingCard, setSavingCard] = useState(false);
 
   function goToLogin() {
     router.replace({ pathname: '/', params: params.matchId ? { matchId: params.matchId } : {} });
@@ -89,6 +97,13 @@ export default function LiveMatchScreen() {
   }, [params.matchId]);
 
   useFocusEffect(useCallback(() => { void loadLiveMatch(); }, [loadLiveMatch]));
+
+  useEffect(() => {
+    if (liveState?.status !== 'IN_PROGRESS' || !liveState.startedAt) return;
+    const remainingMs = Math.max(0, Date.parse(liveState.startedAt) + 10_800_000 - Date.now());
+    const timeout = setTimeout(() => void loadLiveMatch(), remainingMs + 250);
+    return () => clearTimeout(timeout);
+  }, [liveState?.startedAt, liveState?.status, loadLiveMatch]);
 
   function applyDesiredScores(state: LiveMatchState) {
     return {
@@ -179,6 +194,35 @@ export default function LiveMatchScreen() {
     }
   }
 
+  function openCardModal() {
+    const teams = matchTeams?.teams.filter((team) => team.assignments.length > 0) ?? [];
+    if (teams.length === 0) {
+      setError('Gere os times e adicione os jogadores antes de registrar um cartão.');
+      return;
+    }
+    setCardTeamNumber(teams[0].teamNumber);
+    setCardPlayerAssignmentId(null);
+    setCardType('YELLOW');
+    setCardModalVisible(true);
+  }
+
+  async function saveCard() {
+    if (!match || !cardPlayerAssignmentId || savingCard) return;
+    setSavingCard(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      const result = await createCardEvent(token, match.id, cardPlayerAssignmentId, cardType);
+      setLiveState(result.liveMatch);
+      setCardModalVisible(false);
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : 'Não foi possível registrar o cartão.');
+    } finally {
+      setSavingCard(false);
+    }
+  }
+
   function changeScore(sideNumber: number, delta: number) {
     if (!match || !liveState) return;
     const displayedScore = liveState.scores.find((side) => side.sideNumber === sideNumber)?.score ?? 0;
@@ -252,10 +296,18 @@ export default function LiveMatchScreen() {
                 onRegisterGoal={openGoalModal}
               />
 
-              <GoalTimeline events={liveState.goalEvents ?? []} match={match} />
+              <GoalTimeline events={liveState.goalEvents ?? []} cardEvents={liveState.cardEvents ?? []} match={match} />
 
               {liveState.canManage && liveState.status === 'IN_PROGRESS' ? (
                 <YStack gap="$3">
+                  <Button
+                    backgroundColor="#D6A600"
+                    height={54}
+                    onPress={openCardModal}
+                    pressStyle={{ opacity: 0.8 }}
+                  >
+                    <Text color="$onzeSurface" fontWeight="900">Registrar cartão</Text>
+                  </Button>
                   <Button
                     backgroundColor="$onzeGreen"
                     height={54}
@@ -316,6 +368,22 @@ export default function LiveMatchScreen() {
         }}
         onCancel={() => { if (!savingGoal) setGoalModalVisible(false); }}
         onSave={() => void saveGoal()}
+      />
+      <CardEventModal
+        visible={cardModalVisible}
+        teams={matchTeams?.teams.filter((team) => team.assignments.length > 0) ?? []}
+        teamNumber={cardTeamNumber}
+        playerAssignmentId={cardPlayerAssignmentId}
+        cardType={cardType}
+        saving={savingCard}
+        onSelectTeam={(teamNumber) => {
+          setCardTeamNumber(teamNumber);
+          setCardPlayerAssignmentId(null);
+        }}
+        onSelectPlayer={setCardPlayerAssignmentId}
+        onSelectCardType={setCardType}
+        onCancel={() => { if (!savingCard) setCardModalVisible(false); }}
+        onSave={() => void saveCard()}
       />
     </SafeAreaView>
   );

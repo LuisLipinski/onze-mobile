@@ -5,7 +5,7 @@ export function liveMatchElapsedSeconds(state: LiveMatchState, nowMs = Date.now(
   const startMs = new Date(state.startedAt).getTime();
   const endMs = state.finishedAt ? new Date(state.finishedAt).getTime() : nowMs;
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return 0;
-  return Math.max(0, Math.floor((endMs - startMs) / 1000));
+  return Math.min(10_800, Math.max(0, Math.floor((endMs - startMs) / 1000)));
 }
 
 export function formatMatchTimer(totalSeconds: number) {

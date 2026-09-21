@@ -15,6 +15,7 @@ test('calcula tempo ao vivo e congela no encerramento', () => {
 
   const finished = { ...running, finishedAt: '2026-09-19T18:10:00Z' };
   assert.equal(liveMatchElapsedSeconds(finished, Date.parse('2026-09-20T18:00:00Z')), 600);
+  assert.equal(liveMatchElapsedSeconds(running, Date.parse('2026-09-20T00:00:00Z')), 10_800);
 });
 
 test('nomeia times internos e adversário externo', () => {
