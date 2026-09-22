@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { SafeAreaView, ScrollView } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, SafeAreaView, ScrollView } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
@@ -13,6 +13,8 @@ import {
   ApiRequestError,
   createCardEvent,
   createGoalEvent,
+  deleteCardEvent,
+  deleteGoalEvent,
   finishLiveMatch,
   FootballMatch,
   getLiveMatch,
@@ -26,8 +28,10 @@ import {
   updateLiveMatchScore,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
+import { sentOffPlayerAssignmentIds } from '../src/lib/live-match';
 
 type LiveManagementAction = 'finish' | 'reset' | null;
+type TimelineEventKind = 'GOAL' | 'CARD';
 
 export default function LiveMatchScreen() {
   const router = useRouter();
@@ -55,6 +59,7 @@ export default function LiveMatchScreen() {
   const [cardPlayerAssignmentId, setCardPlayerAssignmentId] = useState<string | null>(null);
   const [cardType, setCardType] = useState<MatchCardType>('YELLOW');
   const [savingCard, setSavingCard] = useState(false);
+  const [deletingEventKey, setDeletingEventKey] = useState<string | null>(null);
 
   function goToLogin() {
     router.replace({ pathname: '/', params: params.matchId ? { matchId: params.matchId } : {} });
@@ -104,6 +109,11 @@ export default function LiveMatchScreen() {
     const timeout = setTimeout(() => void loadLiveMatch(), remainingMs + 250);
     return () => clearTimeout(timeout);
   }, [liveState?.startedAt, liveState?.status, loadLiveMatch]);
+
+  const sentOffAssignmentIds = useMemo(
+    () => sentOffPlayerAssignmentIds(liveState?.cardEvents ?? []),
+    [liveState?.cardEvents],
+  );
 
   function applyDesiredScores(state: LiveMatchState) {
     return {
@@ -223,6 +233,53 @@ export default function LiveMatchScreen() {
     }
   }
 
+  async function removeTimelineEvent(kind: TimelineEventKind, eventId: string) {
+    if (!match || deletingEventKey || scoreSaving
+      || !liveState?.canManage || liveState.status !== 'IN_PROGRESS') return;
+    const eventKey = `${kind}:${eventId}`;
+    setDeletingEventKey(eventKey);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      const updatedState = kind === 'GOAL'
+        ? await deleteGoalEvent(token, match.id, eventId)
+        : await deleteCardEvent(token, match.id, eventId);
+      desiredScoresRef.current = new Map(
+        updatedState.scores.map((side) => [side.sideNumber, side.score]),
+      );
+      confirmedScoresRef.current = new Map(
+        updatedState.scores.map((side) => [side.sideNumber, side.score]),
+      );
+      scoreRequestRunningRef.current.clear();
+      setLiveState(updatedState);
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : 'Não foi possível remover o evento.');
+    } finally {
+      setDeletingEventKey(null);
+    }
+  }
+
+  function confirmTimelineEventDeletion(kind: TimelineEventKind, eventId: string) {
+    if (deletingEventKey || scoreSaving
+      || !liveState?.canManage || liveState.status !== 'IN_PROGRESS') return;
+    const eventName = kind === 'GOAL' ? 'gol' : 'cartão';
+    Alert.alert(
+      `Remover ${eventName}?`,
+      kind === 'GOAL'
+        ? 'O gol será removido e o placar do time diminuirá em um ponto.'
+        : 'O cartão será removido e a situação do jogador será recalculada.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: () => void removeTimelineEvent(kind, eventId),
+        },
+      ],
+    );
+  }
+
   function changeScore(sideNumber: number, delta: number) {
     if (!match || !liveState) return;
     const displayedScore = liveState.scores.find((side) => side.sideNumber === sideNumber)?.score ?? 0;
@@ -296,7 +353,14 @@ export default function LiveMatchScreen() {
                 onRegisterGoal={openGoalModal}
               />
 
-              <GoalTimeline events={liveState.goalEvents ?? []} cardEvents={liveState.cardEvents ?? []} match={match} />
+              <GoalTimeline
+                events={liveState.goalEvents ?? []}
+                cardEvents={liveState.cardEvents ?? []}
+                match={match}
+                canDelete={liveState.canManage && liveState.status === 'IN_PROGRESS'}
+                deletingEventKey={deletingEventKey ?? (scoreSaving ? 'SCORE' : null)}
+                onDelete={confirmTimelineEventDeletion}
+              />
 
               {liveState.canManage && liveState.status === 'IN_PROGRESS' ? (
                 <YStack gap="$3">
@@ -352,6 +416,7 @@ export default function LiveMatchScreen() {
       <GoalEventModal
         visible={goalModalVisible}
         teams={matchTeams?.teams.filter((team) => team.assignments.length > 0) ?? []}
+        sentOffAssignmentIds={sentOffAssignmentIds}
         selectedTeamNumber={goalTeamNumber}
         scorerAssignmentId={scorerAssignmentId}
         assistAssignmentId={assistAssignmentId}
@@ -372,6 +437,7 @@ export default function LiveMatchScreen() {
       <CardEventModal
         visible={cardModalVisible}
         teams={matchTeams?.teams.filter((team) => team.assignments.length > 0) ?? []}
+        sentOffAssignmentIds={sentOffAssignmentIds}
         teamNumber={cardTeamNumber}
         playerAssignmentId={cardPlayerAssignmentId}
         cardType={cardType}

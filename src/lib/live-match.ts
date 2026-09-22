@@ -1,4 +1,4 @@
-import type { FootballMatch, LiveMatchState } from './api';
+import type { CardEvent, FootballMatch, LiveMatchState } from './api';
 
 export function liveMatchElapsedSeconds(state: LiveMatchState, nowMs = Date.now()) {
   if (!state.startedAt) return 0;
@@ -22,4 +22,43 @@ export function liveScoreSideLabel(match: FootballMatch, sideNumber: number) {
     return sideNumber === 1 ? match.groupName : 'Adversário';
   }
   return `Time ${sideNumber}`;
+}
+
+function chronologicalCards(cardEvents: CardEvent[]) {
+  return [...cardEvents].sort((a, b) => (
+    a.elapsedSeconds - b.elapsedSeconds
+      || a.createdAt.localeCompare(b.createdAt)
+      || a.id.localeCompare(b.id)
+  ));
+}
+
+export function sentOffPlayerAssignmentIds(cardEvents: CardEvent[]) {
+  const sentOff = new Set<string>();
+  const yellowCounts = new Map<string, number>();
+
+  chronologicalCards(cardEvents).forEach((event) => {
+    if (event.cardType === 'RED') {
+      sentOff.add(event.playerAssignmentId);
+      return;
+    }
+    const count = (yellowCounts.get(event.playerAssignmentId) ?? 0) + 1;
+    yellowCounts.set(event.playerAssignmentId, count);
+    if (count >= 2) sentOff.add(event.playerAssignmentId);
+  });
+
+  return sentOff;
+}
+
+export function secondYellowCardEventIds(cardEvents: CardEvent[]) {
+  const secondYellowIds = new Set<string>();
+  const yellowCounts = new Map<string, number>();
+
+  chronologicalCards(cardEvents).forEach((event) => {
+    if (event.cardType !== 'YELLOW') return;
+    const count = (yellowCounts.get(event.playerAssignmentId) ?? 0) + 1;
+    yellowCounts.set(event.playerAssignmentId, count);
+    if (count === 2) secondYellowIds.add(event.id);
+  });
+
+  return secondYellowIds;
 }

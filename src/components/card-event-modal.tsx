@@ -6,6 +6,7 @@ import type { GeneratedTeam, MatchCardType } from '../lib/api';
 type Props = {
   visible: boolean;
   teams: GeneratedTeam[];
+  sentOffAssignmentIds: ReadonlySet<string>;
   teamNumber: number | null;
   playerAssignmentId: string | null;
   cardType: MatchCardType;
@@ -17,17 +18,20 @@ type Props = {
   onSave: () => void;
 };
 
-function Choice({ label, selected, color, onPress }: {
-  label: string; selected: boolean; color?: string; onPress: () => void;
+function Choice({ label, selected, color, disabled = false, onPress }: {
+  label: string; selected: boolean; color?: string; disabled?: boolean; onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} hitSlop={6} style={({ pressed }) => ({
-      backgroundColor: selected ? (color ?? '#148A4A') : '#F7FAF8',
-      borderColor: selected ? (color ?? '#148A4A') : '#DDE6E1',
-      borderRadius: 12, borderWidth: 1, opacity: pressed ? 0.75 : 1,
+    <Pressable disabled={disabled} onPress={onPress} hitSlop={6} accessibilityState={{ disabled, selected }} style={({ pressed }) => ({
+      backgroundColor: disabled ? '#FFF1F1' : selected ? (color ?? '#148A4A') : '#F7FAF8',
+      borderColor: disabled ? '#E7A3A3' : selected ? (color ?? '#148A4A') : '#DDE6E1',
+      borderRadius: 12, borderWidth: 1, opacity: disabled ? 0.72 : pressed ? 0.75 : 1,
       paddingHorizontal: 14, paddingVertical: 11,
     })}>
-      <Text color={selected ? '$onzeSurface' : '$onzeInk'} fontWeight="800">{label}</Text>
+      <YStack alignItems="center">
+        <Text color={disabled ? '$onzeMuted' : selected ? '$onzeSurface' : '$onzeInk'} fontWeight="800">{label}</Text>
+        {disabled ? <Text color="$onzeDanger" fontSize={10} fontWeight="900">EXPULSO</Text> : null}
+      </YStack>
     </Pressable>
   );
 }
@@ -60,7 +64,7 @@ export function CardEventModal(props: Props) {
               {team ? <YStack gap="$2">
                 <Text color="$onzeInk" fontWeight="900">Jogador</Text>
                 <XStack flexWrap="wrap" gap="$2">
-                  {team.assignments.map((player) => <Choice key={player.id} label={player.displayName} selected={props.playerAssignmentId === player.id} onPress={() => props.onSelectPlayer(player.id)} />)}
+                  {team.assignments.map((player) => <Choice key={player.id} label={player.displayName} disabled={props.sentOffAssignmentIds.has(player.id)} selected={props.playerAssignmentId === player.id} onPress={() => props.onSelectPlayer(player.id)} />)}
                 </XStack>
               </YStack> : null}
               <XStack gap="$3">
