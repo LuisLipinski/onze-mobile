@@ -1,9 +1,47 @@
+import { Pressable } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import type { CardEvent, FootballMatch, GoalEvent } from '../lib/api';
-import { formatMatchTimer, liveScoreSideLabel } from '../lib/live-match';
+import { formatMatchTimer, liveScoreSideLabel, secondYellowCardEventIds } from '../lib/live-match';
 
-function GoalDetails({ event, align }: { event: GoalEvent; align: 'left' | 'right' }) {
+type EventKind = 'GOAL' | 'CARD';
+
+function DeleteEventButton({ align, disabled, onPress }: {
+  align: 'left' | 'right';
+  disabled: boolean;
+  onPress?: () => void;
+}) {
+  if (!onPress) return null;
+  return (
+    <Pressable
+      accessibilityLabel="Remover evento da linha do tempo"
+      accessibilityRole="button"
+      disabled={disabled}
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignItems: 'center',
+        alignSelf: align === 'left' ? 'flex-end' : 'flex-start',
+        backgroundColor: '#FDECEC',
+        borderRadius: 999,
+        height: 32,
+        justifyContent: 'center',
+        marginTop: 6,
+        opacity: disabled ? 0.45 : pressed ? 0.7 : 1,
+        width: 32,
+      })}
+    >
+      <Text fontSize={15}>{disabled ? '…' : '🗑️'}</Text>
+    </Pressable>
+  );
+}
+
+function GoalDetails({ event, align, deletionDisabled, onDelete }: {
+  event: GoalEvent;
+  align: 'left' | 'right';
+  deletionDisabled: boolean;
+  onDelete?: () => void;
+}) {
   return (
     <YStack alignItems={align === 'left' ? 'flex-end' : 'flex-start'} flex={1} minWidth={0}>
       <XStack alignItems="center" gap="$2" flexDirection={align === 'left' ? 'row' : 'row-reverse'}>
@@ -13,35 +51,70 @@ function GoalDetails({ event, align }: { event: GoalEvent; align: 'left' | 'righ
         <Text fontSize={18}>⚽</Text>
       </XStack>
       {event.assistDisplayName ? (
-        <Text color="$onzeMuted" fontSize={12} numberOfLines={1}>
-          Assist.: {event.assistDisplayName}
-        </Text>
+        <XStack alignItems="center" gap="$1" flexDirection={align === 'left' ? 'row' : 'row-reverse'}>
+          <Text fontSize={14}>👟</Text>
+          <Text color="$onzeMuted" fontSize={12} numberOfLines={1}>{event.assistDisplayName}</Text>
+        </XStack>
       ) : null}
       {event.penalty ? (
         <Text color="$onzeGreen" fontSize={11} fontWeight="800">PÊNALTI</Text>
       ) : null}
+      <DeleteEventButton align={align} disabled={deletionDisabled} onPress={onDelete} />
     </YStack>
   );
 }
 
 type TimelineEvent = (GoalEvent & { kind: 'GOAL' }) | (CardEvent & { kind: 'CARD' });
 
-function CardDetails({ event, align }: { event: CardEvent; align: 'left' | 'right' }) {
+function CardShape({ color }: { color: '#E5B900' | '#C53030' }) {
+  return <YStack backgroundColor={color} borderRadius={2} height={22} width={15} />;
+}
+
+function CardDetails({ event, align, secondYellow, deletionDisabled, onDelete }: {
+  event: CardEvent;
+  align: 'left' | 'right';
+  secondYellow: boolean;
+  deletionDisabled: boolean;
+  onDelete?: () => void;
+}) {
   const color = event.cardType === 'YELLOW' ? '#E5B900' : '#C53030';
   return <YStack alignItems={align === 'left' ? 'flex-end' : 'flex-start'} flex={1} minWidth={0}>
     <XStack alignItems="center" gap="$2" flexDirection={align === 'left' ? 'row' : 'row-reverse'}>
       <Text color="$onzeInk" fontWeight="900" numberOfLines={1}>{event.playerDisplayName}</Text>
-      <YStack backgroundColor={color} borderRadius={2} height={22} width={15} />
+      {secondYellow ? (
+        <XStack alignItems="center" gap="$1">
+          <CardShape color="#E5B900" />
+          <CardShape color="#E5B900" />
+          <Text color="$onzeMuted" fontWeight="900">→</Text>
+          <CardShape color="#C53030" />
+        </XStack>
+      ) : <CardShape color={color} />}
     </XStack>
     <Text color="$onzeMuted" fontSize={11} fontWeight="800">
-      CARTÃO {event.cardType === 'YELLOW' ? 'AMARELO' : 'VERMELHO'}
+      {secondYellow
+        ? '2º AMARELO • EXPULSO'
+        : `CARTÃO ${event.cardType === 'YELLOW' ? 'AMARELO' : 'VERMELHO'}`}
     </Text>
+    <DeleteEventButton align={align} disabled={deletionDisabled} onPress={onDelete} />
   </YStack>;
 }
 
-export function GoalTimeline({ events, cardEvents = [], match }: {
-  events: GoalEvent[]; cardEvents?: CardEvent[]; match: FootballMatch;
+export function GoalTimeline({
+  events,
+  cardEvents = [],
+  match,
+  canDelete = false,
+  deletingEventKey = null,
+  onDelete,
+}: {
+  events: GoalEvent[];
+  cardEvents?: CardEvent[];
+  match: FootballMatch;
+  canDelete?: boolean;
+  deletingEventKey?: string | null;
+  onDelete?: (kind: EventKind, eventId: string) => void;
 }) {
+  const secondYellowIds = secondYellowCardEventIds(cardEvents);
   const timeline: TimelineEvent[] = [
     ...events.map((event) => ({ ...event, kind: 'GOAL' as const })),
     ...cardEvents.map((event) => ({ ...event, kind: 'CARD' as const })),
@@ -64,10 +137,16 @@ export function GoalTimeline({ events, cardEvents = [], match }: {
       <YStack paddingHorizontal="$3" paddingVertical="$4">
         {timeline.map((event, index) => {
           const left = event.sideNumber === 1;
+          const deleteEvent = canDelete && onDelete
+            ? () => onDelete(event.kind, event.id)
+            : undefined;
+          const deletionDisabled = deletingEventKey != null;
           return (
             <XStack key={event.id} alignItems="stretch" minHeight={72}>
               <YStack flex={1} justifyContent="center" paddingRight="$2">
-                {left ? (event.kind === 'GOAL' ? <GoalDetails event={event} align="left" /> : <CardDetails event={event} align="left" />) : null}
+                {left ? (event.kind === 'GOAL'
+                  ? <GoalDetails event={event} align="left" deletionDisabled={deletionDisabled} onDelete={deleteEvent} />
+                  : <CardDetails event={event} align="left" secondYellow={secondYellowIds.has(event.id)} deletionDisabled={deletionDisabled} onDelete={deleteEvent} />) : null}
               </YStack>
 
               <YStack alignItems="center" width={64}>
@@ -89,7 +168,9 @@ export function GoalTimeline({ events, cardEvents = [], match }: {
               </YStack>
 
               <YStack flex={1} justifyContent="center" paddingLeft="$2">
-                {!left ? (event.kind === 'GOAL' ? <GoalDetails event={event} align="right" /> : <CardDetails event={event} align="right" />) : null}
+                {!left ? (event.kind === 'GOAL'
+                  ? <GoalDetails event={event} align="right" deletionDisabled={deletionDisabled} onDelete={deleteEvent} />
+                  : <CardDetails event={event} align="right" secondYellow={secondYellowIds.has(event.id)} deletionDisabled={deletionDisabled} onDelete={deleteEvent} />) : null}
               </YStack>
             </XStack>
           );

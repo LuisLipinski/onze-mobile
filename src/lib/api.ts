@@ -1022,6 +1022,24 @@ export function createCardEvent(
   });
 }
 
+export function deleteGoalEvent(accessToken: string, matchId: string, eventId: string) {
+  return request<LiveMatchState>(`/api/matches/${matchId}/live/goals/${eventId}`, {
+    method: 'DELETE',
+    headers: authenticatedHeaders(accessToken),
+    loading: false,
+    timeoutMs: 10_000,
+  });
+}
+
+export function deleteCardEvent(accessToken: string, matchId: string, eventId: string) {
+  return request<LiveMatchState>(`/api/matches/${matchId}/live/cards/${eventId}`, {
+    method: 'DELETE',
+    headers: authenticatedHeaders(accessToken),
+    loading: false,
+    timeoutMs: 10_000,
+  });
+}
+
 export function updateMatchAttendance(
   accessToken: string,
   matchId: string,
