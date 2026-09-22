@@ -110,9 +110,24 @@ export type LiveMatchState = {
   status: MatchStatus;
   startedAt: string | null;
   finishedAt: string | null;
+  version: number;
   scores: LiveScoreSide[];
   goalEvents: GoalEvent[];
   cardEvents: CardEvent[];
+  canManage: boolean;
+};
+export type LiveMatchSummary = {
+  matchId: string;
+  groupId: string;
+  groupName: string;
+  startsAt: string;
+  timeZone: string;
+  venue: string;
+  startedAt: string;
+  matchType: MatchType;
+  teamCount: number | null;
+  version: number;
+  scores: LiveScoreSide[];
   canManage: boolean;
 };
 export type GoalEvent = {
@@ -915,6 +930,14 @@ export function listUpcomingMatches(accessToken: string) {
   });
 }
 
+export function listLiveMatches(accessToken: string) {
+  return request<LiveMatchSummary[]>('/api/matches/live', {
+    headers: authenticatedHeaders(accessToken),
+    loading: false,
+    timeoutMs: 10_000,
+  });
+}
+
 export function listGroupMatches(accessToken: string, groupId: string) {
   return request<FootballMatch[]>(`/api/groups/${groupId}/matches`, {
     headers: authenticatedHeaders(accessToken),
@@ -974,6 +997,22 @@ export function getLiveMatch(accessToken: string, matchId: string) {
     headers: authenticatedHeaders(accessToken),
     loading: false,
   });
+}
+
+export async function getLiveMatchIfChanged(
+  accessToken: string,
+  matchId: string,
+  version: number,
+) {
+  const state = await request<LiveMatchState | undefined>(
+    `/api/matches/${matchId}/live?version=${version}`,
+    {
+      headers: authenticatedHeaders(accessToken),
+      loading: false,
+      timeoutMs: 10_000,
+    },
+  );
+  return state ?? null;
 }
 
 export function updateLiveMatchScore(

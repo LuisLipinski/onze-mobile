@@ -1,16 +1,19 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { SafeAreaView, ScrollView } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { AppState, SafeAreaView, ScrollView } from 'react-native';
 import { Button, Text, YStack } from 'tamagui';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
 import { MatchCard } from '../src/components/match-card';
+import { LiveMatchCard } from '../src/components/live-match-card';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
   FootballMatch,
   getCurrentUser,
+  listLiveMatches,
   listUpcomingMatches,
+  LiveMatchSummary,
   User,
 } from '../src/lib/api';
 import {
@@ -23,18 +26,48 @@ import {
   registerNotificationsForSession,
   syncAttendanceOpeningNotifications,
 } from '../src/lib/notifications';
+import { scheduledHomeMatches } from '../src/lib/live-match';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [matches, setMatches] = useState<FootballMatch[]>([]);
+  const [liveMatches, setLiveMatches] = useState<LiveMatchSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const liveRefreshRunningRef = useRef(false);
+
+  const refreshLiveMatches = useCallback(async () => {
+    if (liveRefreshRunningRef.current || AppState.currentState !== 'active') return;
+    liveRefreshRunningRef.current = true;
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const live = await listLiveMatches(token);
+      setLiveMatches(live);
+      setMatches((current) => scheduledHomeMatches(current, live));
+    } catch (exception) {
+      if (exception instanceof ApiRequestError && exception.status === 401) {
+        await clearSession();
+        router.replace('/');
+      }
+    } finally {
+      liveRefreshRunningRef.current = false;
+    }
+  }, [router]);
 
   useFocusEffect(
     useCallback(() => {
       void loadHome();
-    }, []),
+      const interval = setInterval(() => void refreshLiveMatches(), 30_000);
+      const subscription = AppState.addEventListener('change', (state) => {
+        if (state === 'active') void refreshLiveMatches();
+      });
+      return () => {
+        clearInterval(interval);
+        subscription.remove();
+      };
+    }, [refreshLiveMatches]),
   );
 
   async function loadHome() {
@@ -57,8 +90,12 @@ export default function HomeScreen() {
         setUser(currentUser);
       }
 
-      const upcoming = await listUpcomingMatches(token);
-      setMatches(upcoming);
+      const [upcoming, live] = await Promise.all([
+        listUpcomingMatches(token),
+        listLiveMatches(token),
+      ]);
+      setLiveMatches(live);
+      setMatches(scheduledHomeMatches(upcoming, live));
 
       void registerNotificationsForSession(token)
         .then((registration) => syncAttendanceOpeningNotifications(upcoming, registration))
@@ -110,6 +147,40 @@ export default function HomeScreen() {
             ) : null}
 
             <YStack gap="$3">
+              <YStack gap="$1">
+                <Text color="$onzeInk" fontSize={20} fontWeight="900">Jogos ao vivo</Text>
+                <Text color="$onzeMuted" fontSize={13}>
+                  Acompanhe o placar e os acontecimentos das partidas em andamento.
+                </Text>
+              </YStack>
+
+              {!error && liveMatches.length === 0 ? (
+                <YStack
+                  backgroundColor="$onzeSurface"
+                  borderColor="$onzeBorder"
+                  borderRadius="$6"
+                  borderWidth={1}
+                  padding="$4"
+                >
+                  <Text color="$onzeMuted" fontSize={13} textAlign="center">
+                    Nenhuma partida ao vivo agora.
+                  </Text>
+                </YStack>
+              ) : (
+                liveMatches.map((match) => (
+                  <LiveMatchCard
+                    key={match.matchId}
+                    match={match}
+                    onPress={() => router.push({
+                      pathname: '/live-match',
+                      params: { matchId: match.matchId },
+                    })}
+                  />
+                ))
+              )}
+            </YStack>
+
+            <YStack gap="$3">
               <Text color="$onzeInk" fontSize={20} fontWeight="900">Próximos jogos</Text>
 
               {!error && matches.length === 0 ? (
@@ -124,7 +195,7 @@ export default function HomeScreen() {
                 >
                   <Text fontSize={42}>⚽</Text>
                   <Text color="$onzeInk" fontSize={19} fontWeight="900" textAlign="center">
-                    Você não tem nenhum jogo marcado.
+                    Você não tem nenhum próximo jogo agendado.
                   </Text>
                   <Text color="$onzeMuted" fontSize={14} lineHeight={21} textAlign="center">
                     Quando uma partida for marcada em um dos seus grupos, ela aparecerá aqui.

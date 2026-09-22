@@ -4,7 +4,10 @@ import test from 'node:test';
 import {
   formatMatchTimer,
   liveMatchElapsedSeconds,
+  livePollDelayMs,
   liveScoreSideLabel,
+  liveSummaryScoreLabel,
+  scheduledHomeMatches,
   secondYellowCardEventIds,
   sentOffPlayerAssignmentIds,
 } from './live-match.ts';
@@ -22,6 +25,36 @@ test('calcula tempo ao vivo e congela no encerramento', () => {
   const finished = { ...running, finishedAt: '2026-09-19T18:10:00Z' };
   assert.equal(liveMatchElapsedSeconds(finished, Date.parse('2026-09-20T18:00:00Z')), 600);
   assert.equal(liveMatchElapsedSeconds(running, Date.parse('2026-09-20T00:00:00Z')), 10_800);
+});
+
+test('reduz consultas frequentes quando a partida fica sem mudanças', () => {
+  assert.equal(livePollDelayMs(0), 5_000);
+  assert.equal(livePollDelayMs(1), 5_000);
+  assert.equal(livePollDelayMs(2), 8_000);
+  assert.equal(livePollDelayMs(4), 12_000);
+});
+
+test('separa jogos ao vivo dos próximos jogos na home', () => {
+  const matches = [
+    { id: 'scheduled', status: 'SCHEDULED' },
+    { id: 'started-stale', status: 'SCHEDULED' },
+    { id: 'finished', status: 'FINISHED' },
+  ];
+  const live = [{ matchId: 'started-stale' }];
+
+  assert.deepEqual(scheduledHomeMatches(matches, live), [matches[0]]);
+});
+
+test('formata o placar resumido de dois ou vários times', () => {
+  assert.equal(liveSummaryScoreLabel({ scores: [
+    { sideNumber: 1, score: 3 },
+    { sideNumber: 2, score: 2 },
+  ] }), '3 × 2');
+  assert.equal(liveSummaryScoreLabel({ scores: [
+    { sideNumber: 1, score: 1 },
+    { sideNumber: 2, score: 0 },
+    { sideNumber: 3, score: 2 },
+  ] }), 'T1 1  •  T2 0  •  T3 2');
 });
 
 test('nomeia times internos e adversário externo', () => {
