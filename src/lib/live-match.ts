@@ -1,4 +1,9 @@
-import type { CardEvent, FootballMatch, LiveMatchState } from './api';
+import type {
+  CardEvent,
+  FootballMatch,
+  LiveMatchState,
+  LiveMatchSummary,
+} from './api';
 
 export function liveMatchElapsedSeconds(state: LiveMatchState, nowMs = Date.now()) {
   if (!state.startedAt) return 0;
@@ -15,6 +20,29 @@ export function formatMatchTimer(totalSeconds: number) {
   const seconds = normalized % 60;
   const minuteSecond = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   return hours > 0 ? `${String(hours).padStart(2, '0')}:${minuteSecond}` : minuteSecond;
+}
+
+export function livePollDelayMs(unchangedPolls: number) {
+  if (unchangedPolls <= 1) return 5_000;
+  if (unchangedPolls <= 3) return 8_000;
+  return 12_000;
+}
+
+export function scheduledHomeMatches(
+  matches: FootballMatch[],
+  liveMatches: LiveMatchSummary[],
+) {
+  const liveIds = new Set(liveMatches.map((match) => match.matchId));
+  return matches.filter((match) => match.status === 'SCHEDULED' && !liveIds.has(match.id));
+}
+
+export function liveSummaryScoreLabel(match: LiveMatchSummary) {
+  if (match.scores.length === 2) {
+    return `${match.scores[0].score} × ${match.scores[1].score}`;
+  }
+  return match.scores
+    .map((side) => `T${side.sideNumber} ${side.score}`)
+    .join('  •  ');
 }
 
 export function liveScoreSideLabel(match: FootballMatch, sideNumber: number) {

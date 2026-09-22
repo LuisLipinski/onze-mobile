@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, SafeAreaView, ScrollView } from 'react-native';
+import { Alert, AppState, SafeAreaView, ScrollView } from 'react-native';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
@@ -18,6 +18,7 @@ import {
   finishLiveMatch,
   FootballMatch,
   getLiveMatch,
+  getLiveMatchIfChanged,
   getMatch,
   getMatchTeams,
   MatchTeams,
@@ -28,7 +29,7 @@ import {
   updateLiveMatchScore,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
-import { sentOffPlayerAssignmentIds } from '../src/lib/live-match';
+import { livePollDelayMs, sentOffPlayerAssignmentIds } from '../src/lib/live-match';
 
 type LiveManagementAction = 'finish' | 'reset' | null;
 type TimelineEventKind = 'GOAL' | 'CARD';
@@ -60,6 +61,8 @@ export default function LiveMatchScreen() {
   const [cardType, setCardType] = useState<MatchCardType>('YELLOW');
   const [savingCard, setSavingCard] = useState(false);
   const [deletingEventKey, setDeletingEventKey] = useState<string | null>(null);
+  const liveStateRef = useRef<LiveMatchState | null>(null);
+  const livePollRunningRef = useRef(false);
 
   function goToLogin() {
     router.replace({ pathname: '/', params: params.matchId ? { matchId: params.matchId } : {} });
@@ -83,6 +86,7 @@ export default function LiveMatchScreen() {
         loadedMatch.matchType === 'INTERNAL' ? getMatchTeams(token, params.matchId) : Promise.resolve(null),
       ]);
       setMatch(loadedMatch);
+      liveStateRef.current = loadedLiveState;
       setLiveState(loadedLiveState);
       desiredScoresRef.current = new Map(loadedLiveState.scores.map((side) => [side.sideNumber, side.score]));
       confirmedScoresRef.current = new Map(loadedLiveState.scores.map((side) => [side.sideNumber, side.score]));
@@ -101,7 +105,71 @@ export default function LiveMatchScreen() {
     }
   }, [params.matchId]);
 
-  useFocusEffect(useCallback(() => { void loadLiveMatch(); }, [loadLiveMatch]));
+  const pollLiveMatch = useCallback(async () => {
+    const current = liveStateRef.current;
+    if (!params.matchId
+      || !current
+      || current.status !== 'IN_PROGRESS'
+      || livePollRunningRef.current
+      || scoreRequestRunningRef.current.size > 0
+      || AppState.currentState !== 'active') return false;
+
+    livePollRunningRef.current = true;
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return false; }
+      const updated = await getLiveMatchIfChanged(token, params.matchId, current.version);
+      if (!updated) return false;
+
+      liveStateRef.current = updated;
+      desiredScoresRef.current = new Map(updated.scores.map((side) => [side.sideNumber, side.score]));
+      confirmedScoresRef.current = new Map(updated.scores.map((side) => [side.sideNumber, side.score]));
+      setLiveState(updated);
+      setMatch((storedMatch) => storedMatch ? {
+        ...storedMatch,
+        status: updated.status,
+        startedAt: updated.startedAt,
+        finishedAt: updated.finishedAt,
+      } : storedMatch);
+      return true;
+    } catch (exception) {
+      if (exception instanceof ApiRequestError && exception.status === 401) {
+        await clearSession();
+        goToLogin();
+      }
+      return false;
+    } finally {
+      livePollRunningRef.current = false;
+    }
+  }, [params.matchId]);
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let unchangedPolls = 0;
+
+    void loadLiveMatch();
+
+    const schedulePoll = () => {
+      if (!active) return;
+      timeout = setTimeout(async () => {
+        const changed = await pollLiveMatch();
+        unchangedPolls = changed ? 0 : unchangedPolls + 1;
+        schedulePoll();
+      }, livePollDelayMs(unchangedPolls));
+    };
+    schedulePoll();
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void pollLiveMatch();
+    });
+
+    return () => {
+      active = false;
+      if (timeout) clearTimeout(timeout);
+      subscription.remove();
+    };
+  }, [loadLiveMatch, pollLiveMatch]));
 
   useEffect(() => {
     if (liveState?.status !== 'IN_PROGRESS' || !liveState.startedAt) return;
@@ -139,6 +207,7 @@ export default function LiveMatchScreen() {
         if (targetScore == null) break;
 
         const updatedState = await updateLiveMatchScore(token, match.id, sideNumber, targetScore);
+        liveStateRef.current = updatedState;
         updatedState.scores.forEach((side) => {
           confirmedScoresRef.current.set(side.sideNumber, side.score);
         });
@@ -150,12 +219,16 @@ export default function LiveMatchScreen() {
       const confirmedScore = confirmedScoresRef.current.get(sideNumber);
       if (confirmedScore != null) {
         desiredScoresRef.current.set(sideNumber, confirmedScore);
-        setLiveState((current) => current ? {
-          ...current,
-          scores: current.scores.map((side) => side.sideNumber === sideNumber
-            ? { ...side, score: confirmedScore }
-            : side),
-        } : current);
+        setLiveState((current) => {
+          const restored = current ? {
+            ...current,
+            scores: current.scores.map((side) => side.sideNumber === sideNumber
+              ? { ...side, score: confirmedScore }
+              : side),
+          } : current;
+          liveStateRef.current = restored;
+          return restored;
+        });
       }
       setError(exception instanceof Error ? exception.message : 'Não foi possível atualizar o placar.');
     } finally {
@@ -195,6 +268,7 @@ export default function LiveMatchScreen() {
       );
       desiredScoresRef.current = new Map(result.liveMatch.scores.map((side) => [side.sideNumber, side.score]));
       confirmedScoresRef.current = new Map(result.liveMatch.scores.map((side) => [side.sideNumber, side.score]));
+      liveStateRef.current = result.liveMatch;
       setLiveState(result.liveMatch);
       setGoalModalVisible(false);
     } catch (exception) {
@@ -224,6 +298,7 @@ export default function LiveMatchScreen() {
       const token = await getAccessToken();
       if (!token) { goToLogin(); return; }
       const result = await createCardEvent(token, match.id, cardPlayerAssignmentId, cardType);
+      liveStateRef.current = result.liveMatch;
       setLiveState(result.liveMatch);
       setCardModalVisible(false);
     } catch (exception) {
@@ -252,6 +327,7 @@ export default function LiveMatchScreen() {
         updatedState.scores.map((side) => [side.sideNumber, side.score]),
       );
       scoreRequestRunningRef.current.clear();
+      liveStateRef.current = updatedState;
       setLiveState(updatedState);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível remover o evento.');
@@ -288,12 +364,16 @@ export default function LiveMatchScreen() {
     if (nextScore === currentScore) return;
 
     desiredScoresRef.current.set(sideNumber, nextScore);
-    setLiveState((current) => current ? {
-      ...current,
-      scores: current.scores.map((side) => side.sideNumber === sideNumber
-        ? { ...side, score: nextScore }
-        : side),
-    } : current);
+    setLiveState((current) => {
+      const optimistic = current ? {
+        ...current,
+        scores: current.scores.map((side) => side.sideNumber === sideNumber
+          ? { ...side, score: nextScore }
+          : side),
+      } : current;
+      liveStateRef.current = optimistic;
+      return optimistic;
+    });
     void flushScoreUpdates(sideNumber);
   }
 
@@ -312,7 +392,9 @@ export default function LiveMatchScreen() {
       }
       const updatedMatch = await finishLiveMatch(token, match.id);
       setMatch(updatedMatch);
-      setLiveState(await getLiveMatch(token, match.id));
+      const updatedLiveState = await getLiveMatch(token, match.id);
+      liveStateRef.current = updatedLiveState;
+      setLiveState(updatedLiveState);
       setManagementAction(null);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível atualizar a partida.');
@@ -361,6 +443,22 @@ export default function LiveMatchScreen() {
                 deletingEventKey={deletingEventKey ?? (scoreSaving ? 'SCORE' : null)}
                 onDelete={confirmTimelineEventDeletion}
               />
+
+              {!liveState.canManage && liveState.status === 'IN_PROGRESS' ? (
+                <YStack
+                  backgroundColor="#E8F7EE"
+                  borderColor="$onzeGreen"
+                  borderRadius="$5"
+                  borderWidth={1}
+                  gap="$1"
+                  padding="$4"
+                >
+                  <Text color="$onzeGreen" fontWeight="900">Você está acompanhando ao vivo</Text>
+                  <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                    O placar e a linha do tempo são atualizados automaticamente. Somente administradores autorizados podem registrar informações.
+                  </Text>
+                </YStack>
+              ) : null}
 
               {liveState.canManage && liveState.status === 'IN_PROGRESS' ? (
                 <YStack gap="$3">
