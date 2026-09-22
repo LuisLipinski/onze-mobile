@@ -90,10 +90,16 @@ function CardDetails({ event, align, secondYellow, deletionDisabled, onDelete }:
         </XStack>
       ) : <CardShape color={color} />}
     </XStack>
-    <Text color="$onzeMuted" fontSize={11} fontWeight="800">
+    <Text
+      color={secondYellow || event.cardType === 'RED' ? '$onzeDanger' : '$onzeMuted'}
+      fontSize={11}
+      fontWeight="800"
+    >
       {secondYellow
         ? '2º AMARELO • EXPULSO'
-        : `CARTÃO ${event.cardType === 'YELLOW' ? 'AMARELO' : 'VERMELHO'}`}
+        : event.cardType === 'RED'
+          ? 'CARTÃO VERMELHO • EXPULSO'
+          : 'CARTÃO AMARELO'}
     </Text>
     <DeleteEventButton align={align} disabled={deletionDisabled} onPress={onDelete} />
   </YStack>;

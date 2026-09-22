@@ -110,13 +110,10 @@ export default function LiveMatchScreen() {
     return () => clearTimeout(timeout);
   }, [liveState?.startedAt, liveState?.status, loadLiveMatch]);
 
-  const availableTeams = useMemo(() => {
-    const sentOffIds = sentOffPlayerAssignmentIds(liveState?.cardEvents ?? []);
-    return matchTeams?.teams.map((team) => ({
-      ...team,
-      assignments: team.assignments.filter((assignment) => !sentOffIds.has(assignment.id)),
-    })) ?? [];
-  }, [liveState?.cardEvents, matchTeams]);
+  const sentOffAssignmentIds = useMemo(
+    () => sentOffPlayerAssignmentIds(liveState?.cardEvents ?? []),
+    [liveState?.cardEvents],
+  );
 
   function applyDesiredScores(state: LiveMatchState) {
     return {
@@ -168,7 +165,7 @@ export default function LiveMatchScreen() {
   }
 
   function openGoalModal(sideNumber: number) {
-    const selectedTeam = availableTeams.find(
+    const selectedTeam = matchTeams?.teams.find(
       (team) => team.teamNumber === sideNumber && team.assignments.length > 0,
     );
     if (!selectedTeam) {
@@ -208,7 +205,7 @@ export default function LiveMatchScreen() {
   }
 
   function openCardModal() {
-    const teams = availableTeams.filter((team) => team.assignments.length > 0);
+    const teams = matchTeams?.teams.filter((team) => team.assignments.length > 0) ?? [];
     if (teams.length === 0) {
       setError('Gere os times e adicione os jogadores antes de registrar um cartão.');
       return;
@@ -418,7 +415,8 @@ export default function LiveMatchScreen() {
       />
       <GoalEventModal
         visible={goalModalVisible}
-        teams={availableTeams.filter((team) => team.assignments.length > 0)}
+        teams={matchTeams?.teams.filter((team) => team.assignments.length > 0) ?? []}
+        sentOffAssignmentIds={sentOffAssignmentIds}
         selectedTeamNumber={goalTeamNumber}
         scorerAssignmentId={scorerAssignmentId}
         assistAssignmentId={assistAssignmentId}
@@ -438,7 +436,8 @@ export default function LiveMatchScreen() {
       />
       <CardEventModal
         visible={cardModalVisible}
-        teams={availableTeams.filter((team) => team.assignments.length > 0)}
+        teams={matchTeams?.teams.filter((team) => team.assignments.length > 0) ?? []}
+        sentOffAssignmentIds={sentOffAssignmentIds}
         teamNumber={cardTeamNumber}
         playerAssignmentId={cardPlayerAssignmentId}
         cardType={cardType}

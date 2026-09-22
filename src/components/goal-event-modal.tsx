@@ -7,6 +7,7 @@ type Props = {
   visible: boolean;
   teams: GeneratedTeam[];
   selectedTeamNumber: number | null;
+  sentOffAssignmentIds: ReadonlySet<string>;
   scorerAssignmentId: string | null;
   assistAssignmentId: string | null;
   penalty: boolean;
@@ -21,33 +22,41 @@ type Props = {
 type ChoiceProps = {
   label: string;
   selected: boolean;
+  disabled?: boolean;
   onPress: () => void;
 };
 
-function Choice({ label, selected, onPress }: ChoiceProps) {
+function Choice({ label, selected, disabled = false, onPress }: ChoiceProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      accessibilityState={{ disabled, selected }}
+      disabled={disabled}
       hitSlop={6}
       onPress={onPress}
       style={({ pressed }) => ({
-        backgroundColor: selected ? '#148A4A' : '#F7FAF8',
-        borderColor: selected ? '#148A4A' : '#DDE6E1',
+        backgroundColor: disabled ? '#FFF1F1' : selected ? '#148A4A' : '#F7FAF8',
+        borderColor: disabled ? '#E7A3A3' : selected ? '#148A4A' : '#DDE6E1',
         borderRadius: 12,
         borderWidth: 1,
-        opacity: pressed ? 0.75 : 1,
+        opacity: disabled ? 0.72 : pressed ? 0.75 : 1,
         paddingHorizontal: 14,
         paddingVertical: 11,
       })}
     >
-      <Text color={selected ? '$onzeSurface' : '$onzeInk'} fontWeight="800">{label}</Text>
+      <YStack alignItems="center">
+        <Text color={disabled ? '$onzeMuted' : selected ? '$onzeSurface' : '$onzeInk'} fontWeight="800">
+          {label}
+        </Text>
+        {disabled ? <Text color="$onzeDanger" fontSize={10} fontWeight="900">EXPULSO</Text> : null}
+      </YStack>
     </Pressable>
   );
 }
 
-function PlayerChoices({ assignments, selectedId, onSelect }: {
+function PlayerChoices({ assignments, sentOffAssignmentIds, selectedId, onSelect }: {
   assignments: TeamAssignment[];
+  sentOffAssignmentIds: ReadonlySet<string>;
   selectedId: string | null;
   onSelect: (assignmentId: string) => void;
 }) {
@@ -57,6 +66,7 @@ function PlayerChoices({ assignments, selectedId, onSelect }: {
         <Choice
           key={assignment.id}
           label={assignment.displayName}
+          disabled={sentOffAssignmentIds.has(assignment.id)}
           selected={selectedId === assignment.id}
           onPress={() => onSelect(assignment.id)}
         />
@@ -107,6 +117,7 @@ export function GoalEventModal(props: Props) {
                   <Text color="$onzeInk" fontWeight="900">Quem fez o gol?</Text>
                   <PlayerChoices
                     assignments={selectedTeam.assignments}
+                    sentOffAssignmentIds={props.sentOffAssignmentIds}
                     selectedId={props.scorerAssignmentId}
                     onSelect={props.onSelectScorer}
                   />
@@ -150,9 +161,10 @@ export function GoalEventModal(props: Props) {
                     />
                     {assistCandidates.map((assignment) => (
                       <Choice
-                        key={assignment.id}
-                        label={assignment.displayName}
-                        selected={props.assistAssignmentId === assignment.id}
+                      key={assignment.id}
+                      label={assignment.displayName}
+                      disabled={props.sentOffAssignmentIds.has(assignment.id)}
+                      selected={props.assistAssignmentId === assignment.id}
                         onPress={() => props.onSelectAssist(assignment.id)}
                       />
                     ))}
