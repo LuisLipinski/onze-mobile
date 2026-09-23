@@ -123,12 +123,31 @@ export type LiveMatchSummary = {
   startsAt: string;
   timeZone: string;
   venue: string;
+  status: MatchStatus;
   startedAt: string;
   matchType: MatchType;
   teamCount: number | null;
   version: number;
   scores: LiveScoreSide[];
   canManage: boolean;
+};
+export type LiveMatchSnapshot = Omit<LiveMatchState, 'canManage'>;
+export type LiveMatchChangeType =
+  | 'MATCH_STARTED'
+  | 'SCORE_UPDATED'
+  | 'GOAL_ADDED'
+  | 'CARD_ADDED'
+  | 'GOAL_REMOVED'
+  | 'CARD_REMOVED'
+  | 'MATCH_FINISHED'
+  | 'MATCH_RESET';
+export type LiveMatchStreamEvent = {
+  type: LiveMatchChangeType;
+  matchId: string;
+  groupId: string;
+  version: number;
+  summary: LiveMatchSummary | null;
+  liveMatch: LiveMatchSnapshot | null;
 };
 export type GoalEvent = {
   id: string;
@@ -437,6 +456,11 @@ function getApiUrl() {
   const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
   const value = configuredUrl || DEFAULT_API_URL;
   return value.replace(/\/$/, '');
+}
+
+export function getLiveMatchStreamUrl(matchId?: string) {
+  const query = matchId ? `?matchId=${encodeURIComponent(matchId)}` : '';
+  return `${getApiUrl()}/api/matches/live/stream${query}`;
 }
 
 async function request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {

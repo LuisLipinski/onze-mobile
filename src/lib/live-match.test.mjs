@@ -3,10 +3,11 @@ import test from 'node:test';
 
 import {
   formatMatchTimer,
+  applyLiveMatchSummaryEvent,
   liveMatchElapsedSeconds,
-  livePollDelayMs,
   liveScoreSideLabel,
   liveSummaryScoreLabel,
+  mergeLiveMatchStreamEvent,
   scheduledHomeMatches,
   secondYellowCardEventIds,
   sentOffPlayerAssignmentIds,
@@ -27,13 +28,6 @@ test('calcula tempo ao vivo e congela no encerramento', () => {
   assert.equal(liveMatchElapsedSeconds(running, Date.parse('2026-09-20T00:00:00Z')), 10_800);
 });
 
-test('reduz consultas frequentes quando a partida fica sem mudanças', () => {
-  assert.equal(livePollDelayMs(0), 5_000);
-  assert.equal(livePollDelayMs(1), 5_000);
-  assert.equal(livePollDelayMs(2), 8_000);
-  assert.equal(livePollDelayMs(4), 12_000);
-});
-
 test('separa jogos ao vivo dos próximos jogos na home', () => {
   const matches = [
     { id: 'scheduled', status: 'SCHEDULED' },
@@ -43,6 +37,37 @@ test('separa jogos ao vivo dos próximos jogos na home', () => {
   const live = [{ matchId: 'started-stale' }];
 
   assert.deepEqual(scheduledHomeMatches(matches, live), [matches[0]]);
+});
+
+test('inclui, atualiza e remove partidas da home pelos eventos em tempo real', () => {
+  const first = {
+    matchId: 'match-1', status: 'IN_PROGRESS', startedAt: '2026-09-19T18:00:00Z', scores: [],
+  };
+  const second = {
+    matchId: 'match-2', status: 'IN_PROGRESS', startedAt: '2026-09-19T19:00:00Z', scores: [],
+  };
+  const added = applyLiveMatchSummaryEvent([second], {
+    matchId: 'match-1', summary: first,
+  });
+  assert.deepEqual(added, [first, second]);
+
+  const removed = applyLiveMatchSummaryEvent(added, {
+    matchId: 'match-1', summary: { ...first, status: 'FINISHED' },
+  });
+  assert.deepEqual(removed, [second]);
+});
+
+test('aplica snapshot mais novo sem copiar a permissão administrativa', () => {
+  const current = {
+    matchId: 'match-1', version: 2, canManage: false, scores: [],
+  };
+  const updated = mergeLiveMatchStreamEvent(current, {
+    matchId: 'match-1',
+    liveMatch: { matchId: 'match-1', version: 3, scores: [{ sideNumber: 1, score: 1 }] },
+  });
+  assert.equal(updated.version, 3);
+  assert.equal(updated.canManage, false);
+  assert.deepEqual(updated.scores, [{ sideNumber: 1, score: 1 }]);
 });
 
 test('formata o placar resumido de dois ou vários times', () => {

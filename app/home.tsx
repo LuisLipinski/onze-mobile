@@ -14,6 +14,7 @@ import {
   listLiveMatches,
   listUpcomingMatches,
   LiveMatchSummary,
+  LiveMatchStreamEvent,
   User,
 } from '../src/lib/api';
 import {
@@ -26,7 +27,11 @@ import {
   registerNotificationsForSession,
   syncAttendanceOpeningNotifications,
 } from '../src/lib/notifications';
-import { scheduledHomeMatches } from '../src/lib/live-match';
+import { applyLiveMatchSummaryEvent, scheduledHomeMatches } from '../src/lib/live-match';
+import {
+  LiveMatchStreamConnection,
+  openLiveMatchStream,
+} from '../src/lib/live-match-stream';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -56,18 +61,56 @@ export default function HomeScreen() {
     }
   }, [router]);
 
+  const applyLiveMatchEvent = useCallback((event: LiveMatchStreamEvent) => {
+    const summary = event.summary;
+    setLiveMatches((current) => applyLiveMatchSummaryEvent(current, event));
+    if (summary?.status === 'IN_PROGRESS') {
+      setMatches((current) => current.filter((match) => match.id !== event.matchId));
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
+      let active = true;
+      let stream: LiveMatchStreamConnection | null = null;
+      let openedBefore = false;
+
+      const connect = async () => {
+        if (!active || stream || AppState.currentState !== 'active') return;
+        const token = await getAccessToken();
+        if (!token || !active) return;
+        const connection = openLiveMatchStream(token, undefined, {
+          onEvent: applyLiveMatchEvent,
+          onOpen: () => {
+            if (openedBefore) void refreshLiveMatches();
+            openedBefore = true;
+          },
+          onUnauthorized: () => {
+            void clearSession().finally(() => router.replace('/'));
+          },
+        });
+        if (!active) connection.close();
+        else stream = connection;
+      };
+
       void loadHome();
-      const interval = setInterval(() => void refreshLiveMatches(), 30_000);
+      void connect();
       const subscription = AppState.addEventListener('change', (state) => {
-        if (state === 'active') void refreshLiveMatches();
+        if (state !== 'active') {
+          stream?.close();
+          stream = null;
+          openedBefore = false;
+          return;
+        }
+        void refreshLiveMatches();
+        void connect();
       });
       return () => {
-        clearInterval(interval);
+        active = false;
+        stream?.close();
         subscription.remove();
       };
-    }, [refreshLiveMatches]),
+    }, [applyLiveMatchEvent, refreshLiveMatches, router]),
   );
 
   async function loadHome() {

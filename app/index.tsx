@@ -43,6 +43,7 @@ export default function LoginScreen() {
     passwordReset?: string;
     joinCode?: string;
     matchId?: string;
+    destination?: string;
   }>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -98,7 +99,7 @@ export default function LoginScreen() {
     }
     if (typeof params.matchId === 'string' && params.matchId.trim()) {
       router.replace({
-        pathname: '/match',
+        pathname: params.destination === 'live' ? '/live-match' : '/match',
         params: { matchId: params.matchId.trim() },
       });
       return;

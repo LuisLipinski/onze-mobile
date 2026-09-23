@@ -2,6 +2,7 @@ import type {
   CardEvent,
   FootballMatch,
   LiveMatchState,
+  LiveMatchStreamEvent,
   LiveMatchSummary,
 } from './api';
 
@@ -22,18 +23,33 @@ export function formatMatchTimer(totalSeconds: number) {
   return hours > 0 ? `${String(hours).padStart(2, '0')}:${minuteSecond}` : minuteSecond;
 }
 
-export function livePollDelayMs(unchangedPolls: number) {
-  if (unchangedPolls <= 1) return 5_000;
-  if (unchangedPolls <= 3) return 8_000;
-  return 12_000;
-}
-
 export function scheduledHomeMatches(
   matches: FootballMatch[],
   liveMatches: LiveMatchSummary[],
 ) {
   const liveIds = new Set(liveMatches.map((match) => match.matchId));
   return matches.filter((match) => match.status === 'SCHEDULED' && !liveIds.has(match.id));
+}
+
+export function applyLiveMatchSummaryEvent(
+  liveMatches: LiveMatchSummary[],
+  event: LiveMatchStreamEvent,
+) {
+  const withoutMatch = liveMatches.filter((match) => match.matchId !== event.matchId);
+  if (!event.summary || event.summary.status !== 'IN_PROGRESS') return withoutMatch;
+  return [...withoutMatch, event.summary].sort(
+    (left, right) => Date.parse(left.startedAt) - Date.parse(right.startedAt),
+  );
+}
+
+export function mergeLiveMatchStreamEvent(
+  current: LiveMatchState,
+  event: LiveMatchStreamEvent,
+) {
+  if (!event.liveMatch
+      || event.matchId !== current.matchId
+      || event.liveMatch.version <= current.version) return current;
+  return { ...event.liveMatch, canManage: current.canManage };
 }
 
 export function liveSummaryScoreLabel(match: LiveMatchSummary) {

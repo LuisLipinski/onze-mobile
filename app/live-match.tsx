@@ -18,18 +18,22 @@ import {
   finishLiveMatch,
   FootballMatch,
   getLiveMatch,
-  getLiveMatchIfChanged,
   getMatch,
   getMatchTeams,
   MatchTeams,
   LiveMatchState,
+  LiveMatchStreamEvent,
   MatchCardType,
   listGroups,
   resetLiveMatch,
   updateLiveMatchScore,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
-import { livePollDelayMs, sentOffPlayerAssignmentIds } from '../src/lib/live-match';
+import { mergeLiveMatchStreamEvent, sentOffPlayerAssignmentIds } from '../src/lib/live-match';
+import {
+  LiveMatchStreamConnection,
+  openLiveMatchStream,
+} from '../src/lib/live-match-stream';
 
 type LiveManagementAction = 'finish' | 'reset' | null;
 type TimelineEventKind = 'GOAL' | 'CARD';
@@ -62,19 +66,21 @@ export default function LiveMatchScreen() {
   const [savingCard, setSavingCard] = useState(false);
   const [deletingEventKey, setDeletingEventKey] = useState<string | null>(null);
   const liveStateRef = useRef<LiveMatchState | null>(null);
-  const livePollRunningRef = useRef(false);
 
   function goToLogin() {
-    router.replace({ pathname: '/', params: params.matchId ? { matchId: params.matchId } : {} });
+    router.replace({
+      pathname: '/',
+      params: params.matchId ? { matchId: params.matchId, destination: 'live' } : {},
+    });
   }
 
-  const loadLiveMatch = useCallback(async () => {
+  const loadLiveMatch = useCallback(async (silent = false) => {
     if (!params.matchId) {
       setError('Não foi possível identificar o jogo.');
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const token = await getAccessToken();
@@ -101,75 +107,81 @@ export default function LiveMatchScreen() {
       }
       setError(exception instanceof Error ? exception.message : 'Não foi possível carregar a partida.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [params.matchId]);
 
-  const pollLiveMatch = useCallback(async () => {
+  const applyLiveMatchEvent = useCallback((event: LiveMatchStreamEvent) => {
     const current = liveStateRef.current;
-    if (!params.matchId
-      || !current
-      || current.status !== 'IN_PROGRESS'
-      || livePollRunningRef.current
-      || scoreRequestRunningRef.current.size > 0
-      || AppState.currentState !== 'active') return false;
+    if (!params.matchId || !current) return;
+    const authoritative = mergeLiveMatchStreamEvent(current, event);
+    if (authoritative === current) return;
 
-    livePollRunningRef.current = true;
-    try {
-      const token = await getAccessToken();
-      if (!token) { goToLogin(); return false; }
-      const updated = await getLiveMatchIfChanged(token, params.matchId, current.version);
-      if (!updated) return false;
-
-      liveStateRef.current = updated;
-      desiredScoresRef.current = new Map(updated.scores.map((side) => [side.sideNumber, side.score]));
-      confirmedScoresRef.current = new Map(updated.scores.map((side) => [side.sideNumber, side.score]));
-      setLiveState(updated);
-      setMatch((storedMatch) => storedMatch ? {
+    const desiredScores = new Map(
+      authoritative.scores.map((side) => [side.sideNumber, side.score]),
+    );
+    for (const sideNumber of scoreRequestRunningRef.current) {
+      const pendingScore = desiredScoresRef.current.get(sideNumber);
+      if (pendingScore != null) desiredScores.set(sideNumber, pendingScore);
+    }
+    desiredScoresRef.current = desiredScores;
+    confirmedScoresRef.current = new Map(
+      authoritative.scores.map((side) => [side.sideNumber, side.score]),
+    );
+    const updated: LiveMatchState = applyDesiredScores(authoritative);
+    liveStateRef.current = updated;
+    setLiveState(updated);
+    setMatch((storedMatch) => storedMatch ? {
         ...storedMatch,
         status: updated.status,
         startedAt: updated.startedAt,
         finishedAt: updated.finishedAt,
       } : storedMatch);
-      return true;
-    } catch (exception) {
-      if (exception instanceof ApiRequestError && exception.status === 401) {
-        await clearSession();
-        goToLogin();
-      }
-      return false;
-    } finally {
-      livePollRunningRef.current = false;
-    }
   }, [params.matchId]);
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    let unchangedPolls = 0;
+    let stream: LiveMatchStreamConnection | null = null;
+    let openedBefore = false;
+
+    const connect = async () => {
+      if (!active || stream || AppState.currentState !== 'active' || !params.matchId) return;
+      const token = await getAccessToken();
+      if (!token || !active) return;
+      const connection = openLiveMatchStream(token, params.matchId, {
+        onEvent: applyLiveMatchEvent,
+        onOpen: () => {
+          if (openedBefore) void loadLiveMatch(true);
+          openedBefore = true;
+        },
+        onUnauthorized: () => {
+          void clearSession().finally(goToLogin);
+        },
+      });
+      if (!active) connection.close();
+      else stream = connection;
+    };
 
     void loadLiveMatch();
-
-    const schedulePoll = () => {
-      if (!active) return;
-      timeout = setTimeout(async () => {
-        const changed = await pollLiveMatch();
-        unchangedPolls = changed ? 0 : unchangedPolls + 1;
-        schedulePoll();
-      }, livePollDelayMs(unchangedPolls));
-    };
-    schedulePoll();
+    void connect();
 
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void pollLiveMatch();
+      if (state !== 'active') {
+        stream?.close();
+        stream = null;
+        openedBefore = false;
+        return;
+      }
+      void loadLiveMatch(true);
+      void connect();
     });
 
     return () => {
       active = false;
-      if (timeout) clearTimeout(timeout);
+      stream?.close();
       subscription.remove();
     };
-  }, [loadLiveMatch, pollLiveMatch]));
+  }, [applyLiveMatchEvent, loadLiveMatch, params.matchId]));
 
   useEffect(() => {
     if (liveState?.status !== 'IN_PROGRESS' || !liveState.startedAt) return;
