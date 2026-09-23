@@ -70,6 +70,23 @@ test('aplica snapshot mais novo sem copiar a permissão administrativa', () => {
   assert.deepEqual(updated.scores, [{ sideNumber: 1, score: 1 }]);
 });
 
+test('aplica a imagem de cada time recebida em tempo real', () => {
+  const current = {
+    matchId: 'match-1', version: 3, canManage: true,
+    scores: [{ sideNumber: 1, score: 0, imageUrl: null }],
+  };
+  const updated = mergeLiveMatchStreamEvent(current, {
+    matchId: 'match-1',
+    liveMatch: {
+      matchId: 'match-1', version: 4,
+      scores: [{ sideNumber: 1, score: 0, imageUrl: 'https://cdn.example/time-1.jpg' }],
+    },
+  });
+
+  assert.equal(updated.scores[0].imageUrl, 'https://cdn.example/time-1.jpg');
+  assert.equal(updated.canManage, true);
+});
+
 test('formata o placar resumido de dois ou vários times', () => {
   assert.equal(liveSummaryScoreLabel({ scores: [
     { sideNumber: 1, score: 3 },

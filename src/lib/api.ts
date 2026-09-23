@@ -104,7 +104,7 @@ export type MatchRecurrence = 'NONE' | 'WEEKLY';
 export type MatchType = 'INTERNAL' | 'VERSUS_EXTERNAL';
 export type MatchModality = 'FIELD' | 'FUT7' | 'FUTSAL';
 export type MatchStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELLED';
-export type LiveScoreSide = { sideNumber: number; score: number };
+export type LiveScoreSide = { sideNumber: number; score: number; imageUrl: string | null };
 export type LiveMatchState = {
   matchId: string;
   status: MatchStatus;
@@ -139,6 +139,7 @@ export type LiveMatchChangeType =
   | 'CARD_ADDED'
   | 'GOAL_REMOVED'
   | 'CARD_REMOVED'
+  | 'TEAM_IMAGE_UPDATED'
   | 'MATCH_FINISHED'
   | 'MATCH_RESET';
 export type LiveMatchStreamEvent = {
@@ -332,6 +333,11 @@ export type MatchTeams = {
   reducedTeams: boolean;
   technicalDetailsVisible: boolean;
   teams: GeneratedTeam[];
+};
+
+export type MatchTeamImage = {
+  teamNumber: number;
+  imageUrl: string;
 };
 
 export type PlayerCredit = {
@@ -1333,6 +1339,75 @@ export function getMatchTeams(accessToken: string, matchId: string) {
       message: 'Estamos atualizando escalações e indicadores.',
     },
   });
+}
+
+export function getMatchTeamImages(accessToken: string, matchId: string) {
+  return request<MatchTeamImage[]>(`/api/matches/${matchId}/teams/images`, {
+    headers: authenticatedHeaders(accessToken),
+    loading: false,
+  });
+}
+
+export function uploadMatchTeamImage(
+  accessToken: string,
+  matchId: string,
+  teamNumber: number,
+  image: { uri: string; fileName?: string | null; mimeType?: string | null },
+) {
+  const mimeType = image.mimeType?.startsWith('image/') ? image.mimeType : 'image/jpeg';
+  const extension = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+  const fileName = image.fileName?.trim() || `time-${teamNumber}.${extension}`;
+  const form = new FormData();
+  form.append(
+    'image',
+    {
+      uri: image.uri,
+      name: fileName,
+      type: mimeType,
+    } as unknown as Blob,
+  );
+
+  return withGlobalLoading(
+    () => new Promise<MatchTeamImage>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${getApiUrl()}/api/matches/${matchId}/teams/${teamNumber}/image`);
+      xhr.timeout = REQUEST_TIMEOUT_MS;
+      xhr.setRequestHeader('Accept', 'application/json');
+      xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+
+      xhr.onload = () => {
+        let payload: (ApiError & Partial<MatchTeamImage>) | null = null;
+        try {
+          payload = JSON.parse(xhr.responseText) as ApiError & Partial<MatchTeamImage>;
+        } catch {
+          // The API may return no JSON for infrastructure-level errors.
+        }
+
+        if (xhr.status < 200 || xhr.status >= 300) {
+          reject(new ApiRequestError(
+            payload?.message ?? 'Não foi possível enviar a imagem do time.',
+            xhr.status,
+            payload?.code,
+          ));
+          return;
+        }
+
+        if (!payload) {
+          reject(new Error('O servidor não confirmou o envio da imagem do time.'));
+          return;
+        }
+
+        resolve(payload as MatchTeamImage);
+      };
+      xhr.onerror = () => reject(new Error('Não foi possível conectar ao servidor para enviar a imagem.'));
+      xhr.ontimeout = () => reject(new Error('O envio da imagem demorou mais que o esperado. Tente novamente.'));
+      xhr.send(form);
+    }),
+    {
+      title: 'Enviando a imagem...',
+      message: `Estamos atualizando a imagem do Time ${teamNumber}.`,
+    },
+  );
 }
 
 export function generateMatchTeams(accessToken: string, matchId: string) {

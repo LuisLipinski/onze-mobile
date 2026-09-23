@@ -8,18 +8,29 @@ import { formatMatchTimer, liveMatchElapsedSeconds, liveScoreSideLabel } from '.
 type Props = {
   match: FootballMatch;
   state: LiveMatchState;
-  teamImageUrl: string | null;
+  imageSavingTeamNumber: number | null;
   onChangeScore: (sideNumber: number, score: number) => void;
   onRegisterGoal: (sideNumber: number) => void;
+  onSelectTeamImage: (sideNumber: number) => void;
 };
 
 type TeamIdentityProps = {
   imageUrl: string | null;
   label: string;
   sideNumber: number;
+  canManage: boolean;
+  saving: boolean;
+  onSelectImage: () => void;
 };
 
-function TeamIdentity({ imageUrl, label, sideNumber }: TeamIdentityProps) {
+function TeamIdentity({
+  imageUrl,
+  label,
+  sideNumber,
+  canManage,
+  saving,
+  onSelectImage,
+}: TeamIdentityProps) {
   return (
     <YStack alignItems="center" flex={1} gap="$2" minWidth={0}>
       {imageUrl ? (
@@ -46,6 +57,19 @@ function TeamIdentity({ imageUrl, label, sideNumber }: TeamIdentityProps) {
       <Text color="$onzeInk" fontSize={14} fontWeight="900" numberOfLines={2} textAlign="center">
         {label}
       </Text>
+      {canManage ? (
+        <Pressable
+          accessibilityLabel={`${imageUrl ? 'Trocar' : 'Adicionar'} imagem de ${label}`}
+          disabled={saving}
+          hitSlop={8}
+          onPress={onSelectImage}
+          style={({ pressed }) => ({ opacity: saving ? 0.45 : pressed ? 0.65 : 1 })}
+        >
+          <Text color="$onzeGreen" fontSize={11} fontWeight="900" textAlign="center">
+            {saving ? 'Enviando...' : imageUrl ? 'Trocar imagem' : 'Adicionar imagem'}
+          </Text>
+        </Pressable>
+      ) : null}
     </YStack>
   );
 }
@@ -102,9 +126,10 @@ function ScoreControls({ label, side, onChangeScore, onRegisterGoal }: ScoreCont
 export function LiveScoreboard({
   match,
   state,
-  teamImageUrl,
+  imageSavingTeamNumber,
   onChangeScore,
   onRegisterGoal,
+  onSelectTeamImage,
 }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(() => liveMatchElapsedSeconds(state));
   const canManage = state.canManage && state.status === 'IN_PROGRESS';
@@ -157,7 +182,14 @@ export function LiveScoreboard({
       {state.scores.length === 2 && firstSide && secondSide ? (
         <YStack gap="$4" paddingHorizontal="$3" paddingVertical="$5">
           <XStack alignItems="center" gap="$2">
-            <TeamIdentity imageUrl={teamImageUrl} label={firstLabel} sideNumber={firstSide.sideNumber} />
+            <TeamIdentity
+              imageUrl={firstSide.imageUrl}
+              label={firstLabel}
+              sideNumber={firstSide.sideNumber}
+              canManage={canManage}
+              saving={imageSavingTeamNumber === firstSide.sideNumber}
+              onSelectImage={() => onSelectTeamImage(firstSide.sideNumber)}
+            />
             <XStack alignItems="center" justifyContent="center" minWidth={142}>
               <Text color="$onzeGreen" fontSize={52} fontVariant={['tabular-nums']} fontWeight="900" lineHeight={60}>
                 {firstSide.score}
@@ -167,7 +199,14 @@ export function LiveScoreboard({
                 {secondSide.score}
               </Text>
             </XStack>
-            <TeamIdentity imageUrl={teamImageUrl} label={secondLabel} sideNumber={secondSide.sideNumber} />
+            <TeamIdentity
+              imageUrl={secondSide.imageUrl}
+              label={secondLabel}
+              sideNumber={secondSide.sideNumber}
+              canManage={canManage}
+              saving={imageSavingTeamNumber === secondSide.sideNumber}
+              onSelectImage={() => onSelectTeamImage(secondSide.sideNumber)}
+            />
           </XStack>
 
           {canManage ? (
@@ -206,7 +245,14 @@ export function LiveScoreboard({
                 gap="$2"
                 padding="$3"
               >
-                <TeamIdentity imageUrl={teamImageUrl} label={label} sideNumber={side.sideNumber} />
+                <TeamIdentity
+                  imageUrl={side.imageUrl}
+                  label={label}
+                  sideNumber={side.sideNumber}
+                  canManage={canManage}
+                  saving={imageSavingTeamNumber === side.sideNumber}
+                  onSelectImage={() => onSelectTeamImage(side.sideNumber)}
+                />
                 <Text color="$onzeGreen" fontSize={48} fontVariant={['tabular-nums']} fontWeight="900">
                   {side.score}
                 </Text>
