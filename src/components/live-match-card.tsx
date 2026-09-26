@@ -26,8 +26,8 @@ export function LiveMatchCard({
     return () => clearInterval(interval);
   }, [match.startedAt]);
 
-  const matchup = match.matchType === 'VERSUS_EXTERNAL'
-    ? `${match.groupName} × Adversário`
+  const matchup = match.scores.length === 2
+    ? `${match.scores[0].name} × ${match.scores[1].name}`
     : `${match.teamCount ?? match.scores.length} times em campo`;
 
   return (

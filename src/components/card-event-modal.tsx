@@ -58,7 +58,7 @@ export function CardEventModal(props: Props) {
               <YStack gap="$2">
                 <Text color="$onzeInk" fontWeight="900">Time</Text>
                 <XStack flexWrap="wrap" gap="$2">
-                  {props.teams.map((item) => <Choice key={item.teamNumber} label={`Time ${item.teamNumber}`} selected={props.teamNumber === item.teamNumber} onPress={() => props.onSelectTeam(item.teamNumber)} />)}
+                  {props.teams.map((item) => <Choice key={item.teamNumber} label={item.name} selected={props.teamNumber === item.teamNumber} onPress={() => props.onSelectTeam(item.teamNumber)} />)}
                 </XStack>
               </YStack>
               {team ? <YStack gap="$2">

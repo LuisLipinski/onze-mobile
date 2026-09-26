@@ -1,4 +1,3 @@
-import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, SafeAreaView, ScrollView } from 'react-native';
@@ -27,7 +26,6 @@ import {
   MatchCardType,
   resetLiveMatch,
   updateLiveMatchScore,
-  uploadMatchTeamImage,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
 import { mergeLiveMatchStreamEvent, sentOffPlayerAssignmentIds } from '../src/lib/live-match';
@@ -65,7 +63,6 @@ export default function LiveMatchScreen() {
   const [cardType, setCardType] = useState<MatchCardType>('YELLOW');
   const [savingCard, setSavingCard] = useState(false);
   const [deletingEventKey, setDeletingEventKey] = useState<string | null>(null);
-  const [imageSavingTeamNumber, setImageSavingTeamNumber] = useState<number | null>(null);
   const liveStateRef = useRef<LiveMatchState | null>(null);
 
   function goToLogin() {
@@ -319,45 +316,6 @@ export default function LiveMatchScreen() {
     }
   }
 
-  async function selectTeamImage(teamNumber: number) {
-    if (!match || imageSavingTeamNumber != null
-      || !liveState?.canManage || liveState.status !== 'IN_PROGRESS') return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-    const selected = result.canceled ? null : result.assets[0];
-    if (!selected) return;
-
-    setImageSavingTeamNumber(teamNumber);
-    setError(null);
-    try {
-      const token = await getAccessToken();
-      if (!token) { goToLogin(); return; }
-      const uploaded = await uploadMatchTeamImage(token, match.id, teamNumber, {
-        uri: selected.uri,
-        fileName: selected.fileName,
-        mimeType: selected.mimeType,
-      });
-      setLiveState((current) => {
-        const updated = current ? {
-          ...current,
-          scores: current.scores.map((side) => side.sideNumber === uploaded.teamNumber
-            ? { ...side, imageUrl: uploaded.imageUrl }
-            : side),
-        } : current;
-        liveStateRef.current = updated;
-        return updated;
-      });
-    } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível atualizar a imagem do time.');
-    } finally {
-      setImageSavingTeamNumber(null);
-    }
-  }
-
   async function removeTimelineEvent(kind: TimelineEventKind, eventId: string) {
     if (!match || deletingEventKey || scoreSaving
       || !liveState?.canManage || liveState.status !== 'IN_PROGRESS') return;
@@ -480,16 +438,15 @@ export default function LiveMatchScreen() {
               <LiveScoreboard
                 match={match}
                 state={liveState}
-                imageSavingTeamNumber={imageSavingTeamNumber}
                 onChangeScore={changeScore}
                 onRegisterGoal={openGoalModal}
-                onSelectTeamImage={(teamNumber) => void selectTeamImage(teamNumber)}
               />
 
               <GoalTimeline
                 events={liveState.goalEvents ?? []}
                 cardEvents={liveState.cardEvents ?? []}
                 match={match}
+                sides={liveState.scores}
                 canDelete={liveState.canManage && liveState.status === 'IN_PROGRESS'}
                 deletingEventKey={deletingEventKey ?? (scoreSaving ? 'SCORE' : null)}
                 onDelete={confirmTimelineEventDeletion}

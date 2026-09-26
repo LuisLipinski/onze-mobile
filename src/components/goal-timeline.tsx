@@ -1,7 +1,7 @@
 import { Pressable } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
-import type { CardEvent, FootballMatch, GoalEvent } from '../lib/api';
+import type { CardEvent, FootballMatch, GoalEvent, LiveScoreSide } from '../lib/api';
 import { formatMatchTimer, liveScoreSideLabel, secondYellowCardEventIds } from '../lib/live-match';
 
 type EventKind = 'GOAL' | 'CARD';
@@ -109,6 +109,7 @@ export function GoalTimeline({
   events,
   cardEvents = [],
   match,
+  sides = [],
   canDelete = false,
   deletingEventKey = null,
   onDelete,
@@ -116,6 +117,7 @@ export function GoalTimeline({
   events: GoalEvent[];
   cardEvents?: CardEvent[];
   match: FootballMatch;
+  sides?: LiveScoreSide[];
   canDelete?: boolean;
   deletingEventKey?: string | null;
   onDelete?: (kind: EventKind, eventId: string) => void;
@@ -185,10 +187,10 @@ export function GoalTimeline({
 
       <XStack borderTopColor="$onzeBorder" borderTopWidth={1} padding="$3">
         <Text color="$onzeMuted" flex={1} fontSize={12} fontWeight="800" textAlign="left">
-          {liveScoreSideLabel(match, 1)}
+          {liveScoreSideLabel(match, 1, sides.find((side) => side.sideNumber === 1)?.name)}
         </Text>
         <Text color="$onzeMuted" flex={1} fontSize={12} fontWeight="800" textAlign="right">
-          {liveScoreSideLabel(match, 2)}
+          {liveScoreSideLabel(match, 2, sides.find((side) => side.sideNumber === 2)?.name)}
         </Text>
       </XStack>
     </YStack>

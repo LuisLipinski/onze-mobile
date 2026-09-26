@@ -1,7 +1,7 @@
 import * as Sharing from 'expo-sharing';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import { Button, Text, XStack, YStack } from 'tamagui';
 
@@ -25,6 +25,8 @@ import {
 } from '../src/lib/team-lineup-api';
 import { teamAssignmentReasonText } from '../src/lib/technical-ratings';
 import { calculateTeamLineStrengths, calculateTeamStrength } from '../src/lib/team-line-strength';
+
+const DEFAULT_TEAM_IMAGE = require('../assets/icon.png');
 
 const FUTSAL_ROLE_LABELS: Record<string, string> = {
   GOALKEEPER: 'Goleiro',
@@ -188,7 +190,15 @@ function ShareLineupCard({
       <YStack gap="$5" marginTop="$4">
         {data.teams.map((team) => (
           <YStack key={team.teamNumber} gap="$2">
-            <Text color="#183B2C" fontSize={20} fontWeight="900">Time {team.teamNumber}</Text>
+            <XStack alignItems="center" gap="$3">
+              <Image
+                accessibilityLabel={`Símbolo de ${team.name}`}
+                resizeMode="cover"
+                source={team.imageUrl ? { uri: team.imageUrl } : DEFAULT_TEAM_IMAGE}
+                style={{ width: 44, height: 44, borderRadius: 12 }}
+              />
+              <Text color="#183B2C" flex={1} fontSize={20} fontWeight="900">{team.name}</Text>
+            </XStack>
             <FormationPitch
               assignments={team.assignments}
               modality={data.modality}
@@ -502,7 +512,15 @@ export default function MatchTeamsScreen() {
             return (
               <YStack key={team.teamNumber} backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
                 <XStack alignItems="center" justifyContent="space-between">
-                  <Text color="$onzeInk" fontSize={20} fontWeight="900">Time {team.teamNumber}</Text>
+                  <XStack alignItems="center" flex={1} gap="$3">
+                    <Image
+                      accessibilityLabel={`Símbolo de ${team.name}`}
+                      resizeMode="cover"
+                      source={team.imageUrl ? { uri: team.imageUrl } : DEFAULT_TEAM_IMAGE}
+                      style={{ width: 52, height: 52, borderRadius: 14 }}
+                    />
+                    <Text color="$onzeInk" flex={1} fontSize={20} fontWeight="900">{team.name}</Text>
+                  </XStack>
                   {data.technicalDetailsVisible ? (
                     <Text color="$onzeGreen" fontSize={12} fontWeight="900">
                       Força {fieldStrength ?? '—'}/50
