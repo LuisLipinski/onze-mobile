@@ -70,20 +70,26 @@ test('aplica snapshot mais novo sem copiar a permissão administrativa', () => {
   assert.deepEqual(updated.scores, [{ sideNumber: 1, score: 1 }]);
 });
 
-test('aplica a imagem de cada time recebida em tempo real', () => {
+test('aplica nome e imagem de cada time recebidos em tempo real', () => {
   const current = {
     matchId: 'match-1', version: 3, canManage: true,
-    scores: [{ sideNumber: 1, score: 0, imageUrl: null }],
+    scores: [{ sideNumber: 1, score: 0, name: 'Time 1', imageUrl: null }],
   };
   const updated = mergeLiveMatchStreamEvent(current, {
     matchId: 'match-1',
     liveMatch: {
       matchId: 'match-1', version: 4,
-      scores: [{ sideNumber: 1, score: 0, imageUrl: 'https://cdn.example/time-1.jpg' }],
+      scores: [{
+        sideNumber: 1,
+        score: 0,
+        name: 'Time Preto',
+        imageUrl: 'https://cdn.example/time-1.jpg',
+      }],
     },
   });
 
   assert.equal(updated.scores[0].imageUrl, 'https://cdn.example/time-1.jpg');
+  assert.equal(updated.scores[0].name, 'Time Preto');
   assert.equal(updated.canManage, true);
 });
 
@@ -100,6 +106,7 @@ test('formata o placar resumido de dois ou vários times', () => {
 });
 
 test('nomeia times internos e adversário externo', () => {
+  assert.equal(liveScoreSideLabel({ matchType: 'INTERNAL' }, 1, 'Time Preto'), 'Time Preto');
   assert.equal(liveScoreSideLabel({ matchType: 'INTERNAL' }, 2), 'Time 2');
   assert.equal(liveScoreSideLabel({ matchType: 'VERSUS_EXTERNAL', groupName: 'Onze FC' }, 1), 'Onze FC');
   assert.equal(liveScoreSideLabel({ matchType: 'VERSUS_EXTERNAL', groupName: 'Onze FC' }, 2), 'Adversário');

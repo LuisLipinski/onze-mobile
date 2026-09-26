@@ -5,71 +5,35 @@ import { Text, XStack, YStack } from 'tamagui';
 import type { FootballMatch, LiveMatchState, LiveScoreSide } from '../lib/api';
 import { formatMatchTimer, liveMatchElapsedSeconds, liveScoreSideLabel } from '../lib/live-match';
 
+const DEFAULT_TEAM_IMAGE = require('../../assets/onze-icon.png');
+
 type Props = {
   match: FootballMatch;
   state: LiveMatchState;
-  imageSavingTeamNumber: number | null;
   onChangeScore: (sideNumber: number, score: number) => void;
   onRegisterGoal: (sideNumber: number) => void;
-  onSelectTeamImage: (sideNumber: number) => void;
 };
 
 type TeamIdentityProps = {
   imageUrl: string | null;
   label: string;
-  sideNumber: number;
-  canManage: boolean;
-  saving: boolean;
-  onSelectImage: () => void;
 };
 
 function TeamIdentity({
   imageUrl,
   label,
-  sideNumber,
-  canManage,
-  saving,
-  onSelectImage,
 }: TeamIdentityProps) {
   return (
     <YStack alignItems="center" flex={1} gap="$2" minWidth={0}>
-      {imageUrl ? (
-        <Image
-          accessibilityLabel={`Símbolo de ${label}`}
-          resizeMode="cover"
-          source={{ uri: imageUrl }}
-          style={{ width: 58, height: 58, borderRadius: 14 }}
-        />
-      ) : (
-        <YStack
-          alignItems="center"
-          backgroundColor="#DDF3E7"
-          borderColor="$onzeGreen"
-          borderRadius="$4"
-          borderWidth={1}
-          height={58}
-          justifyContent="center"
-          width={58}
-        >
-          <Text color="$onzeGreen" fontSize={18} fontWeight="900">T{sideNumber}</Text>
-        </YStack>
-      )}
+      <Image
+        accessibilityLabel={`Símbolo de ${label}`}
+        resizeMode="cover"
+        source={imageUrl ? { uri: imageUrl } : DEFAULT_TEAM_IMAGE}
+        style={{ width: 58, height: 58, borderRadius: 14 }}
+      />
       <Text color="$onzeInk" fontSize={14} fontWeight="900" numberOfLines={2} textAlign="center">
         {label}
       </Text>
-      {canManage ? (
-        <Pressable
-          accessibilityLabel={`${imageUrl ? 'Trocar' : 'Adicionar'} imagem de ${label}`}
-          disabled={saving}
-          hitSlop={8}
-          onPress={onSelectImage}
-          style={({ pressed }) => ({ opacity: saving ? 0.45 : pressed ? 0.65 : 1 })}
-        >
-          <Text color="$onzeGreen" fontSize={11} fontWeight="900" textAlign="center">
-            {saving ? 'Enviando...' : imageUrl ? 'Trocar imagem' : 'Adicionar imagem'}
-          </Text>
-        </Pressable>
-      ) : null}
     </YStack>
   );
 }
@@ -126,10 +90,8 @@ function ScoreControls({ label, side, onChangeScore, onRegisterGoal }: ScoreCont
 export function LiveScoreboard({
   match,
   state,
-  imageSavingTeamNumber,
   onChangeScore,
   onRegisterGoal,
-  onSelectTeamImage,
 }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(() => liveMatchElapsedSeconds(state));
   const canManage = state.canManage && state.status === 'IN_PROGRESS';
@@ -143,8 +105,8 @@ export function LiveScoreboard({
 
   const firstSide = state.scores[0];
   const secondSide = state.scores[1];
-  const firstLabel = firstSide ? liveScoreSideLabel(match, firstSide.sideNumber) : '';
-  const secondLabel = secondSide ? liveScoreSideLabel(match, secondSide.sideNumber) : '';
+  const firstLabel = firstSide ? liveScoreSideLabel(match, firstSide.sideNumber, firstSide.name) : '';
+  const secondLabel = secondSide ? liveScoreSideLabel(match, secondSide.sideNumber, secondSide.name) : '';
 
   return (
     <YStack
@@ -185,10 +147,6 @@ export function LiveScoreboard({
             <TeamIdentity
               imageUrl={firstSide.imageUrl}
               label={firstLabel}
-              sideNumber={firstSide.sideNumber}
-              canManage={canManage}
-              saving={imageSavingTeamNumber === firstSide.sideNumber}
-              onSelectImage={() => onSelectTeamImage(firstSide.sideNumber)}
             />
             <XStack alignItems="center" justifyContent="center" minWidth={142}>
               <Text color="$onzeGreen" fontSize={52} fontVariant={['tabular-nums']} fontWeight="900" lineHeight={60}>
@@ -202,10 +160,6 @@ export function LiveScoreboard({
             <TeamIdentity
               imageUrl={secondSide.imageUrl}
               label={secondLabel}
-              sideNumber={secondSide.sideNumber}
-              canManage={canManage}
-              saving={imageSavingTeamNumber === secondSide.sideNumber}
-              onSelectImage={() => onSelectTeamImage(secondSide.sideNumber)}
             />
           </XStack>
 
@@ -233,7 +187,7 @@ export function LiveScoreboard({
       ) : (
         <YStack gap="$3" padding="$4">
           {state.scores.map((side) => {
-            const label = liveScoreSideLabel(match, side.sideNumber);
+            const label = liveScoreSideLabel(match, side.sideNumber, side.name);
             return (
               <YStack
                 key={side.sideNumber}
@@ -248,10 +202,6 @@ export function LiveScoreboard({
                 <TeamIdentity
                   imageUrl={side.imageUrl}
                   label={label}
-                  sideNumber={side.sideNumber}
-                  canManage={canManage}
-                  saving={imageSavingTeamNumber === side.sideNumber}
-                  onSelectImage={() => onSelectTeamImage(side.sideNumber)}
                 />
                 <Text color="$onzeGreen" fontSize={48} fontVariant={['tabular-nums']} fontWeight="900">
                   {side.score}

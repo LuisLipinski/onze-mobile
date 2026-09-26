@@ -61,7 +61,12 @@ export function liveSummaryScoreLabel(match: LiveMatchSummary) {
     .join('  •  ');
 }
 
-export function liveScoreSideLabel(match: FootballMatch, sideNumber: number) {
+export function liveScoreSideLabel(
+  match: FootballMatch,
+  sideNumber: number,
+  customName?: string | null,
+) {
+  if (customName?.trim()) return customName.trim();
   if (match.matchType === 'VERSUS_EXTERNAL') {
     return sideNumber === 1 ? match.groupName : 'Adversário';
   }

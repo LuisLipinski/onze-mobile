@@ -104,7 +104,7 @@ export function GoalEventModal(props: Props) {
                 <Text color="$onzeInk" fontWeight="900">Time</Text>
                 <YStack backgroundColor="#E8F7EE" borderRadius="$4" padding="$3">
                   <Text color="$onzeGreen" fontSize={16} fontWeight="900">
-                    Time {props.selectedTeamNumber}
+                    {selectedTeam?.name ?? `Time ${props.selectedTeamNumber}`}
                   </Text>
                   <Text color="$onzeMuted" fontSize={12}>
                     Definido pelo botão + que você tocou.

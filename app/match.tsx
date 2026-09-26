@@ -1,3 +1,4 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
@@ -10,6 +11,7 @@ import { PaymentSettlementModal } from '../src/components/payment-settlement-mod
 import { RentalGoalkeeperModal } from '../src/components/rental-goalkeeper-modal';
 import { ReplacementPlayerModal } from '../src/components/replacement-player-modal';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
+import { StartLiveMatchModal } from '../src/components/start-live-match-modal';
 import {
   ApiRequestError,
   addMatchReplacement,
@@ -22,10 +24,12 @@ import {
   FootballMatch,
   GroupMember,
   getMatch,
+  getMatchTeamIdentities,
   getOwnSportsProfile,
   listGroupMembers,
   MatchAttendance,
   MatchGuest,
+  MatchTeamIdentity,
   PaymentSettlementResolution,
   PaymentSettlementStatus,
   PaymentStatus,
@@ -36,6 +40,7 @@ import {
   resolveMatchPaymentSettlement,
   resolveMatchPaymentSettlements,
   startLiveMatch,
+  uploadMatchTeamImage,
   updateMatchAttendance,
   updateMatchGoalkeeper,
 } from '../src/lib/api';
@@ -126,24 +131,93 @@ export default function MatchScreen() {
   const [managingGuestId, setManagingGuestId] = useState<string | null>(null);
   const [managementAction, setManagementAction] = useState<ManagementAction>(null);
   const [liveAction, setLiveAction] = useState<LiveAction>(null);
+  const [startIdentities, setStartIdentities] = useState<MatchTeamIdentity[]>([]);
+  const [startModalLoading, setStartModalLoading] = useState(false);
+  const [startModalError, setStartModalError] = useState<string | null>(null);
+  const [startImageSavingTeamNumber, setStartImageSavingTeamNumber] = useState<number | null>(null);
   const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function confirmLiveAction() {
     if (!match || !liveAction || managing) return;
+    if (startIdentities.some((identity) => !identity.name.trim())) {
+      setStartModalError('Informe um nome para cada time antes de iniciar.');
+      return;
+    }
     setManaging(true);
-    setError(null);
+    setStartModalError(null);
     try {
       const token = await getAccessToken();
       if (!token) { goToLogin(); return; }
-      const updated = await startLiveMatch(token, match.id);
+      const updated = await startLiveMatch(
+        token,
+        match.id,
+        startIdentities.map((identity) => ({
+          teamNumber: identity.teamNumber,
+          name: identity.name.trim(),
+        })),
+      );
       setMatch(updated);
       setLiveAction(null);
       router.push({ pathname: '/live-match', params: { matchId: match.id } });
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível atualizar a partida.');
+      setStartModalError(exception instanceof Error ? exception.message : 'Não foi possível iniciar a partida.');
     } finally {
       setManaging(false);
+    }
+  }
+
+  async function openStartModal() {
+    if (!match || startModalLoading) return;
+    setLiveAction('start');
+    setStartModalLoading(true);
+    setStartModalError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      const identities = await getMatchTeamIdentities(token, match.id);
+      setStartIdentities(identities);
+    } catch (exception) {
+      setStartModalError(exception instanceof Error
+        ? exception.message
+        : 'Não foi possível carregar os times.');
+    } finally {
+      setStartModalLoading(false);
+    }
+  }
+
+  async function selectStartTeamImage(teamNumber: number) {
+    if (!match || startImageSavingTeamNumber != null) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    const selected = result.canceled ? null : result.assets[0];
+    if (!selected) return;
+
+    setStartImageSavingTeamNumber(teamNumber);
+    setStartModalError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      const uploaded = await uploadMatchTeamImage(token, match.id, teamNumber, {
+        uri: selected.uri,
+        fileName: selected.fileName,
+        mimeType: selected.mimeType,
+      });
+      setStartIdentities((current) => current.map((identity) => (
+        identity.teamNumber === uploaded.teamNumber
+          ? { ...identity, imageUrl: uploaded.imageUrl }
+          : identity
+      )));
+    } catch (exception) {
+      setStartModalError(exception instanceof Error
+        ? exception.message
+        : 'Não foi possível atualizar a imagem do time.');
+    } finally {
+      setStartImageSavingTeamNumber(null);
     }
   }
 
@@ -1263,7 +1337,7 @@ export default function MatchScreen() {
               {match.canManage && match.status === 'SCHEDULED' ? (
                 <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
                   <Text color="$onzeInk" fontSize={17} fontWeight="900">Gerenciar jogo</Text>
-                  <Button backgroundColor="$onzeGreen" height={48} onPress={() => setLiveAction('start')}>
+                  <Button backgroundColor="$onzeGreen" height={48} onPress={() => void openStartModal()}>
                     <Text color="$onzeSurface" fontWeight="900">Iniciar partida</Text>
                   </Button>
                   <Button
@@ -1318,13 +1392,22 @@ export default function MatchScreen() {
       ) : null}
 
       {match ? (
-        <ConfirmActionModal
+        <StartLiveMatchModal
           visible={liveAction != null}
-          title="Iniciar esta partida?"
-          message="As confirmações serão encerradas e o placar será aberto em uma tela própria."
-          confirmLabel="Iniciar partida"
-          loading={managing}
-          onCancel={() => setLiveAction(null)}
+          identities={startIdentities}
+          loading={startModalLoading}
+          saving={managing}
+          uploadingTeamNumber={startImageSavingTeamNumber}
+          error={startModalError}
+          onChangeName={(teamNumber, name) => setStartIdentities((current) => current.map(
+            (identity) => identity.teamNumber === teamNumber ? { ...identity, name } : identity,
+          ))}
+          onSelectImage={(teamNumber) => void selectStartTeamImage(teamNumber)}
+          onCancel={() => {
+            if (managing || startImageSavingTeamNumber != null) return;
+            setLiveAction(null);
+            setStartModalError(null);
+          }}
           onConfirm={() => void confirmLiveAction()}
         />
       ) : null}
