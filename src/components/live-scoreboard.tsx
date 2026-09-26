@@ -5,7 +5,7 @@ import { Text, XStack, YStack } from 'tamagui';
 import type { FootballMatch, LiveMatchState, LiveScoreSide } from '../lib/api';
 import { formatMatchTimer, liveMatchElapsedSeconds, liveScoreSideLabel } from '../lib/live-match';
 
-const DEFAULT_TEAM_IMAGE = require('../../assets/onze-icon.png');
+const DEFAULT_TEAM_IMAGE = require('../../assets/icon.png');
 
 type Props = {
   match: FootballMatch;

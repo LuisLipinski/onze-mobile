@@ -26,7 +26,7 @@ import {
 import { teamAssignmentReasonText } from '../src/lib/technical-ratings';
 import { calculateTeamLineStrengths, calculateTeamStrength } from '../src/lib/team-line-strength';
 
-const DEFAULT_TEAM_IMAGE = require('../assets/onze-icon.png');
+const DEFAULT_TEAM_IMAGE = require('../assets/icon.png');
 
 const FUTSAL_ROLE_LABELS: Record<string, string> = {
   GOALKEEPER: 'Goleiro',

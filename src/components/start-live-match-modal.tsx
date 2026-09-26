@@ -4,7 +4,7 @@ import { Button, Input, Spinner, Text, XStack, YStack } from 'tamagui';
 
 import type { MatchTeamIdentity } from '../lib/api';
 
-const DEFAULT_TEAM_IMAGE = require('../../assets/onze-icon.png');
+const DEFAULT_TEAM_IMAGE = require('../../assets/icon.png');
 
 function TeamEditor({
   identity,
