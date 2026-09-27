@@ -74,6 +74,89 @@ export type GroupMember = {
   sportsProfileComplete: boolean;
 };
 
+export type StatisticsTotals = {
+  gamesPlayed: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals: number;
+  assists: number;
+};
+
+export type StatisticsPlayer = {
+  userId: string;
+  displayName: string;
+  currentMember: boolean;
+  currentUser: boolean;
+  totals: StatisticsTotals;
+};
+
+export type StatisticsRankingEntry = {
+  rank: number;
+  userId: string;
+  displayName: string;
+  currentUser: boolean;
+  value: number;
+};
+
+export type StatisticsRankings = {
+  goals: StatisticsRankingEntry[];
+  assists: StatisticsRankingEntry[];
+  gamesPlayed: StatisticsRankingEntry[];
+  wins: StatisticsRankingEntry[];
+};
+
+export type StatisticsTeam = {
+  teamNumber: number;
+  name: string;
+  imageUrl: string | null;
+  score: number;
+};
+
+export type GroupMatchHistory = {
+  matchId: string;
+  startsAt: string;
+  finishedAt: string;
+  timeZone: string;
+  venue: string;
+  registeredGoals: number;
+  teams: StatisticsTeam[];
+};
+
+export type PlayerMatchResult = 'WIN' | 'DRAW' | 'LOSS';
+
+export type PlayerMatchHistory = {
+  matchId: string;
+  startsAt: string;
+  finishedAt: string;
+  timeZone: string;
+  venue: string;
+  teamNumber: number;
+  teamName: string;
+  teamImageUrl: string | null;
+  result: PlayerMatchResult;
+  goals: number;
+  assists: number;
+  teams: StatisticsTeam[];
+};
+
+export type GroupStatistics = {
+  groupId: string;
+  finishedMatches: number;
+  registeredGoals: number;
+  playersWithMatches: number;
+  currentPlayer: StatisticsPlayer;
+  players: StatisticsPlayer[];
+  rankings: StatisticsRankings;
+  matchHistory: GroupMatchHistory[];
+};
+
+export type PlayerStatistics = {
+  groupId: string;
+  player: StatisticsPlayer;
+  matchHistory: PlayerMatchHistory[];
+};
+
 export type SportsProfile = {
   membershipId: string;
   userId: string;
@@ -657,6 +740,27 @@ export function listGroupMembers(accessToken: string, groupId: string) {
       message: 'Estamos atualizando os membros e administradores do grupo.',
     },
   });
+}
+
+export function getGroupStatistics(accessToken: string, groupId: string) {
+  return request<GroupStatistics>(`/api/groups/${groupId}/statistics`, {
+    headers: authenticatedHeaders(accessToken),
+    loading: false,
+  });
+}
+
+export function getGroupPlayerStatistics(
+  accessToken: string,
+  groupId: string,
+  userId: string,
+) {
+  return request<PlayerStatistics>(
+    `/api/groups/${groupId}/statistics/players/${userId}`,
+    {
+      headers: authenticatedHeaders(accessToken),
+      loading: false,
+    },
+  );
 }
 
 export function getOwnSportsProfile(accessToken: string, groupId: string) {

@@ -320,6 +320,14 @@ export default function GroupScreen() {
                   });
                 }} />
 
+                <MenuButton label="Estatísticas" onPress={() => {
+                  setMenuVisible(false);
+                  router.push({
+                    pathname: '/group-statistics',
+                    params: { groupId: group.id, groupName: group.name },
+                  });
+                }} />
+
                 {isAdmin ? (
                   <MenuButton label="Ver membros" onPress={() => {
                     setMenuVisible(false);

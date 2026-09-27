@@ -42,6 +42,7 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 - Cadastro, login, solicitação e confirmação de recuperação de senha.
 - Lista, criação, edição e entrada em grupos.
 - Fluxo de foto e dados complementares do grupo.
+- Estatísticas do grupo com rankings, desempenho individual e histórico dos jogos encerrados.
 - Convite por link HTTPS/código, compartilhamento e regeneração.
 - Membros, promoção, rebaixamento, transferência do Principal e permissões individuais.
 - Perfil esportivo próprio e edição administrativa por jogador.
