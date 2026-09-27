@@ -4,6 +4,7 @@ import { Text, XStack, YStack } from 'tamagui';
 
 import type { FootballMatch, LiveMatchState, LiveScoreSide } from '../lib/api';
 import { formatMatchTimer, liveMatchElapsedSeconds, liveScoreSideLabel } from '../lib/live-match';
+import { ONZE_COLORS } from '../theme/colors';
 
 const DEFAULT_TEAM_IMAGE = require('../../assets/icon.png');
 
@@ -55,8 +56,8 @@ function ScoreControls({ label, side, onChangeScore, onRegisterGoal }: ScoreCont
         onPress={() => onChangeScore(side.sideNumber, -1)}
         style={({ pressed }) => ({
           alignItems: 'center',
-          backgroundColor: '#FFFFFF',
-          borderColor: '#DDE6E1',
+          backgroundColor: ONZE_COLORS.surface,
+          borderColor: ONZE_COLORS.border,
           borderRadius: 12,
           borderWidth: 1,
           height: 54,
@@ -73,7 +74,7 @@ function ScoreControls({ label, side, onChangeScore, onRegisterGoal }: ScoreCont
         onPress={() => onRegisterGoal(side.sideNumber)}
         style={({ pressed }) => ({
           alignItems: 'center',
-          backgroundColor: pressed ? '#0F6D3B' : '#148A4A',
+          backgroundColor: pressed ? ONZE_COLORS.greenPress : ONZE_COLORS.green,
           borderRadius: 12,
           height: 54,
           justifyContent: 'center',
@@ -118,7 +119,7 @@ export function LiveScoreboard({
     >
       <XStack
         alignItems="center"
-        backgroundColor={state.status === 'IN_PROGRESS' ? '#E8F7EE' : '#EEF2F0'}
+        backgroundColor={state.status === 'IN_PROGRESS' ? '$onzeSuccessBg' : '$onzeCanvas'}
         borderBottomColor="$onzeBorder"
         borderBottomWidth={1}
         gap="$2"
@@ -192,7 +193,7 @@ export function LiveScoreboard({
               <YStack
                 key={side.sideNumber}
                 alignItems="center"
-                backgroundColor="#F7FAF8"
+                backgroundColor="$onzeInfoBg"
                 borderColor="$onzeBorder"
                 borderRadius="$5"
                 borderWidth={1}

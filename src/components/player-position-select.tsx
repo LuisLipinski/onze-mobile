@@ -1,5 +1,7 @@
 import { Modal, Pressable, ScrollView } from 'react-native';
-import { Button, Text, YStack } from 'tamagui';
+import { Text, YStack } from 'tamagui';
+
+import { AppButton } from './app-button';
 
 import {
   PLAYER_POSITION_GROUPS,
@@ -30,13 +32,13 @@ export function PlayerPositionSelect({
 }: PlayerPositionSelectProps) {
   return (
     <>
-      <Button
+      <AppButton
         accessibilityLabel={label}
-        backgroundColor="$onzeSurface"
-        borderColor="$onzeBorder"
-        borderWidth={1}
+        variant="secondary"
+
+
         disabled={disabled}
-        height={52}
+
         justifyContent="space-between"
         onPress={onOpen}
       >
@@ -44,7 +46,7 @@ export function PlayerPositionSelect({
           {value ? positionLabel(value) : 'Selecionar posição'}
         </Text>
         <Text color="$onzeMuted">⌄</Text>
-      </Button>
+      </AppButton>
 
       <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
         <Pressable
@@ -71,10 +73,10 @@ export function PlayerPositionSelect({
                         const selected = option.value === value;
                         const optionDisabled = option.value === disabledPosition;
                         return (
-                          <Button
+                          <AppButton
                             key={option.value}
                             accessibilityState={{ disabled: optionDisabled, selected }}
-                            backgroundColor={selected ? '#EAF7EF' : '$onzeSurface'}
+                            backgroundColor={selected ? '$onzeSuccessBg' : '$onzeSurface'}
                             borderColor={selected ? '$onzeGreen' : '$onzeBorder'}
                             borderWidth={selected ? 2 : 1}
                             disabled={optionDisabled}
@@ -88,16 +90,16 @@ export function PlayerPositionSelect({
                             <Text color="$onzeInk" fontWeight="800">
                               {selected ? '✓ ' : ''}{option.label}
                             </Text>
-                          </Button>
+                          </AppButton>
                         );
                       })}
                     </YStack>
                   ))}
                 </YStack>
               </ScrollView>
-              <Button backgroundColor="$onzeCanvas" onPress={onClose}>
+              <AppButton backgroundColor="$onzeCanvas" onPress={onClose}>
                 <Text color="$onzeInk" fontWeight="800">Cancelar</Text>
-              </Button>
+              </AppButton>
             </YStack>
           </Pressable>
         </Pressable>

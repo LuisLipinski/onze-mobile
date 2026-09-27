@@ -6,7 +6,14 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { Button, Input, Text, XStack, YStack } from 'tamagui';
+import { Input, Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
+import { OnzeWordmark } from '../src/components/onze-wordmark';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { ApiRequestError, getCurrentUser, login } from '../src/lib/api';
@@ -143,9 +150,7 @@ export default function LoginScreen() {
         await clearSession();
       } else {
         setError(
-          exception instanceof Error
-            ? exception.message
-            : 'Não foi possível restaurar sua sessão. Tente entrar novamente.',
+          getErrorMessage(exception, 'Não foi possível restaurar sua sessão. Tente entrar novamente.'),
         );
       }
     } finally {
@@ -164,7 +169,7 @@ export default function LoginScreen() {
       await refreshBiometricCredentialAfterPassword(response.accessToken, response.user);
       goAfterAuthentication();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível entrar.');
+      setError(getErrorMessage(exception, 'Não foi possível entrar.'));
       setLoading(false);
     }
   }
@@ -222,9 +227,7 @@ export default function LoginScreen() {
 
       setPasswordLoginMode(true);
       setError(
-        exception instanceof Error
-          ? exception.message
-          : 'Não foi possível entrar com biometria. Use e-mail e senha.',
+        getErrorMessage(exception, 'Não foi possível entrar com biometria. Use e-mail e senha.'),
       );
     } finally {
       setBiometricLoading(false);
@@ -265,7 +268,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -280,14 +283,7 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <YStack gap="$7" backgroundColor="$onzeCanvas">
-            <YStack alignItems="center" gap="$2">
-              <Text color="$onzeGreen" fontSize={44} fontWeight="900" letterSpacing={2}>
-                ONZE
-              </Text>
-              <Text color="$onzeMuted" fontSize={16} fontWeight="600">
-                Organizador de Pelada
-              </Text>
-            </YStack>
+            <OnzeWordmark align="center" size="lg" subtitle />
 
             <YStack
               backgroundColor="$onzeSurface"
@@ -322,8 +318,8 @@ export default function LoginScreen() {
 
               {biometricLoginAvailable ? (
                 <YStack gap="$3">
-                  <Button
-                    accessibilityHint="Solicita sua digital para entrar nesta conta"
+                  <AppButton
+                    accessibilityHint="Solicita sua biometria para entrar nesta conta"
                     accessibilityLabel={`Entrar como ${biometricCredential?.displayName || biometricCredential?.email}`}
                     backgroundColor="$onzeCanvas"
                     borderColor="$onzeGreen"
@@ -361,43 +357,43 @@ export default function LoginScreen() {
                         </Text>
                         <Text color="$onzeGreen" fontSize={12} fontWeight="700">
                           {biometricLoading
-                            ? 'Validando sua digital...'
-                            : 'Toque para entrar com sua digital'}
+                            ? 'Validando sua biometria...'
+                            : 'Toque para entrar com biometria'}
                         </Text>
                       </YStack>
                       <Text color="$onzeGreen" fontSize={24} fontWeight="800">›</Text>
                     </XStack>
-                  </Button>
-                  <Button
-                    backgroundColor="$onzeSurface"
-                    borderColor="$onzeBorder"
+                  </AppButton>
+                  <AppButton
+                    variant="secondary"
+
                     borderRadius="$4"
-                    borderWidth={1}
-                    height={46}
+
+                    buttonSize="sm"
                     onPress={() => usePasswordLogin(false)}
                   >
                     <Text color="$onzeInk" fontSize={14} fontWeight="800">
                       Entrar com senha
                     </Text>
-                  </Button>
-                  <Button
-                    backgroundColor="transparent"
-                    height={42}
+                  </AppButton>
+                  <AppButton
+                    variant="ghost"
+                    buttonSize="sm"
                     onPress={() => usePasswordLogin(true)}
                   >
                     <Text color="$onzeGreen" fontSize={14} fontWeight="800">
                       Entrar com outra conta
                     </Text>
-                  </Button>
+                  </AppButton>
                 </YStack>
               ) : (
                 <>
                   {biometricCredential && biometricHardwareAvailable ? (
-                    <Button backgroundColor="transparent" height={40} onPress={useBiometricAccount}>
+                    <AppButton variant="ghost" buttonSize="sm" onPress={useBiometricAccount}>
                       <Text color="$onzeGreen" fontSize={13} fontWeight="700">
                         Voltar para {biometricCredential.displayName || biometricCredential.email}
                       </Text>
-                    </Button>
+                    </AppButton>
                   ) : null}
 
                   <Input
@@ -437,7 +433,7 @@ export default function LoginScreen() {
                   />
 
                   <Text color="$onzeMuted" fontSize={14} textAlign="right">
-                    <Link href="/forgot-password" style={{ color: '#148A4A', fontWeight: '700' }}>
+                    <Link href="/forgot-password" style={{ color: ONZE_COLORS.green, fontWeight: '700' }}>
                       Esqueci minha senha
                     </Link>
                   </Text>
@@ -448,17 +444,17 @@ export default function LoginScreen() {
                     </Text>
                   ) : null}
 
-                  <Button
-                    backgroundColor="$onzeGreen"
+                  <AppButton
+                    variant="primary"
                     borderRadius="$4"
-                    height={52}
+
                     onPress={submit}
                     pressStyle={{ backgroundColor: '$onzeGreenPress' }}
                   >
                     <Text color="$onzeSurface" fontSize={16} fontWeight="800">
                       Entrar
                     </Text>
-                  </Button>
+                  </AppButton>
 
                   <Text color="$onzeMuted" fontSize={14} textAlign="center">
                     Ainda não tem conta?{' '}
@@ -468,7 +464,7 @@ export default function LoginScreen() {
                           ? { pathname: '/register', params: { joinCode: params.joinCode } }
                           : '/register'
                       }
-                      style={{ color: '#148A4A', fontWeight: '700' }}
+                      style={{ color: ONZE_COLORS.green, fontWeight: '700' }}
                     >
                       Criar conta
                     </Link>

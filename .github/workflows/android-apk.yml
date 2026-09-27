@@ -17,6 +17,7 @@ jobs:
       CI: true
       EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
       EXPO_PUBLIC_EAS_PROJECT_ID: ${{ vars.EXPO_PUBLIC_EAS_PROJECT_ID }}
+      EXPO_PUBLIC_ENV: ${{ (github.ref_name == 'master' || github.base_ref == 'master') && 'production' || 'development' }}
 
     steps:
       - name: Checkout

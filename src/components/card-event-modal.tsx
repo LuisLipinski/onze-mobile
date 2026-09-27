@@ -1,7 +1,10 @@
 import { Modal, Pressable, ScrollView } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { AppButton } from './app-button';
 
 import type { GeneratedTeam, MatchCardType } from '../lib/api';
+import { ONZE_COLORS } from '../theme/colors';
 
 type Props = {
   visible: boolean;
@@ -23,8 +26,8 @@ function Choice({ label, selected, color, disabled = false, onPress }: {
 }) {
   return (
     <Pressable disabled={disabled} onPress={onPress} hitSlop={6} accessibilityState={{ disabled, selected }} style={({ pressed }) => ({
-      backgroundColor: disabled ? '#FFF1F1' : selected ? (color ?? '#148A4A') : '#F7FAF8',
-      borderColor: disabled ? '#E7A3A3' : selected ? (color ?? '#148A4A') : '#DDE6E1',
+      backgroundColor: disabled ? ONZE_COLORS.dangerBg : selected ? (color ?? ONZE_COLORS.green) : ONZE_COLORS.infoBg,
+      borderColor: disabled ? ONZE_COLORS.dangerBorder : selected ? (color ?? ONZE_COLORS.green) : ONZE_COLORS.border,
       borderRadius: 12, borderWidth: 1, opacity: disabled ? 0.72 : pressed ? 0.75 : 1,
       paddingHorizontal: 14, paddingVertical: 11,
     })}>
@@ -51,8 +54,8 @@ export function CardEventModal(props: Props) {
               <YStack gap="$2">
                 <Text color="$onzeInk" fontWeight="900">Cartão</Text>
                 <XStack gap="$2">
-                  <Choice label="Amarelo" selected={props.cardType === 'YELLOW'} color="#D6A600" onPress={() => props.onSelectCardType('YELLOW')} />
-                  <Choice label="Vermelho" selected={props.cardType === 'RED'} color="#C53030" onPress={() => props.onSelectCardType('RED')} />
+                  <Choice label="Amarelo" selected={props.cardType === 'YELLOW'} color={ONZE_COLORS.warning} onPress={() => props.onSelectCardType('YELLOW')} />
+                  <Choice label="Vermelho" selected={props.cardType === 'RED'} color={ONZE_COLORS.danger} onPress={() => props.onSelectCardType('RED')} />
                 </XStack>
               </YStack>
               <YStack gap="$2">
@@ -68,10 +71,10 @@ export function CardEventModal(props: Props) {
                 </XStack>
               </YStack> : null}
               <XStack gap="$3">
-                <Button flex={1} height={52} disabled={props.saving} onPress={props.onCancel}>Cancelar</Button>
-                <Button backgroundColor="$onzeGreen" flex={1} height={52} disabled={!props.playerAssignmentId || props.saving} opacity={!props.playerAssignmentId || props.saving ? 0.55 : 1} onPress={props.onSave}>
+                <AppButton variant="secondary" flex={1} disabled={props.saving} onPress={props.onCancel}>Cancelar</AppButton>
+                <AppButton variant="primary" flex={1}  disabled={!props.playerAssignmentId || props.saving} opacity={!props.playerAssignmentId || props.saving ? 0.55 : 1} onPress={props.onSave}>
                   <Text color="$onzeSurface" fontWeight="900">{props.saving ? 'Salvando...' : 'Salvar cartão'}</Text>
-                </Button>
+                </AppButton>
               </XStack>
             </YStack>
           </ScrollView>

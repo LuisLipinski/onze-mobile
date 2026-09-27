@@ -1,7 +1,13 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
@@ -51,7 +57,7 @@ export default function GroupCreditsScreen() {
         router.replace('/');
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar os créditos.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar os créditos.'));
     } finally {
       setLoading(false);
     }
@@ -68,12 +74,12 @@ export default function GroupCreditsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <Button alignSelf="flex-start" backgroundColor="transparent" onPress={goBack}>
+          <AppButton alignSelf="flex-start" variant="ghost" onPress={goBack}>
             <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-          </Button>
+          </AppButton>
 
           <YStack gap="$2">
             <Text color="$onzeMuted" fontSize={12} fontWeight="900">
@@ -90,9 +96,9 @@ export default function GroupCreditsScreen() {
           {error ? (
             <YStack backgroundColor="$onzeSurface" borderColor="$onzeDanger" borderRadius="$5" borderWidth={1} gap="$3" padding="$4">
               <Text color="$onzeDanger" fontSize={13}>{error}</Text>
-              <Button backgroundColor="$onzeGreen" onPress={() => void loadCredits()}>
+              <AppButton variant="primary" onPress={() => void loadCredits()}>
                 <Text color="$onzeSurface" fontWeight="800">Tentar novamente</Text>
-              </Button>
+              </AppButton>
             </YStack>
           ) : null}
 
@@ -153,17 +159,17 @@ export default function GroupCreditsScreen() {
                       : 'Aguardando a resposta de presença. Se a pessoa não for, o saldo será liberado novamente.'}
                   </Text>
                   {credit.allocatedMatchId ? (
-                    <Button
-                      backgroundColor="$onzeSurface"
-                      borderColor="$onzeGreen"
-                      borderWidth={1}
+                    <AppButton
+                      variant="outline"
+
+
                       onPress={() => router.push({
                         pathname: '/match',
                         params: { matchId: credit.allocatedMatchId ?? '' },
                       })}
                     >
                       <Text color="$onzeGreen" fontWeight="900">Ver partida</Text>
-                    </Button>
+                    </AppButton>
                   ) : null}
                 </YStack>
               ) : null}

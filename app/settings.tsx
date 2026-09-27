@@ -1,7 +1,11 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { SafeAreaView, ScrollView, Switch } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
 import {
@@ -133,7 +137,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <YStack flex={1}>
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
           <YStack gap="$5" paddingVertical="$3">
@@ -166,8 +170,8 @@ export default function SettingsScreen() {
                   accessibilityLabel="Login com biometria"
                   disabled={updatingBiometric || (!biometricAvailable && !biometricEnabled)}
                   onValueChange={(value) => void onBiometricToggle(value)}
-                  thumbColor="#FFFFFF"
-                  trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
+                  thumbColor={ONZE_COLORS.surface}
+                  trackColor={{ false: ONZE_COLORS.switchTrack, true: ONZE_COLORS.green }}
                   value={biometricEnabled}
                 />
               </XStack>
@@ -197,15 +201,15 @@ export default function SettingsScreen() {
               <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
                 Ao sair, a sessão é encerrada. Se a biometria estiver ativa, esta conta continua disponível na entrada, mas você também pode escolher outra conta.
               </Text>
-              <Button
-                backgroundColor="$onzeSurface"
-                borderColor="$onzeDanger"
-                borderWidth={1}
-                height={48}
+              <AppButton
+                variant="destructiveOutline"
+
+
+
                 onPress={() => void logout()}
               >
                 <Text color="$onzeDanger" fontWeight="800">Sair da conta</Text>
-              </Button>
+              </AppButton>
             </YStack>
           </YStack>
         </ScrollView>

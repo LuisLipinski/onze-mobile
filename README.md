@@ -136,6 +136,7 @@ Variáveis opcionais:
 
 - `EXPO_PUBLIC_API_URL`: URL da API; sem ela, usa o Render de desenvolvimento.
 - `EXPO_PUBLIC_EAS_PROJECT_ID`: projeto usado para gerar o Expo Push Token; o `projectId` do `app.json` é o fallback.
+- `EXPO_PUBLIC_ENV`: use `development` somente nos APKs internos que podem exibir ferramentas de teste; builds de produção devem usar `production`.
 
 ## Planejado, ainda não disponível
 

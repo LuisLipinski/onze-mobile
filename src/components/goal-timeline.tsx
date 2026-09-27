@@ -3,6 +3,7 @@ import { Text, XStack, YStack } from 'tamagui';
 
 import type { CardEvent, FootballMatch, GoalEvent, LiveScoreSide } from '../lib/api';
 import { formatMatchTimer, liveScoreSideLabel, secondYellowCardEventIds } from '../lib/live-match';
+import { ONZE_COLORS } from '../theme/colors';
 
 type EventKind = 'GOAL' | 'CARD';
 
@@ -22,7 +23,7 @@ function DeleteEventButton({ align, disabled, onPress }: {
       style={({ pressed }) => ({
         alignItems: 'center',
         alignSelf: align === 'left' ? 'flex-end' : 'flex-start',
-        backgroundColor: '#FDECEC',
+        backgroundColor: ONZE_COLORS.dangerBg,
         borderRadius: 999,
         height: 32,
         justifyContent: 'center',
@@ -66,7 +67,9 @@ function GoalDetails({ event, align, deletionDisabled, onDelete }: {
 
 type TimelineEvent = (GoalEvent & { kind: 'GOAL' }) | (CardEvent & { kind: 'CARD' });
 
-function CardShape({ color }: { color: '#E5B900' | '#C53030' }) {
+function CardShape({ color }: {
+  color: typeof ONZE_COLORS.warning | typeof ONZE_COLORS.danger;
+}) {
   return <YStack backgroundColor={color} borderRadius={2} height={22} width={15} />;
 }
 
@@ -77,16 +80,16 @@ function CardDetails({ event, align, secondYellow, deletionDisabled, onDelete }:
   deletionDisabled: boolean;
   onDelete?: () => void;
 }) {
-  const color = event.cardType === 'YELLOW' ? '#E5B900' : '#C53030';
+  const color = event.cardType === 'YELLOW' ? ONZE_COLORS.warning : ONZE_COLORS.danger;
   return <YStack alignItems={align === 'left' ? 'flex-end' : 'flex-start'} flex={1} minWidth={0}>
     <XStack alignItems="center" gap="$2" flexDirection={align === 'left' ? 'row' : 'row-reverse'}>
       <Text color="$onzeInk" fontWeight="900" numberOfLines={1}>{event.playerDisplayName}</Text>
       {secondYellow ? (
         <XStack alignItems="center" gap="$1">
-          <CardShape color="#E5B900" />
-          <CardShape color="#E5B900" />
+          <CardShape color={ONZE_COLORS.warning} />
+          <CardShape color={ONZE_COLORS.warning} />
           <Text color="$onzeMuted" fontWeight="900">→</Text>
-          <CardShape color="#C53030" />
+          <CardShape color={ONZE_COLORS.danger} />
         </XStack>
       ) : <CardShape color={color} />}
     </XStack>
@@ -137,7 +140,7 @@ export function GoalTimeline({
       borderWidth={1}
       overflow="hidden"
     >
-      <YStack backgroundColor="#E8F7EE" gap="$1" padding="$4">
+      <YStack backgroundColor="$onzeSuccessBg" gap="$1" padding="$4">
         <Text color="$onzeInk" fontSize={18} fontWeight="900">Linha do tempo</Text>
         <Text color="$onzeMuted" fontSize={12}>Gols e cartões mais recentes aparecem primeiro.</Text>
       </YStack>

@@ -6,7 +6,13 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { Button, Input, Text, YStack } from 'tamagui';
+import { Input, Text, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { confirmPasswordReset, requestPasswordReset } from '../src/lib/api';
@@ -33,7 +39,7 @@ export default function ResetPasswordScreen() {
       router.replace({ pathname: '/', params: { passwordReset: '1' } });
     } catch (exception) {
       setError(
-        exception instanceof Error ? exception.message : 'Não foi possível alterar sua senha.',
+        getErrorMessage(exception, 'Não foi possível alterar sua senha.'),
       );
       setLoading(false);
     }
@@ -50,7 +56,7 @@ export default function ResetPasswordScreen() {
       setMessage('Se o reenvio estiver liberado, um novo código será enviado para seu e-mail.');
     } catch (exception) {
       setError(
-        exception instanceof Error ? exception.message : 'Não foi possível solicitar outro código.',
+        getErrorMessage(exception, 'Não foi possível solicitar outro código.'),
       );
     } finally {
       setResending(false);
@@ -67,7 +73,7 @@ export default function ResetPasswordScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -154,34 +160,34 @@ export default function ResetPasswordScreen() {
               </Text>
             ) : null}
 
-            <Button
-              backgroundColor="$onzeGreen"
+            <AppButton
+              variant="primary"
               borderRadius="$4"
-              height={52}
+
               onPress={submit}
               pressStyle={{ backgroundColor: '$onzeGreenPress' }}
             >
               <Text color="$onzeSurface" fontSize={16} fontWeight="800">
                 Alterar senha
               </Text>
-            </Button>
+            </AppButton>
 
-            <Button
-              backgroundColor="$onzeSurface"
-              borderColor="$onzeBorder"
+            <AppButton
+              variant="secondary"
+
               borderRadius="$4"
-              borderWidth={1}
+
               disabled={resending}
-              height={48}
+
               onPress={resend}
             >
               <Text color="$onzeInk" fontSize={14} fontWeight="700">
                 {resending ? 'Solicitando...' : 'Reenviar código'}
               </Text>
-            </Button>
+            </AppButton>
 
             <Text color="$onzeMuted" fontSize={14} textAlign="center">
-              <Link href="/" style={{ color: '#148A4A', fontWeight: '700' }}>
+              <Link href="/" style={{ color: ONZE_COLORS.green, fontWeight: '700' }}>
                 Voltar para o login
               </Link>
             </Text>

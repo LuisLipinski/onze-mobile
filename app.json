@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "scheme": "onze",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "android": {
       "package": "com.onze.organizadordepelada",

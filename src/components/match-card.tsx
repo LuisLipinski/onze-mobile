@@ -2,35 +2,7 @@ import { Pressable } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import type { FootballMatch } from '../lib/api';
-
-function formatDate(match: FootballMatch) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: match.timeZone,
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short',
-  }).format(new Date(match.startsAt));
-}
-
-function formatTime(match: FootballMatch) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: match.timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(match.startsAt));
-}
-
-function formatDeadline(value: string, timeZone: string) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone,
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(value));
-}
+import { formatDateTime, formatTime, formatWeekdayShortDate } from '../lib/date-format';
 
 function attendanceMessage(match: FootballMatch) {
   if (match.status === 'CANCELLED') {
@@ -41,15 +13,7 @@ function attendanceMessage(match: FootballMatch) {
     return hasOpenSettlement ? 'Jogo cancelado · acertos pendentes' : 'Jogo cancelado';
   }
   if (!match.attendanceOpen) {
-    const opening = new Intl.DateTimeFormat('pt-BR', {
-      timeZone: match.timeZone,
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(new Date(match.attendanceOpensAt));
-    return `Presença abre em ${opening}`;
+    return `Presença abre em ${formatDateTime(match.attendanceOpensAt, match.timeZone)}`;
   }
   if (match.myPaymentDeadlineRemovedAt) {
     return 'Removido por falta de pagamento';
@@ -109,10 +73,10 @@ export function MatchCard({
             paddingVertical="$3"
           >
             <Text color="$onzeSurface" fontSize={13} fontWeight="800" textTransform="uppercase">
-              {formatDate(match).split(',')[0]}
+              {formatWeekdayShortDate(match.startsAt, match.timeZone).split(',')[0]}
             </Text>
             <Text color="$onzeSurface" fontSize={18} fontWeight="900">
-              {formatTime(match)}
+              {formatTime(match.startsAt, match.timeZone)}
             </Text>
           </YStack>
 
@@ -123,7 +87,7 @@ export function MatchCard({
               </Text>
             ) : null}
             <Text color={match.status === 'CANCELLED' ? '$onzeDanger' : '$onzeInk'} fontSize={17} fontWeight="900" textTransform="capitalize">
-              {formatDate(match)}
+              {formatWeekdayShortDate(match.startsAt, match.timeZone)}
             </Text>
             <Text color="$onzeMuted" fontSize={13} numberOfLines={1}>{match.venue}</Text>
           </YStack>
@@ -133,7 +97,7 @@ export function MatchCard({
         <XStack alignItems="center" gap="$2" justifyContent="space-between">
           <YStack
             backgroundColor={match.status === 'CANCELLED'
-              ? '#FDECEC'
+              ? '$onzeDangerBg'
               : match.attendanceOpen ? '$onzeCanvas' : '$onzeBorder'}
             borderRadius={999}
             paddingHorizontal="$3"
@@ -159,11 +123,11 @@ export function MatchCard({
         {match.status === 'SCHEDULED' && match.attendanceOpen ? (
           <YStack gap="$1">
             <Text color={match.signupOpen ? '$onzeMuted' : '$onzeDanger'} fontSize={11} fontWeight="700">
-              Inscrições até {formatDeadline(match.signupDeadline, match.timeZone)}
+              Inscrições até {formatDateTime(match.signupDeadline, match.timeZone)}
             </Text>
             {match.paymentRequired && match.paymentDeadline ? (
               <Text color={match.paymentOpen ? '$onzeMuted' : '$onzeDanger'} fontSize={11} fontWeight="700">
-                Pagamento até {formatDeadline(match.paymentDeadline, match.timeZone)}
+                Pagamento até {formatDateTime(match.paymentDeadline, match.timeZone)}
               </Text>
             ) : null}
           </YStack>

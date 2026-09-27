@@ -3,7 +3,14 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
+import { OnzeWordmark } from '../src/components/onze-wordmark';
 
 import {
   ApiRequestError,
@@ -15,6 +22,7 @@ import {
   updateMatchTeamAssignment,
 } from '../src/lib/api';
 import { getAccessToken } from '../src/lib/auth-storage';
+import { DEVELOPMENT_TOOLS_ENABLED } from '../src/lib/environment';
 import { modalityLabel } from '../src/lib/match-modality';
 import { positionLabel } from '../src/lib/sports-profile';
 import { buildTeamFormation, sortTeamAssignments } from '../src/lib/team-formation';
@@ -137,10 +145,10 @@ function FormationPitch({
               },
             ]}
           >
-            <Text color="#123B2A" fontSize={9} fontWeight="900" numberOfLines={1} textAlign="center">
+            <Text color="$onzeInk" fontSize={9} fontWeight="900" numberOfLines={1} textAlign="center">
               {player.assignment.displayName}
             </Text>
-            <Text color="#2F6B50" fontSize={8} fontWeight="800" numberOfLines={1} textAlign="center">
+            <Text color="$onzeGreen" fontSize={8} fontWeight="800" numberOfLines={1} textAlign="center">
               {roleLabel(player.assignment.assignedRole)}
             </Text>
           </View>
@@ -184,9 +192,9 @@ function ShareLineupCard({
 }) {
   return (
     <View style={styles.shareCard}>
-      <Text color="#176B45" fontSize={16} fontWeight="900">ONZE • ESCALAÇÃO</Text>
-      <Text color="#183B2C" fontSize={28} fontWeight="900">Times da partida</Text>
-      <Text color="#60746A" fontSize={14}>{modalityLabel(data.modality)}</Text>
+      <OnzeWordmark size="sm" suffix="ESCALAÇÃO" />
+      <Text color="$onzeInk" fontSize={28} fontWeight="900">Times da partida</Text>
+      <Text color="$onzeMuted" fontSize={14}>{modalityLabel(data.modality)}</Text>
       <YStack gap="$5" marginTop="$4">
         {data.teams.map((team) => (
           <YStack key={team.teamNumber} gap="$2">
@@ -197,7 +205,7 @@ function ShareLineupCard({
                 source={team.imageUrl ? { uri: team.imageUrl } : DEFAULT_TEAM_IMAGE}
                 style={{ width: 44, height: 44, borderRadius: 12 }}
               />
-              <Text color="#183B2C" flex={1} fontSize={20} fontWeight="900">{team.name}</Text>
+              <Text color="$onzeInk" flex={1} fontSize={20} fontWeight="900">{team.name}</Text>
             </XStack>
             <FormationPitch
               assignments={team.assignments}
@@ -208,7 +216,9 @@ function ShareLineupCard({
           </YStack>
         ))}
       </YStack>
-      <Text color="#60746A" fontSize={11} marginTop="$4">Onze – Organizador de Pelada</Text>
+      <YStack marginTop="$4">
+        <OnzeWordmark size="xs" suffix="Organizador de Pelada" />
+      </YStack>
     </View>
   );
 }
@@ -251,7 +261,7 @@ export default function MatchTeamsScreen() {
       setData(teams);
       setReserveIds(new Set(reserves.reserveAssignmentIds));
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar os times.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar os times.'));
     } finally {
       setLoading(false);
     }
@@ -276,7 +286,7 @@ export default function MatchTeamsScreen() {
       if (exception instanceof ApiRequestError && exception.code === 'MINIMUM_PLAYERS_NOT_REACHED') {
         setError(exception.message);
       } else {
-        setError(exception instanceof Error ? exception.message : 'Não foi possível formar os times.');
+        setError(getErrorMessage(exception, 'Não foi possível formar os times.'));
       }
     } finally {
       setGenerating(false);
@@ -302,7 +312,7 @@ export default function MatchTeamsScreen() {
         assignment.assignedRole,
       ));
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível mover o jogador.');
+      setError(getErrorMessage(exception, 'Não foi possível mover o jogador.'));
     } finally {
       setSavingId(null);
     }
@@ -330,7 +340,7 @@ export default function MatchTeamsScreen() {
         assignedRole,
       ));
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível alterar a posição do jogador.');
+      setError(getErrorMessage(exception, 'Não foi possível alterar a posição do jogador.'));
     } finally {
       setSavingId(null);
     }
@@ -369,7 +379,7 @@ export default function MatchTeamsScreen() {
       );
       setReserveIds(new Set(updated.reserveAssignmentIds));
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível alterar a reserva.');
+      setError(getErrorMessage(exception, 'Não foi possível alterar a reserva.'));
     } finally {
       setSavingId(null);
     }
@@ -394,7 +404,7 @@ export default function MatchTeamsScreen() {
         mimeType: 'image/png',
       });
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível compartilhar a escalação.');
+      setError(getErrorMessage(exception, 'Não foi possível compartilhar a escalação.'));
     } finally {
       setSharing(false);
     }
@@ -403,7 +413,7 @@ export default function MatchTeamsScreen() {
   const hasTeams = Boolean(data?.teams.some((team) => team.assignments.length));
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       {data && hasTeams ? (
         <View pointerEvents="none" style={styles.shareCaptureHost}>
           <View ref={shareRef} collapsable={false}>
@@ -414,9 +424,9 @@ export default function MatchTeamsScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <Button alignSelf="flex-start" backgroundColor="transparent" onPress={() => router.back()}>
+          <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
             <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-          </Button>
+          </AppButton>
           <YStack gap="$1">
             <Text color="$onzeGreen" fontSize={13} fontWeight="900">TIMES DA PARTIDA</Text>
             <Text color="$onzeInk" fontSize={28} fontWeight="900">Escalação</Text>
@@ -428,29 +438,29 @@ export default function MatchTeamsScreen() {
           </YStack>
 
           {error ? (
-            <YStack backgroundColor="#FDECEC" borderRadius="$5" padding="$4">
+            <YStack backgroundColor="$onzeDangerBg" borderRadius="$5" padding="$4">
               <Text color="$onzeDanger" fontSize={13} lineHeight={19}>{error}</Text>
             </YStack>
           ) : null}
 
           {data?.generationNotice ? (
-            <YStack backgroundColor="#FFF7E6" borderColor="#D8A331" borderRadius="$5" borderWidth={1} padding="$4">
-              <Text color="#8A6414" fontSize={13} lineHeight={19}>{data.generationNotice}</Text>
+            <YStack backgroundColor="$onzeWarningBg" borderColor="$onzeWarningBorder" borderRadius="$5" borderWidth={1} padding="$4">
+              <Text color="$onzeWarningText" fontSize={13} lineHeight={19}>{data.generationNotice}</Text>
             </YStack>
           ) : null}
 
           {loading ? <Text color="$onzeMuted">Carregando...</Text> : null}
 
           {data && data.confirmedPlayers < data.minimumPlayers ? (
-            <YStack backgroundColor="#FFF7E6" borderColor="#D8A331" borderRadius="$5" borderWidth={1} gap="$1" padding="$4">
-              <Text color="#8A6414" fontSize={13} fontWeight="900">Partida abaixo do mínimo</Text>
+            <YStack backgroundColor="$onzeWarningBg" borderColor="$onzeWarningBorder" borderRadius="$5" borderWidth={1} gap="$1" padding="$4">
+              <Text color="$onzeWarningText" fontSize={13} fontWeight="900">Partida abaixo do mínimo</Text>
               <Text color="$onzeInk" fontSize={12} lineHeight={18}>
                 Há {data.confirmedPlayers} de {data.minimumPlayers} jogadores mínimos. Se o administrador autorizou continuar, o formador tentará equilibrar os disponíveis, mas posições e força podem não ficar ideais. Revise os times antes de confirmar.
               </Text>
             </YStack>
           ) : data?.reducedTeams ? (
-            <YStack backgroundColor="#FFF7E6" borderRadius="$5" padding="$4">
-              <Text color="#8A6414" fontSize={13} fontWeight="800">
+            <YStack backgroundColor="$onzeWarningBg" borderRadius="$5" padding="$4">
+              <Text color="$onzeWarningText" fontSize={13} fontWeight="800">
                 Há menos jogadores que o ideal de {data.idealPlayers}. O formador usará os confirmados disponíveis.
               </Text>
             </YStack>
@@ -458,37 +468,39 @@ export default function MatchTeamsScreen() {
 
           {data?.technicalDetailsVisible ? (
             <YStack gap="$2">
-              <Button backgroundColor="$onzeGreen" disabled={generating} height={52} onPress={() => void generate()}>
+              <AppButton variant="primary" disabled={generating}  onPress={() => void generate()}>
                 <Text color="$onzeSurface" fontWeight="900">
                   {generating ? 'Formando...' : hasTeams ? 'Gerar novamente' : 'Formar times automaticamente'}
                 </Text>
-              </Button>
-              <Button
-                backgroundColor="$onzeCanvas"
-                height={46}
-                onPress={() => {
-                  if (!params.matchId) return;
-                  router.push({ pathname: '/dev-test-data', params: { matchId: params.matchId } });
-                }}
-              >
-                <Text color="$onzeGreen" fontWeight="900">🧪 Ferramentas de teste</Text>
-              </Button>
+              </AppButton>
+              {DEVELOPMENT_TOOLS_ENABLED ? (
+                <AppButton
+                  backgroundColor="$onzeCanvas"
+                  buttonSize="sm"
+                  onPress={() => {
+                    if (!params.matchId) return;
+                    router.push({ pathname: '/dev-test-data', params: { matchId: params.matchId } });
+                  }}
+                >
+                  <Text color="$onzeGreen" fontWeight="900">🧪 Ferramentas de teste</Text>
+                </AppButton>
+              ) : null}
             </YStack>
           ) : null}
 
           {hasTeams ? (
-            <Button
-              backgroundColor="#E7F3EC"
+            <AppButton
+              backgroundColor="$onzeSuccessBg"
               borderColor="$onzeGreen"
               borderWidth={1}
               disabled={sharing}
-              height={48}
+
               onPress={() => void shareLineup()}
             >
               <Text color="$onzeGreen" fontWeight="900">
                 {sharing ? 'Preparando imagem...' : 'Compartilhar escalação'}
               </Text>
-            </Button>
+            </AppButton>
           ) : null}
 
           {!loading && data && !hasTeams ? (
@@ -563,7 +575,7 @@ export default function MatchTeamsScreen() {
                             <XStack alignItems="center" flexWrap="wrap" gap="$2">
                               <Text color="$onzeInk" fontSize={15} fontWeight="900">{assignment.displayName}</Text>
                               {isReserve ? (
-                                <Text backgroundColor="#FFF1CC" borderRadius="$2" color="#8A6414" fontSize={9} fontWeight="900" paddingHorizontal="$2" paddingVertical={2}>
+                                <Text backgroundColor="$onzeWarningSoft" borderRadius="$2" color="$onzeWarningText" fontSize={9} fontWeight="900" paddingHorizontal="$2" paddingVertical={2}>
                                   RESERVA
                                 </Text>
                               ) : null}
@@ -571,8 +583,8 @@ export default function MatchTeamsScreen() {
                             <Text color="$onzeGreen" fontSize={12} fontWeight="800">{roleLabel(assignment.assignedRole)}</Text>
                           </YStack>
                           {data.technicalDetailsVisible ? (
-                            <Button
-                              backgroundColor={editing ? '#DDEFE4' : '$onzeCanvas'}
+                            <AppButton
+                              backgroundColor={editing ? '$onzeSuccessSoft' : '$onzeCanvas'}
                               disabled={Boolean(savingId)}
                               minHeight={38}
                               onPress={() => setEditingId(editing ? null : assignment.id)}
@@ -581,16 +593,16 @@ export default function MatchTeamsScreen() {
                               <Text color="$onzeGreen" fontSize={11} fontWeight="900">
                                 {editing ? 'Fechar' : 'Editar'}
                               </Text>
-                            </Button>
+                            </AppButton>
                           ) : null}
                         </XStack>
 
                         {editing && data.technicalDetailsVisible ? (
-                          <YStack backgroundColor="#F7FAF8" borderColor="$onzeBorder" borderRadius="$4" borderWidth={1} gap="$3" padding="$3">
+                          <YStack backgroundColor="$onzeInfoBg" borderColor="$onzeBorder" borderRadius="$4" borderWidth={1} gap="$3" padding="$3">
                             <Text color="$onzeInk" fontSize={12} fontWeight="900">Posição nesta partida</Text>
                             <XStack flexWrap="wrap" gap="$2">
                               {editableRoles(data.modality).map((role) => (
-                                <Button
+                                <AppButton
                                   key={role}
                                   backgroundColor={assignment.assignedRole === role ? '$onzeGreen' : '$onzeCanvas'}
                                   disabled={Boolean(savingId)}
@@ -605,21 +617,21 @@ export default function MatchTeamsScreen() {
                                   >
                                     {roleLabel(role)}
                                   </Text>
-                                </Button>
+                                </AppButton>
                               ))}
                             </XStack>
                             <XStack flexWrap="wrap" gap="$2">
-                              <Button
-                                backgroundColor={isReserve ? '#DDEFE4' : '#FFF1CC'}
+                              <AppButton
+                                backgroundColor={isReserve ? '$onzeSuccessSoft' : '$onzeWarningSoft'}
                                 disabled={Boolean(savingId)}
                                 minHeight={38}
                                 onPress={() => void toggleReserve(assignment, team.assignments)}
                               >
-                                <Text color={isReserve ? '$onzeGreen' : '#8A6414'} fontSize={11} fontWeight="900">
+                                <Text color={isReserve ? '$onzeGreen' : '$onzeWarningText'} fontSize={11} fontWeight="900">
                                   {isReserve ? 'Colocar em campo' : 'Mandar para reserva'}
                                 </Text>
-                              </Button>
-                              <Button
+                              </AppButton>
+                              <AppButton
                                 backgroundColor="$onzeCanvas"
                                 disabled={Boolean(savingId)}
                                 minHeight={38}
@@ -628,7 +640,7 @@ export default function MatchTeamsScreen() {
                                 <Text color="$onzeGreen" fontSize={11} fontWeight="900">
                                   {savingId === assignment.id ? 'Salvando...' : 'Próximo time'}
                                 </Text>
-                              </Button>
+                              </AppButton>
                             </XStack>
                             <Text color="$onzeMuted" fontSize={10} lineHeight={15}>
                               A posição vale apenas para esta partida. A força é recalculada usando a função escolhida.
@@ -663,8 +675,8 @@ export default function MatchTeamsScreen() {
 const styles = StyleSheet.create({
   pitch: {
     aspectRatio: 1.72,
-    backgroundColor: '#DDEFE4',
-    borderColor: '#79A98D',
+    backgroundColor: ONZE_COLORS.successSoft,
+    borderColor: ONZE_COLORS.successBorder,
     borderRadius: 14,
     borderWidth: 1,
     overflow: 'hidden',
@@ -719,7 +731,7 @@ const styles = StyleSheet.create({
   },
   playerChip: {
     backgroundColor: 'rgba(255,255,255,0.94)',
-    borderColor: '#8EB79D',
+    borderColor: ONZE_COLORS.successBorder,
     borderRadius: 8,
     borderWidth: 1,
     minHeight: 38,
@@ -735,7 +747,7 @@ const styles = StyleSheet.create({
     width: 680,
   },
   shareCard: {
-    backgroundColor: '#F4F7F5',
+    backgroundColor: ONZE_COLORS.canvas,
     padding: 28,
     width: 680,
   },

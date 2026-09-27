@@ -7,10 +7,23 @@ import {
   ScrollView,
   Switch,
 } from 'react-native';
-import { Button, Input, Text, TextArea, XStack, YStack } from 'tamagui';
+import { Input, Text, TextArea, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { createMatch, MatchModality, MatchType } from '../src/lib/api';
 import { getAccessToken } from '../src/lib/auth-storage';
+import {
+  formatDateInput,
+  formatShortDate,
+  formatTimeInput,
+  parseBrazilianDate,
+  parseTime,
+} from '../src/lib/date-format';
 import {
   getMatchFormatValidationError,
   requiredGoalkeepersAfterTeamCountChange,
@@ -32,51 +45,7 @@ const MATCH_TIME_ZONE = 'America/Sao_Paulo';
 function defaultDate() {
   const date = new Date();
   date.setDate(date.getDate() + 1);
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: MATCH_TIME_ZONE,
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date);
-}
-
-function parseDate(value: string) {
-  const match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!match) return null;
-
-  const day = Number(match[1]);
-  const month = Number(match[2]);
-  const year = Number(match[3]);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (
-    date.getUTCFullYear() !== year
-    || date.getUTCMonth() !== month - 1
-    || date.getUTCDate() !== day
-  ) return null;
-
-  return `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-}
-
-function parseTime(value: string) {
-  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return null;
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
-  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`;
-}
-
-function formatDateInput(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
-}
-
-function formatTimeInput(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 4);
-  if (digits.length <= 2) return digits;
-  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+  return formatShortDate(date, MATCH_TIME_ZONE);
 }
 
 export default function CreateMatchScreen() {
@@ -171,11 +140,11 @@ export default function CreateMatchScreen() {
     if (loading) return;
     setError(null);
 
-    const parsedDate = parseDate(date);
+    const parsedDate = parseBrazilianDate(date);
     const parsedTime = parseTime(time);
-    const parsedSignupDeadlineDate = parseDate(signupDeadlineDate);
+    const parsedSignupDeadlineDate = parseBrazilianDate(signupDeadlineDate);
     const parsedSignupDeadlineTime = parseTime(signupDeadlineTime);
-    const parsedPaymentDeadlineDate = paymentRequired ? parseDate(paymentDeadlineDate) : null;
+    const parsedPaymentDeadlineDate = paymentRequired ? parseBrazilianDate(paymentDeadlineDate) : null;
     const parsedPaymentDeadlineTime = paymentRequired ? parseTime(paymentDeadlineTime) : null;
     const parsedMaxPlayers = Number.parseInt(maxPlayers, 10);
     const parsedMinimumPlayers = Number.parseInt(minimumPlayers, 10);
@@ -282,14 +251,14 @@ export default function CreateMatchScreen() {
       });
       router.replace({ pathname: '/match', params: { matchId: match.id } });
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível marcar o jogo.');
+      setError(getErrorMessage(exception, 'Não foi possível marcar o jogo.'));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
@@ -297,9 +266,9 @@ export default function CreateMatchScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <YStack gap="$5" paddingVertical="$3">
-            <Button alignSelf="flex-start" backgroundColor="transparent" onPress={() => router.back()}>
+            <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
               <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-            </Button>
+            </AppButton>
 
             <YStack gap="$1">
               <Text color="$onzeGreen" fontSize={13} fontWeight="900">MARCAR JOGO</Text>
@@ -568,8 +537,8 @@ export default function CreateMatchScreen() {
                 <Switch
                   accessibilityLabel="Cobrar pagamento dos jogadores"
                   onValueChange={setPaymentRequired}
-                  thumbColor="#FFFFFF"
-                  trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
+                  thumbColor={ONZE_COLORS.surface}
+                  trackColor={{ false: ONZE_COLORS.switchTrack, true: ONZE_COLORS.green }}
                   value={paymentRequired}
                 />
               </XStack>
@@ -614,8 +583,8 @@ export default function CreateMatchScreen() {
                       <Switch
                         accessibilityLabel="Cobrar pagamento dos goleiros"
                         onValueChange={setGoalkeeperPays}
-                        thumbColor="#FFFFFF"
-                        trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
+                        thumbColor={ONZE_COLORS.surface}
+                        trackColor={{ false: ONZE_COLORS.switchTrack, true: ONZE_COLORS.green }}
                         value={goalkeeperPays}
                       />
                     </XStack>
@@ -640,8 +609,8 @@ export default function CreateMatchScreen() {
                 <Switch
                   accessibilityLabel="Repetir jogo toda semana"
                   onValueChange={setWeekly}
-                  thumbColor="#FFFFFF"
-                  trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
+                  thumbColor={ONZE_COLORS.surface}
+                  trackColor={{ false: ONZE_COLORS.switchTrack, true: ONZE_COLORS.green }}
                   value={weekly}
                 />
               </XStack>
@@ -657,11 +626,11 @@ export default function CreateMatchScreen() {
 
             {error ? <Text color="$onzeDanger" fontSize={13} lineHeight={19}>{error}</Text> : null}
 
-            <Button backgroundColor="$onzeGreen" disabled={loading} height={54} onPress={() => void submit()}>
+            <AppButton variant="primary" disabled={loading}  onPress={() => void submit()}>
               <Text color="$onzeSurface" fontSize={16} fontWeight="900">
                 {loading ? 'Marcando jogo...' : weekly ? 'Criar jogos semanais' : 'Marcar jogo'}
               </Text>
-            </Button>
+            </AppButton>
           </YStack>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -696,7 +665,7 @@ function MatchTypeButton({
   onPress: () => void;
 }) {
   return (
-    <Button
+    <AppButton
       accessibilityState={{ selected }}
       backgroundColor={selected ? '$onzeGreen' : '$onzeSurface'}
       borderColor="$onzeGreen"
@@ -709,6 +678,6 @@ function MatchTypeButton({
       <Text color={selected ? '$onzeSurface' : '$onzeGreen'} fontSize={12} fontWeight="900" textAlign="center">
         {label}
       </Text>
-    </Button>
+    </AppButton>
   );
 }

@@ -1,7 +1,13 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
@@ -97,7 +103,7 @@ export default function GroupAdminsScreen() {
         router.replace({ pathname: '/group', params: { groupId: params.groupId } });
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar os jogadores.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar os jogadores.'));
     } finally {
       setLoading(false);
     }
@@ -147,11 +153,7 @@ export default function GroupAdminsScreen() {
         : type === 'remove'
           ? 'Não foi possível remover este membro.'
           : 'Não foi possível alterar a função deste jogador.';
-      setError(
-        exception instanceof Error
-          ? exception.message
-          : fallbackMessage,
-      );
+      setError(getErrorMessage(exception, fallbackMessage));
     } finally {
       setActionId(null);
     }
@@ -190,12 +192,12 @@ export default function GroupAdminsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 44 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <Button alignSelf="flex-start" backgroundColor="transparent" onPress={() => router.back()}>
+          <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
             <Text color="$onzeGreen" fontWeight="700">← Voltar</Text>
-          </Button>
+          </AppButton>
 
           <YStack gap="$1">
             <Text color="$onzeGreen" fontSize={14} fontWeight="800">MEMBROS</Text>
@@ -356,16 +358,16 @@ function MemberCard({
       </YStack>
 
       {canEditPlayerProfiles ? (
-        <Button
-          backgroundColor="$onzeSurface"
-          borderColor="$onzeGreen"
-          borderWidth={1}
+        <AppButton
+          variant="outline"
+
+
           disabled={busy}
-          height={42}
+          buttonSize="sm"
           onPress={onEditSportsProfile}
         >
           <Text color="$onzeGreen" fontSize={13} fontWeight="800">Editar perfil esportivo</Text>
-        </Button>
+        </AppButton>
       ) : null}
 
       {member.role === 'ADMIN' ? (
@@ -384,55 +386,55 @@ function MemberCard({
         && (canPromoteMembers || canRemoveMembers) ? (
         <XStack gap="$2">
           {canPromoteMembers ? (
-            <Button backgroundColor="$onzeGreen" disabled={busy} flex={1} height={42} onPress={onPromoteMember}>
+            <AppButton variant="primary" disabled={busy} flex={1} buttonSize="sm" onPress={onPromoteMember}>
               <Text color="$onzeSurface" fontSize={13} fontWeight="800">
                 {busy ? 'Salvando...' : 'Promover'}
               </Text>
-            </Button>
+            </AppButton>
           ) : null}
           {canRemoveMembers ? (
-            <Button
-              backgroundColor="$onzeSurface"
-              borderColor="$onzeDanger"
-              borderWidth={1}
+            <AppButton
+              variant="destructiveOutline"
+
+
               disabled={busy}
               flex={1}
-              height={42}
+              buttonSize="sm"
               onPress={onRemoveMember}
             >
               <Text color="$onzeDanger" fontSize={13} fontWeight="800">Remover</Text>
-            </Button>
+            </AppButton>
           ) : null}
         </XStack>
       ) : null}
 
       {member.role === 'ADMIN' && isPrimaryAdmin ? (
         <YStack gap="$2">
-          <Button
-            backgroundColor="$onzeSurface"
-            borderColor="$onzeGreen"
-            borderWidth={1}
+          <AppButton
+            variant="outline"
+
+
             disabled={busy}
-            height={42}
+            buttonSize="sm"
             onPress={onEditPermissions}
           >
             <Text color="$onzeGreen" fontSize={13} fontWeight="800">Editar permissões</Text>
-          </Button>
+          </AppButton>
           <XStack gap="$2">
-            <Button backgroundColor="$onzeGreen" disabled={busy} flex={1} height={42} onPress={onPromoteToPrimary}>
+            <AppButton variant="primary" disabled={busy} flex={1} buttonSize="sm" onPress={onPromoteToPrimary}>
               <Text color="$onzeSurface" fontSize={12} fontWeight="800">Tornar principal</Text>
-            </Button>
-            <Button
-              backgroundColor="$onzeSurface"
-              borderColor="$onzeDanger"
-              borderWidth={1}
+            </AppButton>
+            <AppButton
+              variant="destructiveOutline"
+
+
               disabled={busy}
               flex={1}
-              height={42}
+              buttonSize="sm"
               onPress={onDemote}
             >
               <Text color="$onzeDanger" fontSize={13} fontWeight="800">Rebaixar</Text>
-            </Button>
+            </AppButton>
           </XStack>
         </YStack>
       ) : null}

@@ -2,14 +2,20 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { Button, Input, Text, XStack, YStack } from 'tamagui';
+import { Input, Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
+import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
@@ -53,6 +59,7 @@ export default function GroupSettingsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savedConfirmationVisible, setSavedConfirmationVisible] = useState(false);
 
   const selectedDays = useMemo(
     () => DAYS.filter((day) => times[day.value] !== undefined),
@@ -106,7 +113,7 @@ export default function GroupSettingsScreen() {
         router.replace('/');
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar as configurações.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar as configurações.'));
     } finally {
       setLoading(false);
     }
@@ -199,11 +206,9 @@ export default function GroupSettingsScreen() {
           });
         } catch (exception) {
           setGroup(updated);
-          const reason = exception instanceof Error && exception.message.trim()
-            ? ` Motivo informado: ${exception.message}`
-            : '';
+          console.warn('Falha ao enviar a nova foto do grupo.', exception);
           setError(
-            `As outras configurações foram salvas, mas a foto ainda não foi enviada. Toque em Salvar configurações novamente para tentar somente o envio da foto.${reason}`,
+            'As outras configurações foram salvas, mas a foto ainda não foi enviada. Verifique sua conexão e toque em Salvar configurações novamente para tentar somente o envio da foto.',
           );
           return;
         }
@@ -211,11 +216,9 @@ export default function GroupSettingsScreen() {
 
       setGroup(updated);
       setPhoto(null);
-      Alert.alert('Configurações salvas', 'As informações do grupo foram atualizadas.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      setSavedConfirmationVisible(true);
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível salvar as configurações.');
+      setError(getErrorMessage(exception, 'Não foi possível salvar as configurações.'));
     } finally {
       setSaving(false);
     }
@@ -226,7 +229,7 @@ export default function GroupSettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
@@ -234,9 +237,9 @@ export default function GroupSettingsScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <YStack gap="$5" paddingVertical="$3">
-            <Button alignSelf="flex-start" backgroundColor="transparent" onPress={() => router.back()}>
+            <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
               <Text color="$onzeGreen" fontWeight="700">← Voltar</Text>
-            </Button>
+            </AppButton>
 
             <YStack gap="$1">
               <Text color="$onzeGreen" fontSize={14} fontWeight="800">CONFIGURAÇÕES</Text>
@@ -260,9 +263,9 @@ export default function GroupSettingsScreen() {
                     source={photo ? { uri: photo.uri } : group.photoUrl ? { uri: group.photoUrl } : require('../assets/icon.png')}
                     style={{ width: 104, height: 104, borderRadius: 24 }}
                   />
-                  <Button backgroundColor="$onzeSurface" borderColor="$onzeGreen" borderWidth={1} onPress={() => void choosePhoto()}>
+                  <AppButton variant="outline"   onPress={() => void choosePhoto()}>
                     <Text color="$onzeGreen" fontWeight="700">{photo ? 'Trocar foto escolhida' : 'Alterar foto do grupo'}</Text>
-                  </Button>
+                  </AppButton>
                 </YStack>
 
                 <OptionalInput label="Cidade" placeholder="Ex.: Curitiba" value={city} onChangeText={setCity} />
@@ -297,7 +300,7 @@ export default function GroupSettingsScreen() {
                     {DAYS.map((day) => {
                       const selected = times[day.value] !== undefined;
                       return (
-                        <Button
+                        <AppButton
                           key={day.value}
                           backgroundColor={selected ? '$onzeGreen' : '$onzeSurface'}
                           borderColor="$onzeGreen"
@@ -306,7 +309,7 @@ export default function GroupSettingsScreen() {
                           onPress={() => toggleDay(day.value)}
                         >
                           <Text color={selected ? '$onzeSurface' : '$onzeGreen'} fontWeight="700">{day.label}</Text>
-                        </Button>
+                        </AppButton>
                       );
                     })}
                   </XStack>
@@ -331,23 +334,32 @@ export default function GroupSettingsScreen() {
 
                 {error ? <Text color="$onzeDanger" fontSize={14}>{error}</Text> : null}
 
-                <Button backgroundColor="$onzeGreen" disabled={saving} height={52} onPress={() => void save()}>
+                <AppButton variant="primary" disabled={saving}  onPress={() => void save()}>
                   <Text color="$onzeSurface" fontSize={16} fontWeight="800">
                     {saving ? 'Salvando...' : 'Salvar configurações'}
                   </Text>
-                </Button>
+                </AppButton>
               </YStack>
             ) : (
               <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$5" borderWidth={1} gap="$3" padding="$5">
                 <Text color="$onzeDanger" fontSize={14}>{error ?? 'Não foi possível abrir as configurações.'}</Text>
-                <Button backgroundColor="$onzeGreen" onPress={() => void loadGroup()}>
+                <AppButton variant="primary" onPress={() => void loadGroup()}>
                   <Text color="$onzeSurface" fontWeight="800">Tentar novamente</Text>
-                </Button>
+                </AppButton>
               </YStack>
             )}
           </YStack>
         </ScrollView>
       </KeyboardAvoidingView>
+      <ConfirmActionModal
+        visible={savedConfirmationVisible}
+        title="Configurações salvas"
+        message="As informações do grupo foram atualizadas."
+        confirmLabel="Voltar ao grupo"
+        cancelLabel={null}
+        onCancel={() => setSavedConfirmationVisible(false)}
+        onConfirm={() => router.back()}
+      />
     </SafeAreaView>
   );
 }

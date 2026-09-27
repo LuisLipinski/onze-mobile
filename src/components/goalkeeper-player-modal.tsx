@@ -1,5 +1,7 @@
 import { Modal, Pressable, ScrollView } from 'react-native';
-import { Button, Text, YStack } from 'tamagui';
+import { Text, YStack } from 'tamagui';
+
+import { AppButton } from './app-button';
 
 import type { MatchAttendance } from '../lib/api';
 
@@ -40,17 +42,17 @@ export function GoalkeeperPlayerModal({
             <ScrollView style={{ maxHeight: 360 }}>
               <YStack gap="$2">
                 {candidates.length ? candidates.map((candidate) => (
-                  <Button
+                  <AppButton
                     key={candidate.userId}
-                    backgroundColor="$onzeSurface"
-                    borderColor="$onzeGreen"
-                    borderWidth={1}
-                    height={52}
+                    variant="outline"
+
+
+
                     justifyContent="flex-start"
                     onPress={() => onSelect(candidate)}
                   >
                     <Text color="$onzeInk" fontWeight="800">{candidate.displayName}</Text>
-                  </Button>
+                  </AppButton>
                 )) : (
                   <Text color="$onzeDanger" fontSize={13} lineHeight={19}>
                     Nenhum jogador confirmado está disponível para esta escolha.
@@ -58,9 +60,9 @@ export function GoalkeeperPlayerModal({
                 )}
               </YStack>
             </ScrollView>
-            <Button backgroundColor="$onzeCanvas" onPress={onCancel}>
+            <AppButton backgroundColor="$onzeCanvas" onPress={onCancel}>
               <Text color="$onzeInk" fontWeight="800">Cancelar</Text>
-            </Button>
+            </AppButton>
           </YStack>
         </Pressable>
       </Pressable>

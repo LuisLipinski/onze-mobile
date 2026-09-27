@@ -1,14 +1,17 @@
 import { Modal, Pressable } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { AppButton } from './app-button';
 
 type ConfirmActionModalProps = {
   visible: boolean;
   title: string;
   message: string;
   confirmLabel: string;
-  cancelLabel?: string;
+  cancelLabel?: string | null;
   destructive?: boolean;
   loading?: boolean;
+  loadingLabel?: string;
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -21,6 +24,7 @@ export function ConfirmActionModal({
   cancelLabel = 'Cancelar',
   destructive = false,
   loading = false,
+  loadingLabel = 'Salvando...',
   onCancel,
   onConfirm,
 }: ConfirmActionModalProps) {
@@ -56,30 +60,28 @@ export function ConfirmActionModal({
             </YStack>
 
             <XStack gap="$3">
-              <Button
-                backgroundColor="$onzeSurface"
-                borderColor="$onzeBorder"
-                borderWidth={1}
+              {cancelLabel ? (
+                <AppButton
+                  variant="secondary"
+                  disabled={loading}
+                  flex={1}
+                  onPress={onCancel}
+                >
+                  <Text color="$onzeInk" fontWeight="800">
+                    {cancelLabel}
+                  </Text>
+                </AppButton>
+              ) : null}
+              <AppButton
+                variant={destructive ? 'destructive' : 'primary'}
                 disabled={loading}
                 flex={1}
-                height={48}
-                onPress={onCancel}
-              >
-                <Text color="$onzeInk" fontWeight="800">
-                  {cancelLabel}
-                </Text>
-              </Button>
-              <Button
-                backgroundColor={destructive ? '$onzeDanger' : '$onzeGreen'}
-                disabled={loading}
-                flex={1}
-                height={48}
                 onPress={onConfirm}
               >
                 <Text color="$onzeSurface" fontWeight="800">
-                  {loading ? 'Salvando...' : confirmLabel}
+                  {loading ? loadingLabel : confirmLabel}
                 </Text>
-              </Button>
+              </AppButton>
             </XStack>
           </YStack>
         </Pressable>

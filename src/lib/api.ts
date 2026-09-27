@@ -3,6 +3,7 @@ import {
   withGlobalLoading,
 } from './global-loading';
 import type { GlobalLoadingOptions } from './global-loading';
+import { CONNECTION_ERROR_MESSAGE, isNetworkError } from './errors';
 import type { DominantFoot, PlayerPosition } from './sports-profile';
 
 export type User = {
@@ -520,6 +521,9 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
   } catch (exception) {
     if (controller.signal.aborted) {
       throw new Error('O servidor demorou mais que o esperado para responder. Tente novamente.');
+    }
+    if (isNetworkError(exception)) {
+      throw new Error(CONNECTION_ERROR_MESSAGE);
     }
     throw exception;
   } finally {

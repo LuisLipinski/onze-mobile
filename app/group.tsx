@@ -1,7 +1,13 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Image, Modal, Pressable, SafeAreaView, ScrollView } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { MatchCard } from '../src/components/match-card';
@@ -98,7 +104,7 @@ export default function GroupScreen() {
         router.replace('/');
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar o grupo.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar o grupo.'));
     } finally {
       setLoading(false);
     }
@@ -131,7 +137,7 @@ export default function GroupScreen() {
       router.replace('/groups');
     } catch (exception) {
       setLeaveModalVisible(false);
-      setError(exception instanceof Error ? exception.message : 'Não foi possível sair do grupo.');
+      setError(getErrorMessage(exception, 'Não foi possível sair do grupo.'));
     } finally {
       setLeaving(false);
     }
@@ -149,25 +155,25 @@ export default function GroupScreen() {
   const upcomingMatches = matches.filter((match) => match.status === 'SCHEDULED');
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <YStack gap="$5" paddingVertical="$3">
           <XStack alignItems="center" justifyContent="space-between">
-            <Button backgroundColor="transparent" onPress={() => router.replace('/groups')}>
+            <AppButton variant="ghost" onPress={() => router.replace('/groups')}>
               <Text color="$onzeGreen" fontWeight="700">← Grupos</Text>
-            </Button>
+            </AppButton>
             {group ? (
-              <Button
+              <AppButton
                 circular
-                backgroundColor="$onzeSurface"
-                borderColor="$onzeBorder"
-                borderWidth={1}
-                height={44}
+                variant="secondary"
+
+
+                buttonSize="sm"
                 onPress={() => setMenuVisible(true)}
                 width={44}
               >
                 <Text color="$onzeInk" fontSize={21} fontWeight="900">☰</Text>
-              </Button>
+              </AppButton>
             ) : null}
           </XStack>
 
@@ -273,9 +279,9 @@ export default function GroupScreen() {
               padding="$5"
             >
               <Text color="$onzeDanger" fontSize={14}>{error ?? 'Não foi possível carregar o grupo.'}</Text>
-              <Button backgroundColor="$onzeGreen" onPress={() => void loadGroup()}>
+              <AppButton variant="primary" onPress={() => void loadGroup()}>
                 <Text color="$onzeSurface" fontWeight="800">Tentar novamente</Text>
-              </Button>
+              </AppButton>
             </YStack>
           )}
         </YStack>
@@ -301,9 +307,9 @@ export default function GroupScreen() {
                     <Text color="$onzeMuted" fontSize={11} fontWeight="800">MENU DO GRUPO</Text>
                     <Text color="$onzeInk" fontSize={20} fontWeight="900" numberOfLines={1}>{group.name}</Text>
                   </YStack>
-                  <Button circular backgroundColor="$onzeCanvas" onPress={() => setMenuVisible(false)}>
+                  <AppButton circular backgroundColor="$onzeCanvas" onPress={() => setMenuVisible(false)}>
                     <Text color="$onzeInk" fontSize={18}>×</Text>
-                  </Button>
+                  </AppButton>
                 </XStack>
 
                 <MenuButton label="Meu perfil esportivo" onPress={() => {
@@ -374,16 +380,16 @@ export default function GroupScreen() {
 
                 <YStack flex={1} />
 
-                <Button
-                  backgroundColor="$onzeSurface"
-                  borderColor="$onzeDanger"
-                  borderWidth={1}
-                  height={50}
+                <AppButton
+                  variant="destructiveOutline"
+
+
+
                   marginTop="$4"
                   onPress={openLeaveFlow}
                 >
                   <Text color="$onzeDanger" fontWeight="800">Sair do grupo</Text>
-                </Button>
+                </AppButton>
               </YStack>
             </Pressable>
           </Pressable>
@@ -412,16 +418,16 @@ export default function GroupScreen() {
 
 function MenuButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Button
-      backgroundColor="$onzeSurface"
-      borderColor="$onzeBorder"
-      borderWidth={1}
-      height={50}
+    <AppButton
+      variant="secondary"
+
+
+
       justifyContent="flex-start"
       onPress={onPress}
     >
       <Text color="$onzeInk" fontWeight="800">{label}</Text>
-    </Button>
+    </AppButton>
   );
 }
 

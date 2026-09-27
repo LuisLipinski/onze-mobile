@@ -35,7 +35,7 @@ export function LiveMatchCard({
       {({ pressed }) => (
         <YStack
           backgroundColor="$onzeSurface"
-          borderColor="#E54B4B"
+          borderColor="$onzeDanger"
           borderRadius="$6"
           borderWidth={1}
           gap="$3"
@@ -44,8 +44,8 @@ export function LiveMatchCard({
         >
           <XStack alignItems="center" justifyContent="space-between">
             <XStack alignItems="center" gap="$2">
-              <YStack backgroundColor="#E54B4B" borderRadius={999} height={10} width={10} />
-              <Text color="#C72F2F" fontSize={12} fontWeight="900">AO VIVO</Text>
+              <YStack backgroundColor="$onzeDanger" borderRadius={999} height={10} width={10} />
+              <Text color="$onzeDanger" fontSize={12} fontWeight="900">AO VIVO</Text>
             </XStack>
             <Text color="$onzeInk" fontSize={17} fontVariant={['tabular-nums']} fontWeight="900">
               {formatMatchTimer(elapsed)}

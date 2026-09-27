@@ -1,7 +1,13 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, SafeAreaView, ScrollView } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { AppState, SafeAreaView, ScrollView } from 'react-native';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { CardEventModal } from '../src/components/card-event-modal';
@@ -36,6 +42,7 @@ import {
 
 type LiveManagementAction = 'finish' | 'reset' | null;
 type TimelineEventKind = 'GOAL' | 'CARD';
+type PendingTimelineDeletion = { kind: TimelineEventKind; eventId: string } | null;
 
 export default function LiveMatchScreen() {
   const router = useRouter();
@@ -63,6 +70,7 @@ export default function LiveMatchScreen() {
   const [cardType, setCardType] = useState<MatchCardType>('YELLOW');
   const [savingCard, setSavingCard] = useState(false);
   const [deletingEventKey, setDeletingEventKey] = useState<string | null>(null);
+  const [pendingTimelineDeletion, setPendingTimelineDeletion] = useState<PendingTimelineDeletion>(null);
   const liveStateRef = useRef<LiveMatchState | null>(null);
 
   function goToLogin() {
@@ -101,7 +109,7 @@ export default function LiveMatchScreen() {
         goToLogin();
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar a partida.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar a partida.'));
     } finally {
       if (!silent) setLoading(false);
     }
@@ -238,7 +246,7 @@ export default function LiveMatchScreen() {
           return restored;
         });
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível atualizar o placar.');
+      setError(getErrorMessage(exception, 'Não foi possível atualizar o placar.'));
     } finally {
       scoreRequestRunningRef.current.delete(sideNumber);
       setScoreSaving(scoreRequestRunningRef.current.size > 0);
@@ -280,7 +288,7 @@ export default function LiveMatchScreen() {
       setLiveState(result.liveMatch);
       setGoalModalVisible(false);
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível registrar o gol.');
+      setError(getErrorMessage(exception, 'Não foi possível registrar o gol.'));
     } finally {
       setSavingGoal(false);
     }
@@ -310,7 +318,7 @@ export default function LiveMatchScreen() {
       setLiveState(result.liveMatch);
       setCardModalVisible(false);
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível registrar o cartão.');
+      setError(getErrorMessage(exception, 'Não foi possível registrar o cartão.'));
     } finally {
       setSavingCard(false);
     }
@@ -338,30 +346,17 @@ export default function LiveMatchScreen() {
       liveStateRef.current = updatedState;
       setLiveState(updatedState);
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível remover o evento.');
+      setError(getErrorMessage(exception, 'Não foi possível remover o evento.'));
     } finally {
       setDeletingEventKey(null);
+      setPendingTimelineDeletion(null);
     }
   }
 
   function confirmTimelineEventDeletion(kind: TimelineEventKind, eventId: string) {
     if (deletingEventKey || scoreSaving
       || !liveState?.canManage || liveState.status !== 'IN_PROGRESS') return;
-    const eventName = kind === 'GOAL' ? 'gol' : 'cartão';
-    Alert.alert(
-      `Remover ${eventName}?`,
-      kind === 'GOAL'
-        ? 'O gol será removido e o placar do time diminuirá em um ponto.'
-        : 'O cartão será removido e a situação do jogador será recalculada.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Remover',
-          style: 'destructive',
-          onPress: () => void removeTimelineEvent(kind, eventId),
-        },
-      ],
-    );
+    setPendingTimelineDeletion({ kind, eventId });
   }
 
   function changeScore(sideNumber: number, delta: number) {
@@ -405,7 +400,7 @@ export default function LiveMatchScreen() {
       setLiveState(updatedLiveState);
       setManagementAction(null);
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível atualizar a partida.');
+      setError(getErrorMessage(exception, 'Não foi possível atualizar a partida.'));
     } finally {
       setManaging(false);
     }
@@ -416,11 +411,11 @@ export default function LiveMatchScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5">
           <XStack alignItems="center" gap="$3">
-            <Button backgroundColor="$onzeSurface" onPress={() => router.back()}>Voltar</Button>
+            <AppButton variant="secondary" onPress={() => router.back()}>Voltar</AppButton>
             <YStack flex={1}>
               <Text color="$onzeInk" fontSize={24} fontWeight="900">Partida ao vivo</Text>
               <Text color="$onzeMuted">{match?.groupName ?? 'Onze'}</Text>
@@ -428,7 +423,7 @@ export default function LiveMatchScreen() {
           </XStack>
 
           {error ? (
-            <YStack backgroundColor="#FDECEC" borderRadius="$5" padding="$4">
+            <YStack backgroundColor="$onzeDangerBg" borderRadius="$5" padding="$4">
               <Text color="$onzeDanger">{error}</Text>
             </YStack>
           ) : null}
@@ -454,7 +449,7 @@ export default function LiveMatchScreen() {
 
               {!liveState.canManage && liveState.status === 'IN_PROGRESS' ? (
                 <YStack
-                  backgroundColor="#E8F7EE"
+                  backgroundColor="$onzeSuccessBg"
                   borderColor="$onzeGreen"
                   borderRadius="$5"
                   borderWidth={1}
@@ -470,39 +465,39 @@ export default function LiveMatchScreen() {
 
               {liveState.canManage && liveState.status === 'IN_PROGRESS' ? (
                 <YStack gap="$3">
-                  <Button
-                    backgroundColor="#D6A600"
-                    height={54}
+                  <AppButton
+                    variant="warning"
+
                     onPress={openCardModal}
                     pressStyle={{ opacity: 0.8 }}
                   >
                     <Text color="$onzeSurface" fontWeight="900">Registrar cartão</Text>
-                  </Button>
-                  <Button
-                    backgroundColor="$onzeGreen"
-                    height={54}
+                  </AppButton>
+                  <AppButton
+                    variant="primary"
+
                     onPress={() => setManagementAction('finish')}
                     pressStyle={{ backgroundColor: '$onzeGreenPress', opacity: 0.85 }}
                   >
                     <Text color="$onzeSurface" fontWeight="900">Finalizar partida</Text>
-                  </Button>
-                  <Button
-                    backgroundColor="$onzeSurface"
-                    borderColor="$onzeDanger"
-                    borderWidth={1}
-                    height={54}
+                  </AppButton>
+                  <AppButton
+                    variant="destructiveOutline"
+
+
+
                     onPress={() => setManagementAction('reset')}
                     pressStyle={{ opacity: 0.7 }}
                   >
                     <Text color="$onzeDanger" fontWeight="900">Resetar jogo</Text>
-                  </Button>
+                  </AppButton>
                 </YStack>
               ) : null}
             </>
           ) : (
-            <Button backgroundColor="$onzeGreen" onPress={() => void loadLiveMatch()}>
+            <AppButton variant="primary" onPress={() => void loadLiveMatch()}>
               <Text color="$onzeSurface" fontWeight="900">Tentar novamente</Text>
-            </Button>
+            </AppButton>
           )}
         </YStack>
       </ScrollView>
@@ -518,6 +513,26 @@ export default function LiveMatchScreen() {
         loading={managing}
         onCancel={() => setManagementAction(null)}
         onConfirm={() => void confirmManagementAction()}
+      />
+      <ConfirmActionModal
+        visible={pendingTimelineDeletion != null}
+        title={`Remover ${pendingTimelineDeletion?.kind === 'GOAL' ? 'gol' : 'cartão'}?`}
+        message={pendingTimelineDeletion?.kind === 'GOAL'
+          ? 'O gol será removido e o placar do time diminuirá em um ponto.'
+          : 'O cartão será removido e a situação do jogador será recalculada.'}
+        confirmLabel="Remover"
+        destructive
+        loading={deletingEventKey != null}
+        loadingLabel="Removendo..."
+        onCancel={() => setPendingTimelineDeletion(null)}
+        onConfirm={() => {
+          if (pendingTimelineDeletion) {
+            void removeTimelineEvent(
+              pendingTimelineDeletion.kind,
+              pendingTimelineDeletion.eventId,
+            );
+          }
+        }}
       />
       <GoalEventModal
         visible={goalModalVisible}

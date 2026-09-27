@@ -1,7 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView, Switch } from 'react-native';
-import { Button, Input, Text, XStack, YStack } from 'tamagui';
+import { Input, Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { PlayerPositionSelect } from '../src/components/player-position-select';
 import { TechnicalRatingEditor } from '../src/components/technical-rating-editor';
@@ -76,19 +82,19 @@ export default function AddMatchGuestScreen() {
       });
       router.back();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível adicionar o convidado.');
+      setError(getErrorMessage(exception, 'Não foi possível adicionar o convidado.'));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
         <YStack gap="$5" paddingVertical="$3">
-          <Button alignSelf="flex-start" backgroundColor="transparent" onPress={() => router.back()}>
+          <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
             <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-          </Button>
+          </AppButton>
           <YStack gap="$1">
             <Text color="$onzeGreen" fontSize={13} fontWeight="900">CONVIDADO DA PARTIDA</Text>
             <Text color="$onzeInk" fontSize={28} fontWeight="900">Adicionar jogador</Text>
@@ -133,8 +139,8 @@ export default function AddMatchGuestScreen() {
                   setWantsSecondary(value);
                   if (!value) setSecondaryPosition(null);
                 }}
-                trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
-                thumbColor="#FFFFFF"
+                trackColor={{ false: ONZE_COLORS.switchTrack, true: ONZE_COLORS.green }}
+                thumbColor={ONZE_COLORS.surface}
               />
             </XStack>
             {wantsSecondary ? (
@@ -164,8 +170,8 @@ export default function AddMatchGuestScreen() {
                   accessibilityLabel="Avaliar jogador convidado"
                   value={wantsEvaluation}
                   onValueChange={setWantsEvaluation}
-                  trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: ONZE_COLORS.switchTrack, true: ONZE_COLORS.green }}
+                  thumbColor={ONZE_COLORS.surface}
                 />
               </XStack>
               {wantsEvaluation ? (
@@ -195,11 +201,11 @@ export default function AddMatchGuestScreen() {
           )}
 
           {error ? <Text color="$onzeDanger" fontSize={13}>{error}</Text> : null}
-          <Button backgroundColor="$onzeGreen" disabled={saving} height={54} onPress={() => void submit()}>
+          <AppButton variant="primary" disabled={saving}  onPress={() => void submit()}>
             <Text color="$onzeSurface" fontSize={16} fontWeight="900">
               {saving ? 'Adicionando...' : 'Adicionar convidado'}
             </Text>
-          </Button>
+          </AppButton>
         </YStack>
       </ScrollView>
     </SafeAreaView>

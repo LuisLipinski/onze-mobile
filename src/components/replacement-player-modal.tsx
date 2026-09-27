@@ -1,5 +1,7 @@
 import { Modal, Pressable, ScrollView } from 'react-native';
-import { Button, Text, YStack } from 'tamagui';
+import { Text, YStack } from 'tamagui';
+
+import { AppButton } from './app-button';
 
 import type { GroupMember } from '../lib/api';
 
@@ -66,20 +68,20 @@ export function ReplacementPlayerModal({
                   const selected = candidate.userId === selectedUserId;
                   const samePlayer = candidate.userId === departedUserId;
                   return (
-                    <Button
+                    <AppButton
                       key={candidate.userId}
-                      backgroundColor={selected ? '#EAF7EF' : '$onzeSurface'}
+                      backgroundColor={selected ? '$onzeSuccessBg' : '$onzeSurface'}
                       borderColor="$onzeGreen"
                       borderWidth={selected ? 2 : 1}
                       disabled={loading}
-                      height={52}
+
                       justifyContent="flex-start"
                       onPress={() => onSelect(candidate.userId)}
                     >
                       <Text color="$onzeInk" fontWeight="800">
                         {selected ? '✓ ' : ''}{candidate.displayName}{samePlayer ? ' · readicionar' : ''}
                       </Text>
-                    </Button>
+                    </AppButton>
                   );
                 }) : (
                   <Text color="$onzeDanger" fontSize={13} lineHeight={19}>
@@ -89,26 +91,26 @@ export function ReplacementPlayerModal({
               </YStack>
             </ScrollView>
 
-            <Button
-              backgroundColor="$onzeGreen"
+            <AppButton
+              variant="primary"
               disabled={loading || !selectedUserId}
-              height={50}
+
               onPress={onConfirm}
             >
               <Text color="$onzeSurface" fontWeight="900">
                 {loading ? 'Adicionando...' : 'Adicionar à lista'}
               </Text>
-            </Button>
-            <Button
-              backgroundColor="$onzeSurface"
-              borderColor="$onzeBorder"
-              borderWidth={1}
+            </AppButton>
+            <AppButton
+              variant="secondary"
+
+
               disabled={loading}
-              height={48}
+
               onPress={onCancel}
             >
               <Text color="$onzeInk" fontWeight="800">Cancelar</Text>
-            </Button>
+            </AppButton>
           </YStack>
         </Pressable>
       </Pressable>
