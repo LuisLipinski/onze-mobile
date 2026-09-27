@@ -1,7 +1,13 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Image, Pressable, SafeAreaView, ScrollView } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
 import { ApiRequestError, Group, listGroups } from '../src/lib/api';
@@ -35,14 +41,14 @@ export default function GroupsScreen() {
         router.replace('/');
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar seus grupos.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar seus grupos.'));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <YStack flex={1}>
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
           <YStack gap="$5" paddingVertical="$3">
@@ -55,24 +61,24 @@ export default function GroupsScreen() {
             </YStack>
 
             <XStack gap="$2">
-              <Button
-                backgroundColor="$onzeSurface"
-                borderColor="$onzeGreen"
-                borderWidth={1}
+              <AppButton
+                variant="outline"
+
+
                 flex={1}
-                height={48}
+
                 onPress={() => router.push('/join-group')}
               >
                 <Text color="$onzeGreen" fontSize={13} fontWeight="800">Entrar em grupo</Text>
-              </Button>
-              <Button
-                backgroundColor="$onzeGreen"
+              </AppButton>
+              <AppButton
+                variant="primary"
                 flex={1}
-                height={48}
+
                 onPress={() => router.push('/create-group')}
               >
                 <Text color="$onzeSurface" fontSize={13} fontWeight="800">+ Criar grupo</Text>
-              </Button>
+              </AppButton>
             </XStack>
 
             {loading ? (
@@ -89,9 +95,9 @@ export default function GroupsScreen() {
                 padding="$4"
               >
                 <Text color="$onzeDanger" fontSize={13}>{error}</Text>
-                <Button backgroundColor="$onzeGreen" onPress={() => void loadGroups()}>
+                <AppButton variant="primary" onPress={() => void loadGroups()}>
                   <Text color="$onzeSurface" fontWeight="800">Tentar novamente</Text>
-                </Button>
+                </AppButton>
               </YStack>
             ) : groups.length === 0 ? (
               <YStack

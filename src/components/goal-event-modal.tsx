@@ -1,7 +1,10 @@
 import { Modal, Pressable, ScrollView } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { AppButton } from './app-button';
 
 import type { GeneratedTeam, TeamAssignment } from '../lib/api';
+import { ONZE_COLORS } from '../theme/colors';
 
 type Props = {
   visible: boolean;
@@ -35,8 +38,8 @@ function Choice({ label, selected, disabled = false, onPress }: ChoiceProps) {
       hitSlop={6}
       onPress={onPress}
       style={({ pressed }) => ({
-        backgroundColor: disabled ? '#FFF1F1' : selected ? '#148A4A' : '#F7FAF8',
-        borderColor: disabled ? '#E7A3A3' : selected ? '#148A4A' : '#DDE6E1',
+        backgroundColor: disabled ? ONZE_COLORS.dangerBg : selected ? ONZE_COLORS.green : ONZE_COLORS.infoBg,
+        borderColor: disabled ? ONZE_COLORS.dangerBorder : selected ? ONZE_COLORS.green : ONZE_COLORS.border,
         borderRadius: 12,
         borderWidth: 1,
         opacity: disabled ? 0.72 : pressed ? 0.75 : 1,
@@ -102,7 +105,7 @@ export function GoalEventModal(props: Props) {
 
               <YStack gap="$2">
                 <Text color="$onzeInk" fontWeight="900">Time</Text>
-                <YStack backgroundColor="#E8F7EE" borderRadius="$4" padding="$3">
+                <YStack backgroundColor="$onzeSuccessBg" borderRadius="$4" padding="$3">
                   <Text color="$onzeGreen" fontSize={16} fontWeight="900">
                     {selectedTeam?.name ?? `Time ${props.selectedTeamNumber}`}
                   </Text>
@@ -173,29 +176,29 @@ export function GoalEventModal(props: Props) {
               ) : null}
 
               <XStack gap="$3">
-                <Button
-                  backgroundColor="$onzeSurface"
-                  borderColor="$onzeBorder"
-                  borderWidth={1}
+                <AppButton
+                  variant="secondary"
+
+
                   disabled={props.saving}
                   flex={1}
-                  height={52}
+
                   onPress={props.onCancel}
                 >
                   <Text color="$onzeInk" fontWeight="800">Cancelar</Text>
-                </Button>
-                <Button
-                  backgroundColor="$onzeGreen"
+                </AppButton>
+                <AppButton
+                  variant="primary"
                   disabled={!props.scorerAssignmentId || props.saving}
                   flex={1}
-                  height={52}
+
                   opacity={!props.scorerAssignmentId || props.saving ? 0.55 : 1}
                   onPress={props.onSave}
                 >
                   <Text color="$onzeSurface" fontWeight="900">
                     {props.saving ? 'Salvando...' : 'Salvar gol'}
                   </Text>
-                </Button>
+                </AppButton>
               </XStack>
             </YStack>
           </ScrollView>

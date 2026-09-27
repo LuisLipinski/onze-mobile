@@ -7,6 +7,7 @@ import type { FootballMatch } from './api';
 import { registerPushToken, unregisterPushToken } from './api';
 import { hasPendingCurrentPlayerPayment } from './match-payment';
 import { formatCurrency } from './payment';
+import { ONZE_COLORS } from '../theme/colors';
 
 const PUSH_TOKEN_KEY = 'onze.expoPushToken';
 const MATCHES_CHANNEL_ID = 'matches';
@@ -50,11 +51,11 @@ async function prepareNotificationPermission() {
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(MATCHES_CHANNEL_ID, {
-      name: 'Jogos e partidas ao vivo',
-      description: 'Avisos de jogos, presença, pagamentos e acontecimentos das partidas ao vivo.',
+      name: 'Jogos e placares ao vivo',
+      description: 'Avisos de jogos, presença, pagamentos e acontecimentos ao vivo.',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 180, 250],
-      lightColor: '#148A4A',
+      lightColor: ONZE_COLORS.green,
       sound: 'default',
     });
   }

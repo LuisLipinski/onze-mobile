@@ -1,5 +1,7 @@
 import { Modal, Pressable } from 'react-native';
-import { Button, Text, YStack } from 'tamagui';
+import { Text, YStack } from 'tamagui';
+
+import { AppButton } from './app-button';
 
 import type { PaymentSettlementResolution } from '../lib/api';
 
@@ -76,31 +78,31 @@ export function PaymentSettlementModal({
                 onPress={() => onResolve('REFUNDED')}
               />
               <SettlementButton
-                label="Registrar crédito para próxima partida"
+                label="Registrar crédito para próximo jogo"
                 color="$onzeGreen"
                 disabled={loading || !settlementAvailable}
                 onPress={() => onResolve('CREDITED')}
               />
               <SettlementButton
                 label="Manter pagamento"
-                color="#8A6414"
+                color="$onzeWarningText"
                 disabled={loading || !settlementAvailable}
                 onPress={() => onResolve('RETAINED')}
               />
             </YStack>
 
-            <Button
-              backgroundColor="$onzeSurface"
-              borderColor="$onzeBorder"
-              borderWidth={1}
+            <AppButton
+              variant="secondary"
+
+
               disabled={loading}
-              height={48}
+
               onPress={onCancel}
             >
               <Text color="$onzeInk" fontWeight="800">
                 {loading ? 'Salvando...' : 'Cancelar'}
               </Text>
-            </Button>
+            </AppButton>
           </YStack>
         </Pressable>
       </Pressable>
@@ -115,20 +117,20 @@ function SettlementButton({
   onPress,
 }: {
   label: string;
-  color: '$onzeDanger' | '$onzeGreen' | '#8A6414';
+  color: '$onzeDanger' | '$onzeGreen' | '$onzeWarningText';
   disabled: boolean;
   onPress: () => void;
 }) {
   return (
-    <Button
+    <AppButton
       backgroundColor="$onzeSurface"
       borderColor={color}
       borderWidth={1}
       disabled={disabled}
-      height={48}
+
       onPress={onPress}
     >
       <Text color={color} fontWeight="900">{label}</Text>
-    </Button>
+    </AppButton>
   );
 }

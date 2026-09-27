@@ -3,6 +3,7 @@ import {
   withGlobalLoading,
 } from './global-loading';
 import type { GlobalLoadingOptions } from './global-loading';
+import { CONNECTION_ERROR_MESSAGE, isNetworkError } from './errors';
 import type { DominantFoot, PlayerPosition } from './sports-profile';
 
 export type User = {
@@ -521,6 +522,9 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
     if (controller.signal.aborted) {
       throw new Error('O servidor demorou mais que o esperado para responder. Tente novamente.');
     }
+    if (isNetworkError(exception)) {
+      throw new Error(CONNECTION_ERROR_MESSAGE);
+    }
     throw exception;
   } finally {
     clearTimeout(timeoutId);
@@ -981,7 +985,7 @@ export function listGroupMatches(accessToken: string, groupId: string) {
     headers: authenticatedHeaders(accessToken),
     loading: {
       title: 'Carregando os jogos...',
-      message: 'Estamos atualizando as partidas deste grupo.',
+      message: 'Estamos atualizando os jogos deste grupo.',
     },
   });
 }
@@ -1015,7 +1019,7 @@ export function startLiveMatch(
     method: 'PUT',
     headers: authenticatedHeaders(accessToken),
     body: JSON.stringify({ teams }),
-    loading: { title: 'Iniciando a partida...', message: 'Estamos abrindo o jogo ao vivo.' },
+    loading: { title: 'Iniciando o jogo...', message: 'Estamos abrindo o jogo ao vivo.' },
   });
 }
 
@@ -1023,7 +1027,7 @@ export function finishLiveMatch(accessToken: string, matchId: string) {
   return request<FootballMatch>(`/api/matches/${matchId}/live/finish`, {
     method: 'PUT',
     headers: authenticatedHeaders(accessToken),
-    loading: { title: 'Finalizando a partida...', message: 'Estamos salvando o encerramento do jogo.' },
+    loading: { title: 'Finalizando o jogo...', message: 'Estamos salvando o encerramento do jogo.' },
   });
 }
 
@@ -1031,7 +1035,7 @@ export function resetLiveMatch(accessToken: string, matchId: string) {
   return request<FootballMatch>(`/api/matches/${matchId}/live/reset`, {
     method: 'PUT',
     headers: authenticatedHeaders(accessToken),
-    loading: { title: 'Resetando a partida...', message: 'Estamos voltando o jogo para agendado.' },
+    loading: { title: 'Resetando o jogo...', message: 'Estamos voltando o jogo para agendado.' },
   });
 }
 
@@ -1229,7 +1233,7 @@ export function updateMatchGoalkeeper(
     body: JSON.stringify({ isGoalkeeper }),
     loading: {
       title: isGoalkeeper ? 'Definindo o goleiro...' : 'Atualizando o goleiro...',
-      message: 'Estamos aplicando as regras de presença e pagamento desta partida.',
+      message: 'Estamos aplicando as regras de presença e pagamento deste jogo.',
     },
   });
 }
@@ -1262,7 +1266,7 @@ export function removeRentalGoalkeeper(
       headers: authenticatedHeaders(accessToken),
       loading: {
         title: 'Removendo goleiro...',
-        message: 'Estamos liberando a vaga desta partida.',
+        message: 'Estamos liberando a vaga deste jogo.',
       },
     },
   );
@@ -1279,7 +1283,7 @@ export function updateMatchPlayerConfiguration(
     headers: authenticatedHeaders(accessToken),
     body: JSON.stringify({ modality, minimumPlayers }),
     loading: {
-      title: 'Atualizando a partida...',
+      title: 'Atualizando o jogo...',
       message: 'Estamos salvando modalidade e quantidade mínima de jogadores.',
     },
   });
@@ -1312,7 +1316,7 @@ export function removeMatchGuest(accessToken: string, matchId: string, guestId: 
     headers: authenticatedHeaders(accessToken),
     loading: {
       title: 'Removendo convidado...',
-      message: 'Estamos liberando a vaga desta partida.',
+      message: 'Estamos liberando a vaga deste jogo.',
     },
   });
 }
@@ -1461,7 +1465,7 @@ export function cancelMatch(accessToken: string, matchId: string) {
     headers: authenticatedHeaders(accessToken),
     loading: {
       title: 'Cancelando o jogo...',
-      message: 'Estamos atualizando a partida e avisando os jogadores.',
+      message: 'Estamos atualizando o jogo e avisando os jogadores.',
     },
   });
 }

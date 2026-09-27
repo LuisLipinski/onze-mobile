@@ -1,7 +1,13 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { SafeAreaView, ScrollView, Switch } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { PlayerPositionSelect } from '../src/components/player-position-select';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
@@ -84,7 +90,7 @@ export default function SportsProfileScreen() {
         router.replace('/');
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar o perfil esportivo.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar o perfil esportivo.'));
     } finally {
       setLoading(false);
     }
@@ -147,7 +153,7 @@ export default function SportsProfileScreen() {
         router.replace('/');
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível salvar o perfil esportivo.');
+      setError(getErrorMessage(exception, 'Não foi possível salvar o perfil esportivo.'));
     } finally {
       setSaving(false);
     }
@@ -163,16 +169,16 @@ export default function SportsProfileScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 44 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <Button
+          <AppButton
             alignSelf="flex-start"
-            backgroundColor="transparent"
+            variant="ghost"
             onPress={() => requiredMode ? router.replace('/groups') : router.back()}
           >
             <Text color="$onzeGreen" fontWeight="700">← Voltar</Text>
-          </Button>
+          </AppButton>
 
           <YStack gap="$1">
             <Text color="$onzeGreen" fontSize={14} fontWeight="900">
@@ -236,8 +242,8 @@ export default function SportsProfileScreen() {
                   setError(null);
                   setMessage(null);
                 }}
-                thumbColor="#FFFFFF"
-                trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
+                thumbColor={ONZE_COLORS.surface}
+                trackColor={{ false: ONZE_COLORS.switchTrack, true: ONZE_COLORS.green }}
                 value={wantsSecondaryPosition}
               />
             </XStack>
@@ -267,7 +273,7 @@ export default function SportsProfileScreen() {
           {showGoalkeeperAvailability ? (
             <ProfileSection
               title="Disponibilidade no gol"
-              description="Isso só informa que você aceita jogar no gol quando necessário; o administrador ainda define seu papel em cada partida."
+              description="Isso só informa que você aceita jogar no gol quando necessário; o administrador ainda define seu papel em cada jogo."
             >
               <XStack alignItems="center" justifyContent="space-between" gap="$4">
                 <Text color="$onzeInk" flex={1} fontSize={14} fontWeight="700">
@@ -281,8 +287,8 @@ export default function SportsProfileScreen() {
                     setError(null);
                     setMessage(null);
                   }}
-                  thumbColor="#FFFFFF"
-                  trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
+                  thumbColor={ONZE_COLORS.surface}
+                  trackColor={{ false: ONZE_COLORS.switchTrack, true: ONZE_COLORS.green }}
                   value={canPlayGoalkeeper}
                 />
               </XStack>
@@ -311,10 +317,10 @@ export default function SportsProfileScreen() {
               title="Avaliação técnica privada"
               description="Avalie 17 habilidades em intervalos de meia estrela. O backend calcula overall, cobertura e aptidão por posição."
             >
-              <Button
-                backgroundColor="$onzeSurface"
-                borderColor="$onzeGreen"
-                borderWidth={1}
+              <AppButton
+                variant="outline"
+
+
                 onPress={() => router.push({
                   pathname: '/technical-profile',
                   params: {
@@ -325,15 +331,15 @@ export default function SportsProfileScreen() {
                 })}
               >
                 <Text color="$onzeGreen" fontWeight="900">Avaliar habilidades e ver overalls</Text>
-              </Button>
+              </AppButton>
             </ProfileSection>
           ) : null}
 
-          <Button backgroundColor="$onzeGreen" disabled={saving} height={52} onPress={() => void saveProfile()}>
+          <AppButton variant="primary" disabled={saving}  onPress={() => void saveProfile()}>
             <Text color="$onzeSurface" fontSize={16} fontWeight="800">
               {saving ? 'Salvando...' : 'Salvar perfil esportivo'}
             </Text>
-          </Button>
+          </AppButton>
         </YStack>
       </ScrollView>
     </SafeAreaView>
@@ -372,7 +378,7 @@ function ChoiceButton({
   onPress: () => void;
 }) {
   return (
-    <Button
+    <AppButton
       accessibilityState={{ selected }}
       backgroundColor={selected ? '$onzeGreen' : '$onzeSurface'}
       borderColor={selected ? '$onzeGreen' : '$onzeBorder'}
@@ -385,6 +391,6 @@ function ChoiceButton({
       <Text color={selected ? '$onzeSurface' : '$onzeInk'} fontSize={13} fontWeight="800">
         {label}
       </Text>
-    </Button>
+    </AppButton>
   );
 }

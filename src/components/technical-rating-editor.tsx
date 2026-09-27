@@ -1,4 +1,6 @@
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { AppButton } from './app-button';
 
 import type { PlayerSkill } from '../lib/api';
 import {
@@ -31,7 +33,7 @@ export function TechnicalRatingEditor({
             return (
               <YStack
                 key={skill.value}
-                backgroundColor={important ? '#EAF7EF' : '$onzeCanvas'}
+                backgroundColor={important ? '$onzeSuccessBg' : '$onzeCanvas'}
                 borderColor={important ? '$onzeGreen' : '$onzeBorder'}
                 borderRadius="$5"
                 borderWidth={1}
@@ -53,35 +55,35 @@ export function TechnicalRatingEditor({
                 </XStack>
 
                 <XStack gap="$2">
-                  <Button
+                  <AppButton
                     accessibilityLabel={`Diminuir ${skill.label} em meia estrela`}
-                    backgroundColor="$onzeSurface"
-                    borderColor="$onzeBorder"
-                    borderWidth={1}
+                    variant="secondary"
+
+
                     disabled={disabled || rating == null || rating <= 1}
                     flex={1}
                     onPress={() => onChange(skill.value, nextHalfStar(rating, -1))}
                   >
                     <Text color="$onzeInk" fontWeight="900">− 0,5</Text>
-                  </Button>
-                  <Button
+                  </AppButton>
+                  <AppButton
                     accessibilityLabel={`Aumentar ${skill.label} em meia estrela`}
-                    backgroundColor="$onzeGreen"
+                    variant="primary"
                     disabled={disabled || rating === 10}
                     flex={1}
                     onPress={() => onChange(skill.value, nextHalfStar(rating, 1))}
                   >
                     <Text color="$onzeSurface" fontWeight="900">+ 0,5</Text>
-                  </Button>
+                  </AppButton>
                 </XStack>
-                <Button
+                <AppButton
                   accessibilityLabel={`Marcar ${skill.label} como não avaliado`}
-                  backgroundColor="transparent"
+                  variant="ghost"
                   disabled={disabled || rating == null}
                   onPress={() => onChange(skill.value, undefined)}
                 >
                   <Text color="$onzeMuted" fontSize={12} fontWeight="800">Não avaliado</Text>
-                </Button>
+                </AppButton>
               </YStack>
             );
           })}

@@ -50,7 +50,7 @@ test('não oferece disponibilidade no gol quando goleiro já é uma posição', 
   assert.equal(normalizedCanPlayGoalkeeper('DEFENDER', null, true), true);
 });
 
-test('formata o resumo esportivo sem confundir preferência com papel da partida', () => {
+test('formata o resumo esportivo sem confundir preferência com papel do jogo', () => {
   assert.equal(
     formatPlayingRoles(['MIDFIELDER', 'CENTER_FORWARD'], true),
     'Meio-campo • Centroavante • Posso jogar no gol',

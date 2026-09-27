@@ -1,6 +1,8 @@
 import { ActivityIndicator, SafeAreaView } from 'react-native';
 import { Text, YStack } from 'tamagui';
 
+import { ONZE_COLORS } from '../theme/colors';
+
 type ServerLoadingScreenProps = {
   title: string;
   message?: string;
@@ -8,7 +10,7 @@ type ServerLoadingScreenProps = {
 
 export function ServerLoadingScreen({ title, message }: ServerLoadingScreenProps) {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <YStack
         flex={1}
         alignItems="center"
@@ -17,7 +19,7 @@ export function ServerLoadingScreen({ title, message }: ServerLoadingScreenProps
         padding="$6"
         backgroundColor="$onzeCanvas"
       >
-        <ActivityIndicator size="large" color="#148A4A" />
+        <ActivityIndicator size="large" color={ONZE_COLORS.green} />
         <Text color="$onzeInk" fontSize={20} fontWeight="800" textAlign="center">
           {title}
         </Text>

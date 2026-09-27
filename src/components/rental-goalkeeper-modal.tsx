@@ -1,5 +1,7 @@
 import { KeyboardAvoidingView, Modal, Platform, Pressable } from 'react-native';
-import { Button, Input, Text, XStack, YStack } from 'tamagui';
+import { Input, Text, XStack, YStack } from 'tamagui';
+
+import { AppButton } from './app-button';
 
 type RentalGoalkeeperModalProps = {
   visible: boolean;
@@ -51,7 +53,7 @@ export function RentalGoalkeeperModal({
                   Adicionar goleiro de aluguel
                 </Text>
                 <Text color="$onzeMuted" fontSize={14} lineHeight={21}>
-                  Informe somente o nome. Ele ocupará uma vaga apenas nesta partida e não terá conta, cobrança ou notificações.
+                  Informe somente o nome. Ele ocupará uma vaga apenas neste jogo e não terá conta, cobrança ou notificações.
                 </Text>
               </YStack>
 
@@ -76,28 +78,28 @@ export function RentalGoalkeeperModal({
               </YStack>
 
               <XStack gap="$3">
-                <Button
-                  backgroundColor="$onzeSurface"
-                  borderColor="$onzeBorder"
-                  borderWidth={1}
+                <AppButton
+                  variant="secondary"
+
+
                   disabled={loading}
                   flex={1}
-                  height={48}
+
                   onPress={onCancel}
                 >
                   <Text color="$onzeInk" fontWeight="800">Cancelar</Text>
-                </Button>
-                <Button
-                  backgroundColor="$onzeGreen"
+                </AppButton>
+                <AppButton
+                  variant="primary"
                   disabled={loading || !name.trim()}
                   flex={1}
-                  height={48}
+
                   onPress={onConfirm}
                 >
                   <Text color="$onzeSurface" fontWeight="800">
                     {loading ? 'Adicionando...' : 'Adicionar'}
                   </Text>
-                </Button>
+                </AppButton>
               </XStack>
             </YStack>
           </Pressable>

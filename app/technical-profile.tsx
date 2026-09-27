@@ -1,7 +1,13 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { TechnicalRatingEditor } from '../src/components/technical-rating-editor';
@@ -56,7 +62,7 @@ export default function TechnicalProfileScreen() {
         router.replace('/');
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar a avaliação.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar a avaliação.'));
     } finally {
       setLoading(false);
     }
@@ -83,7 +89,7 @@ export default function TechnicalProfileScreen() {
       setRatings(updated.ratings ?? {});
       setMessage('Avaliação técnica atualizada. Habilidades não avaliadas continuaram sem nota.');
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível salvar a avaliação.');
+      setError(getErrorMessage(exception, 'Não foi possível salvar a avaliação.'));
     } finally {
       setSaving(false);
     }
@@ -102,12 +108,12 @@ export default function TechnicalProfileScreen() {
   )) ?? [];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <Button alignSelf="flex-start" backgroundColor="transparent" onPress={() => router.back()}>
+          <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
             <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-          </Button>
+          </AppButton>
 
           <YStack gap="$1">
             <Text color="$onzeGreen" fontSize={13} fontWeight="900">AVALIAÇÃO TÉCNICA PRIVADA</Text>
@@ -125,7 +131,7 @@ export default function TechnicalProfileScreen() {
             </YStack>
           ) : null}
           {message ? (
-            <YStack backgroundColor="#EAF7EF" borderRadius="$5" padding="$4">
+            <YStack backgroundColor="$onzeSuccessBg" borderRadius="$5" padding="$4">
               <Text color="$onzeGreen" fontSize={13} fontWeight="800">{message}</Text>
             </YStack>
           ) : null}
@@ -147,7 +153,7 @@ export default function TechnicalProfileScreen() {
                     <Text color="$onzeInk" fontSize={14} fontWeight="900">
                       {positionLabel(summary.position)}
                     </Text>
-                    <Text color={summary.reliable ? '$onzeGreen' : '#8A6414'} fontSize={12} fontWeight="800">
+                    <Text color={summary.reliable ? '$onzeGreen' : '$onzeWarningText'} fontSize={12} fontWeight="800">
                       {summary.reliable ? 'Avaliação confiável' : 'Avaliação incompleta'}
                     </Text>
                   </YStack>
@@ -179,11 +185,11 @@ export default function TechnicalProfileScreen() {
             />
           </YStack>
 
-          <Button backgroundColor="$onzeGreen" disabled={saving || !profile} height={54} onPress={() => void save()}>
+          <AppButton variant="primary" disabled={saving || !profile}  onPress={() => void save()}>
             <Text color="$onzeSurface" fontSize={16} fontWeight="900">
               {saving ? 'Salvando...' : 'Salvar avaliação'}
             </Text>
-          </Button>
+          </AppButton>
         </YStack>
       </ScrollView>
     </SafeAreaView>

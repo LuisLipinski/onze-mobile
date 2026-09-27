@@ -8,7 +8,13 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { Button, Input, Text, TextArea, XStack, YStack } from 'tamagui';
+import { Input, Text, TextArea, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { createGroup, Group, uploadGroupPhoto } from '../src/lib/api';
@@ -69,12 +75,9 @@ export default function CreateGroupScreen() {
             throw new Error('A API não confirmou a foto do grupo.');
           }
         } catch (exception) {
-          const reason =
-            exception instanceof Error && exception.message.trim()
-              ? ` Motivo informado: ${exception.message}`
-              : '';
+          console.warn('Falha ao enviar a foto do grupo criado.', exception);
           setError(
-            `O grupo já foi criado, mas a foto ainda não foi enviada. Toque em Continuar novamente para tentar somente o envio da foto.${reason}`,
+            'O grupo já foi criado, mas a foto ainda não foi enviada. Verifique sua conexão e toque em Continuar novamente para tentar somente o envio da foto.',
           );
           setLoading(false);
           return;
@@ -89,7 +92,7 @@ export default function CreateGroupScreen() {
         },
       });
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível criar o grupo.');
+      setError(getErrorMessage(exception, 'Não foi possível criar o grupo.'));
       setLoading(false);
     }
   }
@@ -104,7 +107,7 @@ export default function CreateGroupScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -136,17 +139,17 @@ export default function CreateGroupScreen() {
                   source={photo ? { uri: photo.uri } : require('../assets/icon.png')}
                   style={{ width: 108, height: 108, borderRadius: 24 }}
                 />
-                <Button
-                  backgroundColor="$onzeSurface"
-                  borderColor="$onzeGreen"
-                  borderWidth={1}
+                <AppButton
+                  variant="outline"
+
+
                   onPress={() => void choosePhoto()}
                   pressStyle={{ backgroundColor: '$onzeCanvas' }}
                 >
                   <Text color="$onzeGreen" fontWeight="700">
                     {photo ? 'Trocar foto' : 'Escolher foto (opcional)'}
                   </Text>
-                </Button>
+                </AppButton>
                 <Text color="$onzeMuted" fontSize={12} textAlign="center">
                   Se você escolher uma foto, vamos confirmar o envio antes de avançar.
                 </Text>
@@ -193,21 +196,21 @@ export default function CreateGroupScreen() {
 
               {error ? <Text color="$onzeDanger" fontSize={14} lineHeight={20}>{error}</Text> : null}
 
-              <Button
-                backgroundColor="$onzeGreen"
-                height={52}
+              <AppButton
+                variant="primary"
+
                 onPress={() => void submit()}
                 pressStyle={{ backgroundColor: '$onzeGreenPress' }}
               >
                 <Text color="$onzeSurface" fontSize={16} fontWeight="800">
                   {createdGroup && photo ? 'Tentar enviar foto novamente' : 'Continuar'}
                 </Text>
-              </Button>
+              </AppButton>
             </YStack>
 
-            <Button backgroundColor="transparent" borderWidth={0} onPress={() => router.back()}>
+            <AppButton variant="ghost" borderWidth={0} onPress={() => router.back()}>
               <Text color="$onzeMuted" fontWeight="700">Voltar</Text>
-            </Button>
+            </AppButton>
           </YStack>
         </ScrollView>
       </KeyboardAvoidingView>

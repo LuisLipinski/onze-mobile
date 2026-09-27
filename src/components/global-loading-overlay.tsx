@@ -6,6 +6,7 @@ import {
   getGlobalLoadingSnapshot,
   subscribeToGlobalLoading,
 } from '../lib/global-loading';
+import { ONZE_COLORS } from '../theme/colors';
 
 const SHOW_DELAY_MS = 180;
 const SLOW_OPERATION_THRESHOLD_MS = 8_000;
@@ -67,7 +68,7 @@ export function GlobalLoadingOverlay() {
           padding="$6"
           width="86%"
         >
-          <ActivityIndicator accessibilityLabel="Carregando" color="#148A4A" size="large" />
+          <ActivityIndicator accessibilityLabel="Carregando" color={ONZE_COLORS.green} size="large" />
           <Text color="$onzeInk" fontSize={20} fontWeight="800" textAlign="center">
             {loading.title}
           </Text>

@@ -1,6 +1,8 @@
 import { defaultConfig } from '@tamagui/config/v5';
 import { createTamagui } from 'tamagui';
 
+import { ONZE_COLORS } from './src/theme/colors';
+
 export const tamaguiConfig = createTamagui({
   ...defaultConfig,
   settings: {
@@ -10,14 +12,26 @@ export const tamaguiConfig = createTamagui({
   tokens: {
     ...defaultConfig.tokens,
     color: {
-      onzeCanvas: '#F4F7F5',
-      onzeSurface: '#FFFFFF',
-      onzeInk: '#10231A',
-      onzeMuted: '#65756D',
-      onzeBorder: '#DDE6E1',
-      onzeGreen: '#148A4A',
-      onzeGreenPress: '#0F6D3B',
-      onzeDanger: '#B42318',
+      onzeCanvas: ONZE_COLORS.canvas,
+      onzeSurface: ONZE_COLORS.surface,
+      onzeInk: ONZE_COLORS.ink,
+      onzeMuted: ONZE_COLORS.muted,
+      onzeBorder: ONZE_COLORS.border,
+      onzeGreen: ONZE_COLORS.green,
+      onzeGreenPress: ONZE_COLORS.greenPress,
+      onzeDanger: ONZE_COLORS.danger,
+      onzeDangerBg: ONZE_COLORS.dangerBg,
+      onzeDangerBorder: ONZE_COLORS.dangerBorder,
+      onzeSuccessBg: ONZE_COLORS.successBg,
+      onzeSuccessSoft: ONZE_COLORS.successSoft,
+      onzeSuccessBorder: ONZE_COLORS.successBorder,
+      onzeWarning: ONZE_COLORS.warning,
+      onzeWarningBg: ONZE_COLORS.warningBg,
+      onzeWarningSoft: ONZE_COLORS.warningSoft,
+      onzeWarningText: ONZE_COLORS.warningText,
+      onzeWarningBorder: ONZE_COLORS.warningBorder,
+      onzeInfoBg: ONZE_COLORS.infoBg,
+      onzeSwitchTrack: ONZE_COLORS.switchTrack,
     },
   },
 });

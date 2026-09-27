@@ -1,7 +1,13 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { SafeAreaView, ScrollView, Switch } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
@@ -41,7 +47,7 @@ const PERMISSIONS: {
   {
     value: 'SCHEDULE_GAMES',
     label: 'Marcar jogos',
-    description: 'Marcar partidas e administrar presença, pagamentos, créditos e reposições.',
+    description: 'Marcar jogos e administrar presença, pagamentos, créditos e reposições.',
   },
   {
     value: 'EDIT_PLAYER_PROFILES',
@@ -108,7 +114,7 @@ export default function GroupAdminPermissionsScreen() {
         router.replace('/');
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar as permissões.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar as permissões.'));
     } finally {
       setLoading(false);
     }
@@ -152,7 +158,7 @@ export default function GroupAdminPermissionsScreen() {
         router.replace('/');
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível salvar as permissões.');
+      setError(getErrorMessage(exception, 'Não foi possível salvar as permissões.'));
     } finally {
       setSaving(false);
     }
@@ -163,12 +169,12 @@ export default function GroupAdminPermissionsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 44 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <Button alignSelf="flex-start" backgroundColor="transparent" onPress={() => router.back()}>
+          <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
             <Text color="$onzeGreen" fontWeight="700">← Voltar</Text>
-          </Button>
+          </AppButton>
 
           <YStack gap="$1">
             <Text color="$onzeGreen" fontSize={14} fontWeight="900">EDITAR ADMINISTRADOR</Text>
@@ -220,8 +226,8 @@ export default function GroupAdminPermissionsScreen() {
                     accessibilityLabel={permission.label}
                     disabled={saving}
                     onValueChange={(enabled) => togglePermission(permission.value, enabled)}
-                    thumbColor="#FFFFFF"
-                    trackColor={{ false: '#C9D2CC', true: '#148A4A' }}
+                    thumbColor={ONZE_COLORS.surface}
+                    trackColor={{ false: ONZE_COLORS.switchTrack, true: ONZE_COLORS.green }}
                     value={selected.includes(permission.value)}
                   />
                 </XStack>
@@ -232,9 +238,9 @@ export default function GroupAdminPermissionsScreen() {
               <Text color="$onzeDanger" fontSize={14} lineHeight={20}>
                 {error ?? 'Não foi possível abrir este administrador.'}
               </Text>
-              <Button backgroundColor="$onzeGreen" onPress={() => void loadAdmin()}>
+              <AppButton variant="primary" onPress={() => void loadAdmin()}>
                 <Text color="$onzeSurface" fontWeight="800">Tentar novamente</Text>
-              </Button>
+              </AppButton>
             </YStack>
           )}
 
@@ -242,11 +248,11 @@ export default function GroupAdminPermissionsScreen() {
           {message ? <Text color="$onzeGreen" fontSize={13} fontWeight="700" lineHeight={19}>{message}</Text> : null}
 
           {member ? (
-            <Button backgroundColor="$onzeGreen" disabled={saving} height={52} onPress={() => void savePermissions()}>
+            <AppButton variant="primary" disabled={saving}  onPress={() => void savePermissions()}>
               <Text color="$onzeSurface" fontSize={16} fontWeight="800">
                 {saving ? 'Salvando...' : 'Salvar permissões'}
               </Text>
-            </Button>
+            </AppButton>
           ) : null}
         </YStack>
       </ScrollView>

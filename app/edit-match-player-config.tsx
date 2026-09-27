@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, ScrollView } from 'react-native';
-import { Button, Input, Text, YStack } from 'tamagui';
+import { Input, Text, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import {
   FootballMatch,
@@ -30,7 +36,7 @@ export default function EditMatchPlayerConfigScreen() {
 
   useEffect(() => {
     if (!params.matchId) {
-      setError('Não foi possível identificar a partida.');
+      setError('Não foi possível identificar o jogo.');
       return;
     }
     void getAccessToken().then(async (token) => {
@@ -45,7 +51,7 @@ export default function EditMatchPlayerConfigScreen() {
       setMaxPlayers(String(loaded.maxPlayers));
       setMaxPlayersCustomized(loaded.maxPlayers !== loaded.minimumPlayers);
     }).catch((exception) => {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar a partida.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar o jogo.'));
     });
   }, [params.matchId, router]);
 
@@ -106,7 +112,7 @@ export default function EditMatchPlayerConfigScreen() {
       );
       router.back();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível salvar.');
+      setError(getErrorMessage(exception, 'Não foi possível salvar.'));
     } finally {
       setSaving(false);
     }
@@ -117,12 +123,12 @@ export default function EditMatchPlayerConfigScreen() {
     : 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <Button alignSelf="flex-start" backgroundColor="transparent" onPress={() => router.back()}>
+          <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
             <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-          </Button>
+          </AppButton>
           <YStack gap="$1">
             <Text color="$onzeGreen" fontSize={13} fontWeight="900">CONFIGURAÇÃO DE JOGADORES</Text>
             <Text color="$onzeInk" fontSize={28} fontWeight="900">Modalidade e jogadores</Text>
@@ -131,9 +137,9 @@ export default function EditMatchPlayerConfigScreen() {
             <Text color="$onzeMuted" fontSize={11} fontWeight="900">MODALIDADE *</Text>
             <YStack gap="$2">
               {MATCH_MODALITY_OPTIONS.map((option) => (
-                <Button
+                <AppButton
                   key={option.value}
-                  backgroundColor={modality === option.value ? '#EAF7EF' : '$onzeSurface'}
+                  backgroundColor={modality === option.value ? '$onzeSuccessBg' : '$onzeSurface'}
                   borderColor={modality === option.value ? '$onzeGreen' : '$onzeBorder'}
                   borderWidth={modality === option.value ? 2 : 1}
                   justifyContent="flex-start"
@@ -142,7 +148,7 @@ export default function EditMatchPlayerConfigScreen() {
                   <Text color="$onzeInk" fontWeight="800">
                     {modality === option.value ? '✓ ' : ''}{option.label}
                   </Text>
-                </Button>
+                </AppButton>
               ))}
             </YStack>
             <YStack gap="$2">
@@ -177,9 +183,9 @@ export default function EditMatchPlayerConfigScreen() {
             </YStack>
           </YStack>
           {error ? <Text color="$onzeDanger" fontSize={13}>{error}</Text> : null}
-          <Button backgroundColor="$onzeGreen" disabled={!match || saving} height={54} onPress={() => void submit()}>
+          <AppButton variant="primary" disabled={!match || saving}  onPress={() => void submit()}>
             <Text color="$onzeSurface" fontWeight="900">{saving ? 'Salvando...' : 'Salvar configuração'}</Text>
-          </Button>
+          </AppButton>
         </YStack>
       </ScrollView>
     </SafeAreaView>

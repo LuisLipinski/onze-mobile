@@ -39,6 +39,6 @@ test('goleiro principal não oferece remoção manual do papel', () => {
 
 test('mensagem de ausência respeita singular e plural', () => {
   assert.equal(missingGoalkeepersMessage(0), null);
-  assert.equal(missingGoalkeepersMessage(1), 'Falta 1 goleiro para esta partida.');
-  assert.equal(missingGoalkeepersMessage(3), 'Faltam 3 goleiros para esta partida.');
+  assert.equal(missingGoalkeepersMessage(1), 'Falta 1 goleiro para este jogo.');
+  assert.equal(missingGoalkeepersMessage(3), 'Faltam 3 goleiros para este jogo.');
 });

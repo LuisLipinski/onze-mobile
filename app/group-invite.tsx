@@ -1,7 +1,14 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, SafeAreaView, Share } from 'react-native';
-import { Button, Text, YStack } from 'tamagui';
+import { SafeAreaView, Share } from 'react-native';
+import { Text, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
+import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
@@ -19,6 +26,7 @@ export default function GroupInviteScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
+  const [regenerateConfirmationVisible, setRegenerateConfirmationVisible] = useState(false);
 
   useEffect(() => {
     void loadInvite();
@@ -41,7 +49,7 @@ export default function GroupInviteScreen() {
       }
       setInvite(await createGroupInvite(token, params.groupId));
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível gerar o convite.');
+      setError(getErrorMessage(exception, 'Não foi possível gerar o convite.'));
     } finally {
       setLoading(false);
     }
@@ -58,14 +66,7 @@ export default function GroupInviteScreen() {
 
   function confirmRegenerate() {
     if (regenerating) return;
-    Alert.alert(
-      'Gerar novo convite?',
-      'O link e o código atuais deixarão de funcionar. Quem já entrou no grupo continuará normalmente.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Gerar novo convite', style: 'destructive', onPress: () => void regenerateInvite() },
-      ],
-    );
+    setRegenerateConfirmationVisible(true);
   }
 
   async function regenerateInvite() {
@@ -84,12 +85,11 @@ export default function GroupInviteScreen() {
       setMessage('Novo convite gerado. O link e o código anteriores não funcionam mais.');
     } catch (exception) {
       setError(
-        exception instanceof Error
-          ? exception.message
-          : 'Não foi possível gerar um novo convite.',
+        getErrorMessage(exception, 'Não foi possível gerar um novo convite.'),
       );
     } finally {
       setRegenerating(false);
+      setRegenerateConfirmationVisible(false);
     }
   }
 
@@ -111,7 +111,7 @@ export default function GroupInviteScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <YStack flex={1} justifyContent="center" padding="$5">
         <YStack gap="$5">
           <YStack gap="$1">
@@ -152,10 +152,10 @@ export default function GroupInviteScreen() {
                 {invite.shareUrl}
               </Text>
 
-              <Button
+              <AppButton
                 alignSelf="stretch"
-                backgroundColor="$onzeGreen"
-                height={52}
+                variant="primary"
+
                 marginTop="$2"
                 onPress={() => void shareInvite()}
                 pressStyle={{ backgroundColor: '$onzeGreenPress' }}
@@ -163,21 +163,21 @@ export default function GroupInviteScreen() {
                 <Text color="$onzeSurface" fontSize={16} fontWeight="800">
                   Compartilhar convite
                 </Text>
-              </Button>
+              </AppButton>
 
-              <Button
+              <AppButton
                 alignSelf="stretch"
-                backgroundColor="$onzeSurface"
-                borderColor="$onzeBorder"
-                borderWidth={1}
+                variant="secondary"
+
+
                 disabled={regenerating}
-                height={48}
+
                 onPress={confirmRegenerate}
               >
                 <Text color="$onzeInk" fontSize={14} fontWeight="700">
                   {regenerating ? 'Gerando...' : 'Gerar novo convite'}
                 </Text>
-              </Button>
+              </AppButton>
 
               <Text color="$onzeMuted" fontSize={12} lineHeight={18} textAlign="center">
                 Gere outro somente se quiser invalidar o link que já foi compartilhado.
@@ -195,11 +195,11 @@ export default function GroupInviteScreen() {
               <Text color="$onzeDanger" fontSize={14} lineHeight={20}>
                 {error ?? 'Não foi possível gerar o convite.'}
               </Text>
-              <Button backgroundColor="$onzeGreen" onPress={() => void loadInvite()}>
+              <AppButton variant="primary" onPress={() => void loadInvite()}>
                 <Text color="$onzeSurface" fontWeight="800">
                   Tentar novamente
                 </Text>
-              </Button>
+              </AppButton>
             </YStack>
           )}
 
@@ -215,19 +215,30 @@ export default function GroupInviteScreen() {
             </Text>
           ) : null}
 
-          <Button
-            backgroundColor="$onzeSurface"
-            borderColor="$onzeBorder"
-            borderWidth={1}
-            height={50}
+          <AppButton
+            variant="secondary"
+
+
+
             onPress={finish}
           >
             <Text color="$onzeInk" fontSize={15} fontWeight="700">
               Voltar ao grupo
             </Text>
-          </Button>
+          </AppButton>
         </YStack>
       </YStack>
+      <ConfirmActionModal
+        visible={regenerateConfirmationVisible}
+        title="Gerar novo convite?"
+        message="O link e o código atuais deixarão de funcionar. Quem já entrou no grupo continuará normalmente."
+        confirmLabel="Gerar novo convite"
+        destructive
+        loading={regenerating}
+        loadingLabel="Gerando..."
+        onCancel={() => setRegenerateConfirmationVisible(false)}
+        onConfirm={() => void regenerateInvite()}
+      />
     </SafeAreaView>
   );
 }

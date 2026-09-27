@@ -1,13 +1,19 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { Button, Input, Text, XStack, YStack } from 'tamagui';
+import { Input, Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
+import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { GroupDayOfWeek, GroupSchedule, updateGroupDetails } from '../src/lib/api';
@@ -39,6 +45,7 @@ export default function CreateGroupDetailsScreen() {
   const [times, setTimes] = useState<Partial<Record<GroupDayOfWeek, string>>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [skipInfoVisible, setSkipInfoVisible] = useState(false);
 
   const selectedDays = useMemo(
     () => DAYS.filter((day) => times[day.value] !== undefined),
@@ -121,9 +128,7 @@ export default function CreateGroupDetailsScreen() {
       goToInvite();
     } catch (exception) {
       setError(
-        exception instanceof Error
-          ? exception.message
-          : 'Não foi possível salvar as informações do grupo.',
+        getErrorMessage(exception, 'Não foi possível salvar as informações do grupo.'),
       );
       setLoading(false);
     }
@@ -137,11 +142,7 @@ export default function CreateGroupDetailsScreen() {
   }
 
   function skip() {
-    Alert.alert(
-      'Você pode configurar depois',
-      'Cidade, dias, horários, mascote, local e cobrança podem ser alterados em Grupo > Configurações.',
-      [{ text: 'Continuar', onPress: goToInvite }],
-    );
+    setSkipInfoVisible(true);
   }
 
   if (loading) {
@@ -154,7 +155,7 @@ export default function CreateGroupDetailsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -179,13 +180,13 @@ export default function CreateGroupDetailsScreen() {
 
             {params.photoWarning ? (
               <YStack
-                backgroundColor="#FFF7E8"
-                borderColor="#F0D9A8"
+                backgroundColor="$onzeWarningBg"
+                borderColor="$onzeWarningBorder"
                 borderRadius="$4"
                 borderWidth={1}
                 padding="$3"
               >
-                <Text color="#765A20" fontSize={13} lineHeight={19}>
+                <Text color="$onzeWarningText" fontSize={13} lineHeight={19}>
                   {params.photoWarning}
                 </Text>
               </YStack>
@@ -254,7 +255,7 @@ export default function CreateGroupDetailsScreen() {
                   {DAYS.map((day) => {
                     const selected = times[day.value] !== undefined;
                     return (
-                      <Button
+                      <AppButton
                         key={day.value}
                         backgroundColor={selected ? '$onzeGreen' : '$onzeSurface'}
                         borderColor="$onzeGreen"
@@ -269,7 +270,7 @@ export default function CreateGroupDetailsScreen() {
                         >
                           {day.label}
                         </Text>
-                      </Button>
+                      </AppButton>
                     );
                   })}
                 </XStack>
@@ -302,32 +303,41 @@ export default function CreateGroupDetailsScreen() {
                 </Text>
               ) : null}
 
-              <Button
-                backgroundColor="$onzeGreen"
-                height={52}
+              <AppButton
+                variant="primary"
+
                 onPress={() => void continueSetup()}
                 pressStyle={{ backgroundColor: '$onzeGreenPress' }}
               >
                 <Text color="$onzeSurface" fontSize={16} fontWeight="800">
                   Salvar e continuar
                 </Text>
-              </Button>
+              </AppButton>
 
-              <Button
-                backgroundColor="$onzeSurface"
-                borderColor="$onzeBorder"
-                borderWidth={1}
-                height={50}
+              <AppButton
+                variant="secondary"
+
+
+
                 onPress={skip}
               >
                 <Text color="$onzeInk" fontSize={15} fontWeight="700">
                   Pular
                 </Text>
-              </Button>
+              </AppButton>
             </YStack>
           </YStack>
         </ScrollView>
       </KeyboardAvoidingView>
+      <ConfirmActionModal
+        visible={skipInfoVisible}
+        title="Você pode configurar depois"
+        message="Cidade, dias, horários, mascote, local e cobrança podem ser alterados em Grupo > Configurações."
+        confirmLabel="Continuar"
+        cancelLabel={null}
+        onCancel={() => setSkipInfoVisible(false)}
+        onConfirm={goToInvite}
+      />
     </SafeAreaView>
   );
 }

@@ -6,7 +6,13 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { Button, Input, Text, YStack } from 'tamagui';
+import { Input, Text, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { register } from '../src/lib/api';
@@ -35,7 +41,7 @@ export default function RegisterScreen() {
         },
       });
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível criar a conta.');
+      setError(getErrorMessage(exception, 'Não foi possível criar a conta.'));
       setLoading(false);
     }
   }
@@ -50,7 +56,7 @@ export default function RegisterScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -80,7 +86,7 @@ export default function RegisterScreen() {
                 <Text color="$onzeMuted" fontSize={14}>
                   {params.joinCode
                     ? 'Crie seu acesso para aceitar o convite da pelada.'
-                    : 'Crie seu acesso para começar a organizar suas partidas.'}
+                    : 'Crie seu acesso para começar a organizar seus jogos.'}
                 </Text>
               </YStack>
 
@@ -137,17 +143,17 @@ export default function RegisterScreen() {
                 </Text>
               ) : null}
 
-              <Button
-                backgroundColor="$onzeGreen"
+              <AppButton
+                variant="primary"
                 borderRadius="$4"
-                height={52}
+
                 onPress={submit}
                 pressStyle={{ backgroundColor: '$onzeGreenPress' }}
               >
                 <Text color="$onzeSurface" fontSize={16} fontWeight="800">
                   Criar conta
                 </Text>
-              </Button>
+              </AppButton>
 
               <Text color="$onzeMuted" fontSize={14} textAlign="center">
                 Já tem conta?{' '}
@@ -157,7 +163,7 @@ export default function RegisterScreen() {
                       ? { pathname: '/', params: { joinCode: params.joinCode } }
                       : '/'
                   }
-                  style={{ color: '#148A4A', fontWeight: '700' }}
+                  style={{ color: ONZE_COLORS.green, fontWeight: '700' }}
                 >
                   Entrar
                 </Link>

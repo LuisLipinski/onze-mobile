@@ -1,7 +1,14 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { AppState, SafeAreaView, ScrollView } from 'react-native';
-import { Button, Text, YStack } from 'tamagui';
+import { Text, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
+import { OnzeWordmark } from '../src/components/onze-wordmark';
 
 import { BottomNavigation } from '../src/components/bottom-navigation';
 import { MatchCard } from '../src/components/match-card';
@@ -149,7 +156,7 @@ export default function HomeScreen() {
         router.replace('/');
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar sua conta.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar sua conta.'));
     } finally {
       setLoading(false);
     }
@@ -160,12 +167,12 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <YStack flex={1}>
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
           <YStack gap="$6" paddingVertical="$3">
             <YStack gap="$1">
-              <Text color="$onzeGreen" fontSize={18} fontWeight="900">ONZE</Text>
+              <OnzeWordmark />
               <Text color="$onzeInk" fontSize={30} fontWeight="900">
                 {user ? `Olá, ${user.displayName}` : 'Sua próxima pelada'}
               </Text>
@@ -183,9 +190,9 @@ export default function HomeScreen() {
                 padding="$4"
               >
                 <Text color="$onzeDanger" fontSize={13}>{error}</Text>
-                <Button backgroundColor="$onzeGreen" marginTop="$3" onPress={() => void loadHome()}>
+                <AppButton variant="primary" marginTop="$3" onPress={() => void loadHome()}>
                   <Text color="$onzeSurface" fontWeight="800">Tentar novamente</Text>
-                </Button>
+                </AppButton>
               </YStack>
             ) : null}
 
@@ -193,7 +200,7 @@ export default function HomeScreen() {
               <YStack gap="$1">
                 <Text color="$onzeInk" fontSize={20} fontWeight="900">Jogos ao vivo</Text>
                 <Text color="$onzeMuted" fontSize={13}>
-                  Acompanhe o placar e os acontecimentos das partidas em andamento.
+                  Acompanhe o placar e os acontecimentos dos jogos em andamento.
                 </Text>
               </YStack>
 
@@ -206,7 +213,7 @@ export default function HomeScreen() {
                   padding="$4"
                 >
                   <Text color="$onzeMuted" fontSize={13} textAlign="center">
-                    Nenhuma partida ao vivo agora.
+                    Nenhum jogo ao vivo agora.
                   </Text>
                 </YStack>
               ) : (
@@ -241,7 +248,7 @@ export default function HomeScreen() {
                     Você não tem nenhum próximo jogo agendado.
                   </Text>
                   <Text color="$onzeMuted" fontSize={14} lineHeight={21} textAlign="center">
-                    Quando uma partida for marcada em um dos seus grupos, ela aparecerá aqui.
+                    Quando um jogo for marcado em um dos seus grupos, ele aparecerá aqui.
                   </Text>
                 </YStack>
               ) : (

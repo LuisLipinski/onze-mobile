@@ -2,7 +2,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { GoalkeeperPlayerModal } from '../src/components/goalkeeper-player-modal';
@@ -45,6 +51,7 @@ import {
   updateMatchGoalkeeper,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
+import { formatDateTime, formatLongDateTime } from '../src/lib/date-format';
 import {
   registerNotificationsForSession,
   syncSingleMatchNotifications,
@@ -66,44 +73,7 @@ import { positionLabel } from '../src/lib/sports-profile';
 type ManagementAction = 'cancel-occurrence' | 'end-series' | null;
 type LiveAction = 'start' | null;
 type GoalkeeperPicker = 'secondary' | 'volunteer' | null;
-type PaymentBadgeColor = '$onzeGreen' | '$onzeDanger' | '$onzeMuted' | '#8A6414';
-
-function formatDateTime(match: FootballMatch) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: match.timeZone,
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(match.startsAt));
-}
-
-function formatOpening(match: FootballMatch) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: match.timeZone,
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(match.attendanceOpensAt));
-}
-
-function formatDeadline(value: string, timeZone: string) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone,
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(value));
-}
+type PaymentBadgeColor = '$onzeGreen' | '$onzeDanger' | '$onzeMuted' | '$onzeWarningText';
 
 export default function MatchScreen() {
   const router = useRouter();
@@ -161,7 +131,7 @@ export default function MatchScreen() {
       setLiveAction(null);
       router.push({ pathname: '/live-match', params: { matchId: match.id } });
     } catch (exception) {
-      setStartModalError(exception instanceof Error ? exception.message : 'Não foi possível iniciar a partida.');
+      setStartModalError(getErrorMessage(exception, 'Não foi possível iniciar o jogo.'));
     } finally {
       setManaging(false);
     }
@@ -178,9 +148,7 @@ export default function MatchScreen() {
       const identities = await getMatchTeamIdentities(token, match.id);
       setStartIdentities(identities);
     } catch (exception) {
-      setStartModalError(exception instanceof Error
-        ? exception.message
-        : 'Não foi possível carregar os times.');
+      setStartModalError(getErrorMessage(exception, 'Não foi possível carregar os times.'));
     } finally {
       setStartModalLoading(false);
     }
@@ -213,9 +181,7 @@ export default function MatchScreen() {
           : identity
       )));
     } catch (exception) {
-      setStartModalError(exception instanceof Error
-        ? exception.message
-        : 'Não foi possível atualizar a imagem do time.');
+      setStartModalError(getErrorMessage(exception, 'Não foi possível atualizar a imagem do time.'));
     } finally {
       setStartImageSavingTeamNumber(null);
     }
@@ -275,7 +241,7 @@ export default function MatchScreen() {
         goToLogin();
         return;
       }
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar o jogo.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar o jogo.'));
     } finally {
       setLoading(false);
     }
@@ -296,7 +262,7 @@ export default function MatchScreen() {
       setPendingAttendanceStatus(null);
       syncNotifications(token, updatedMatch);
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível salvar sua presença.');
+      setError(getErrorMessage(exception, 'Não foi possível salvar sua presença.'));
     } finally {
       setUpdatingAttendance(null);
     }
@@ -328,7 +294,7 @@ export default function MatchScreen() {
       setMatch(updatedMatch);
       syncNotifications(token, updatedMatch);
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível informar o pagamento.');
+      setError(getErrorMessage(exception, 'Não foi possível informar o pagamento.'));
     } finally {
       setUpdatingPayment(null);
     }
@@ -348,7 +314,7 @@ export default function MatchScreen() {
       setMatch(updatedMatch);
       syncNotifications(token, updatedMatch);
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível confirmar o pagamento.');
+      setError(getErrorMessage(exception, 'Não foi possível confirmar o pagamento.'));
     } finally {
       setUpdatingPayment(null);
     }
@@ -376,9 +342,7 @@ export default function MatchScreen() {
       syncNotifications(token, updatedMatch);
     } catch (exception) {
       setGoalkeeperChange(null);
-      setError(exception instanceof Error
-        ? exception.message
-        : 'Não foi possível atualizar o goleiro.');
+      setError(getErrorMessage(exception, 'Não foi possível atualizar o goleiro.'));
     } finally {
       setUpdatingGoalkeeperId(null);
     }
@@ -412,9 +376,7 @@ export default function MatchScreen() {
       setRentalModalVisible(false);
       setRentalGoalkeeperName('');
     } catch (exception) {
-      setRentalGoalkeeperError(exception instanceof Error
-        ? exception.message
-        : 'Não foi possível adicionar o goleiro de aluguel.');
+      setRentalGoalkeeperError(getErrorMessage(exception, 'Não foi possível adicionar o goleiro de aluguel.'));
     } finally {
       setManagingRentalId(null);
     }
@@ -435,9 +397,7 @@ export default function MatchScreen() {
       setRentalToRemove(null);
     } catch (exception) {
       setRentalToRemove(null);
-      setError(exception instanceof Error
-        ? exception.message
-        : 'Não foi possível remover o goleiro de aluguel.');
+      setError(getErrorMessage(exception, 'Não foi possível remover o goleiro de aluguel.'));
     } finally {
       setManagingRentalId(null);
     }
@@ -455,9 +415,7 @@ export default function MatchScreen() {
       }
       setMatch(await removeMatchGuest(token, match.id, guest.id));
     } catch (exception) {
-      setError(exception instanceof Error
-        ? exception.message
-        : 'Não foi possível remover o convidado.');
+      setError(getErrorMessage(exception, 'Não foi possível remover o convidado.'));
     } finally {
       setManagingGuestId(null);
     }
@@ -484,7 +442,7 @@ export default function MatchScreen() {
       setSelectedSettlements((current) => current.filter((userId) => userId !== settlementPlayer.userId));
       syncNotifications(token, updatedMatch);
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível resolver o acerto.');
+      setError(getErrorMessage(exception, 'Não foi possível resolver o acerto.'));
     } finally {
       setUpdatingPayment(null);
     }
@@ -512,7 +470,7 @@ export default function MatchScreen() {
       syncNotifications(token, updatedMatch);
     } catch (exception) {
       setBulkResolution(null);
-      setError(exception instanceof Error ? exception.message : 'Não foi possível resolver os acertos selecionados.');
+      setError(getErrorMessage(exception, 'Não foi possível resolver os acertos selecionados.'));
     } finally {
       setUpdatingPayment(null);
     }
@@ -552,7 +510,7 @@ export default function MatchScreen() {
       )));
     } catch (exception) {
       setReplacementDeparture(null);
-      setError(exception instanceof Error ? exception.message : 'Não foi possível carregar os membros disponíveis.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar os membros disponíveis.'));
     } finally {
       setReplacingPlayer(false);
     }
@@ -580,7 +538,7 @@ export default function MatchScreen() {
       setSelectedReplacementUserId(null);
       syncNotifications(token, updatedMatch);
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível preencher a vaga.');
+      setError(getErrorMessage(exception, 'Não foi possível preencher a vaga.'));
     } finally {
       setReplacingPlayer(false);
     }
@@ -612,7 +570,7 @@ export default function MatchScreen() {
       syncNotifications(token, updatedMatch);
     } catch (exception) {
       setManagementAction(null);
-      setError(exception instanceof Error ? exception.message : 'Não foi possível alterar este jogo.');
+      setError(getErrorMessage(exception, 'Não foi possível alterar este jogo.'));
     } finally {
       setManaging(false);
     }
@@ -654,12 +612,12 @@ export default function MatchScreen() {
     : volunteerCandidates;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <Button alignSelf="flex-start" backgroundColor="transparent" onPress={goBack}>
+          <AppButton alignSelf="flex-start" variant="ghost" onPress={goBack}>
             <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-          </Button>
+          </AppButton>
 
           {match ? (
             <>
@@ -673,7 +631,7 @@ export default function MatchScreen() {
                   ) : null}
                 </XStack>
                 <Text color="$onzeInk" fontSize={28} fontWeight="900" textTransform="capitalize">
-                  {formatDateTime(match)}
+                  {formatLongDateTime(match.startsAt, match.timeZone)}
                 </Text>
                 <Text color="$onzeMuted" fontSize={15}>📍 {match.venue}</Text>
               </YStack>
@@ -690,7 +648,7 @@ export default function MatchScreen() {
                   <YStack flex={1} gap="$1">
                     <Text color="$onzeMuted" fontSize={11} fontWeight="900">ENTRAR NA LISTA ATÉ</Text>
                     <Text color="$onzeInk" fontSize={13} fontWeight="800">
-                      {formatDeadline(match.signupDeadline, match.timeZone)}
+                      {formatDateTime(match.signupDeadline, match.timeZone)}
                     </Text>
                   </YStack>
                   <Text color={match.signupOpen ? '$onzeGreen' : '$onzeDanger'} fontSize={11} fontWeight="900">
@@ -702,7 +660,7 @@ export default function MatchScreen() {
                     <YStack flex={1} gap="$1">
                       <Text color="$onzeMuted" fontSize={11} fontWeight="900">PAGAR ATÉ</Text>
                       <Text color="$onzeInk" fontSize={13} fontWeight="800">
-                        {formatDeadline(match.paymentDeadline, match.timeZone)}
+                        {formatDateTime(match.paymentDeadline, match.timeZone)}
                       </Text>
                     </YStack>
                     <Text color={match.paymentOpen ? '$onzeGreen' : '$onzeDanger'} fontSize={11} fontWeight="900">
@@ -713,8 +671,8 @@ export default function MatchScreen() {
                 {match.paymentRequired ? (
                   <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
                     {match.goalkeeperPays
-                      ? 'Goleiros membros seguem a cobrança normal desta partida.'
-                      : 'Goleiros marcados pelo administrador ficam isentos nesta partida.'}
+                      ? 'Goleiros membros seguem a cobrança normal deste jogo.'
+                      : 'Goleiros marcados pelo administrador ficam isentos neste jogo.'}
                   </Text>
                 ) : null}
               </YStack>
@@ -733,7 +691,7 @@ export default function MatchScreen() {
                 padding="$5"
               >
                 <YStack gap="$1">
-                  <Text color="$onzeInk" fontSize={18} fontWeight="900">Formato da partida</Text>
+                  <Text color="$onzeInk" fontSize={18} fontWeight="900">Formato do jogo</Text>
                   <Text color="$onzeInk" fontSize={14} fontWeight="800">
                     Modalidade: {modalityLabel(match.modality)}
                   </Text>
@@ -753,7 +711,7 @@ export default function MatchScreen() {
                       Faltam {match.missingMinimumPlayers} {match.missingMinimumPlayers === 1 ? 'jogador' : 'jogadores'} para atingir o mínimo configurado.
                     </Text>
                   ) : match.goingCount < match.idealPlayers ? (
-                    <Text color="#8A6414" fontSize={12} fontWeight="800">
+                    <Text color="$onzeWarningText" fontSize={12} fontWeight="800">
                       O mínimo foi atingido, mas ainda há menos jogadores que o ideal configurado.
                     </Text>
                   ) : null}
@@ -772,18 +730,18 @@ export default function MatchScreen() {
                     && match.status === 'SCHEDULED'
                     && match.missingGoalkeepers > 0
                     && match.secondaryGoalkeeperDecisionRequired ? (
-                  <YStack backgroundColor="#FFF7E6" borderRadius="$4" gap="$2" padding="$4">
-                    <Text color="#8A6414" fontSize={14} fontWeight="900">Escolha quem será o goleiro.</Text>
+                  <YStack backgroundColor="$onzeWarningBg" borderRadius="$4" gap="$2" padding="$4">
+                    <Text color="$onzeWarningText" fontSize={14} fontWeight="900">Escolha quem será o goleiro.</Text>
                     <Text color="$onzeInk" fontSize={12} lineHeight={18}>
                       Há mais de um jogador confirmado com goleiro como segunda posição. O Onze não desempata automaticamente.
                     </Text>
-                    <Button
-                      backgroundColor="$onzeGreen"
+                    <AppButton
+                      variant="primary"
                       disabled={!secondaryCandidates.length || Boolean(updatingGoalkeeperId)}
                       onPress={() => setGoalkeeperPicker('secondary')}
                     >
                       <Text color="$onzeSurface" fontWeight="900">Escolher entre os candidatos</Text>
-                    </Button>
+                    </AppButton>
                   </YStack>
                 ) : null}
 
@@ -796,10 +754,10 @@ export default function MatchScreen() {
                       Como deseja preencher a vaga de goleiro?
                     </Text>
                     <XStack gap="$2">
-                      <Button
-                        backgroundColor="$onzeSurface"
-                        borderColor="$onzeGreen"
-                        borderWidth={1}
+                      <AppButton
+                        variant="outline"
+
+
                         disabled={!volunteerCandidates.length || Boolean(updatingGoalkeeperId)}
                         flex={1}
                         minHeight={48}
@@ -809,9 +767,9 @@ export default function MatchScreen() {
                         <Text color="$onzeGreen" fontSize={12} fontWeight="900" textAlign="center">
                           Escolher jogador
                         </Text>
-                      </Button>
-                      <Button
-                        backgroundColor="$onzeGreen"
+                      </AppButton>
+                      <AppButton
+                        variant="primary"
                         disabled={Boolean(managingRentalId) || match.goingCount >= match.maxPlayers}
                         flex={1}
                         minHeight={48}
@@ -821,7 +779,7 @@ export default function MatchScreen() {
                         <Text color="$onzeSurface" fontSize={12} fontWeight="900" textAlign="center">
                           Adicionar goleiro de aluguel
                         </Text>
-                      </Button>
+                      </AppButton>
                     </XStack>
                     {!volunteerCandidates.length ? (
                       <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
@@ -832,21 +790,21 @@ export default function MatchScreen() {
                 ) : null}
 
                 {match.canManage && match.status === 'SCHEDULED' ? (
-                  <Button
-                    backgroundColor="$onzeSurface"
-                    borderColor="$onzeGreen"
-                    borderWidth={1}
+                  <AppButton
+                    variant="outline"
+
+
                     onPress={() => router.push({
                       pathname: '/edit-match-player-config',
                       params: { matchId: match.id },
                     })}
                   >
                     <Text color="$onzeGreen" fontWeight="900">Editar modalidade e mínimo</Text>
-                  </Button>
+                  </AppButton>
                 ) : null}
 
                 {match.matchType === 'INTERNAL' && (match.canViewTechnical || match.teamsGenerated) ? (
-                  <Button
+                  <AppButton
                     backgroundColor={match.teamsGenerated ? '$onzeGreen' : '$onzeSurface'}
                     borderColor="$onzeGreen"
                     borderWidth={1}
@@ -858,33 +816,33 @@ export default function MatchScreen() {
                     <Text color={match.teamsGenerated ? '$onzeSurface' : '$onzeGreen'} fontWeight="900">
                       {match.teamsGenerated ? 'Ver times formados' : 'Formar times'}
                     </Text>
-                  </Button>
+                  </AppButton>
                 ) : null}
               </YStack>
 
               {match.status === 'IN_PROGRESS' || match.status === 'FINISHED' ? (
                 <YStack backgroundColor="$onzeSurface" borderColor="$onzeGreen" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
                   <Text color="$onzeGreen" fontSize={18} fontWeight="900">
-                    {match.status === 'IN_PROGRESS' ? 'Partida em andamento' : 'Partida finalizada'}
+                    {match.status === 'IN_PROGRESS' ? 'Jogo em andamento' : 'Jogo finalizado'}
                   </Text>
                   <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
                     O placar e o cronômetro ficam em uma tela própria para facilitar o acompanhamento.
                   </Text>
-                  <Button
-                    backgroundColor="$onzeGreen"
-                    height={52}
+                  <AppButton
+                    variant="primary"
+
                     onPress={() => router.push({ pathname: '/live-match', params: { matchId: match.id } })}
                     pressStyle={{ backgroundColor: '$onzeGreenPress', opacity: 0.85 }}
                   >
                     <Text color="$onzeSurface" fontWeight="900">
-                      {match.status === 'IN_PROGRESS' ? 'Acompanhar partida' : 'Ver partida'}
+                      {match.status === 'IN_PROGRESS' ? 'Acompanhar jogo' : 'Ver jogo'}
                     </Text>
-                  </Button>
+                  </AppButton>
                 </YStack>
               ) : null}
 
               {match.status === 'CANCELLED' ? (
-                <YStack backgroundColor="#FDECEC" borderColor="$onzeDanger" borderRadius="$6" borderWidth={1} gap="$2" padding="$5">
+                <YStack backgroundColor="$onzeDangerBg" borderColor="$onzeDanger" borderRadius="$6" borderWidth={1} gap="$2" padding="$5">
                   <Text color="$onzeDanger" fontSize={18} fontWeight="900">Jogo cancelado</Text>
                   <Text color="$onzeDanger" fontSize={13} lineHeight={19}>
                     Esta ocorrência não acontecerá. As presenças ficaram encerradas.
@@ -916,21 +874,21 @@ export default function MatchScreen() {
                     </Text>
                   </YStack>
                   <XStack gap="$3">
-                    <Button
+                    <AppButton
                       backgroundColor={match.myAttendance === 'GOING' ? '$onzeGreen' : '$onzeSurface'}
                       borderColor="$onzeGreen"
                       borderWidth={1}
                       disabled={Boolean(updatingAttendance)
                         || (match.myAttendance !== 'GOING' && !match.canJoin)}
                       flex={1}
-                      height={50}
+
                       onPress={() => requestAttendance('GOING')}
                     >
                       <Text color={match.myAttendance === 'GOING' ? '$onzeSurface' : '$onzeGreen'} fontWeight="900">
                         {updatingAttendance === 'GOING' ? 'Salvando...' : '✓ Vou jogar'}
                       </Text>
-                    </Button>
-                    <Button
+                    </AppButton>
+                    <AppButton
                       backgroundColor={match.myAttendance === 'NOT_GOING' ? '$onzeDanger' : '$onzeSurface'}
                       borderColor="$onzeDanger"
                       borderWidth={1}
@@ -939,20 +897,20 @@ export default function MatchScreen() {
                           ? !match.canWithdraw
                           : !match.signupOpen)}
                       flex={1}
-                      height={50}
+
                       onPress={() => requestAttendance('NOT_GOING')}
                     >
                       <Text color={match.myAttendance === 'NOT_GOING' ? '$onzeSurface' : '$onzeDanger'} fontWeight="900">
                         {updatingAttendance === 'NOT_GOING' ? 'Salvando...' : 'Não vou'}
                       </Text>
-                    </Button>
+                    </AppButton>
                   </XStack>
                 </YStack>
               ) : (
                 <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$2" padding="$5">
                   <Text color="$onzeInk" fontSize={18} fontWeight="900">Presença ainda fechada</Text>
                   <Text color="$onzeMuted" fontSize={13} lineHeight={20} textTransform="capitalize">
-                    Ela será liberada em {formatOpening(match)}. Você receberá um aviso.
+                    Ela será liberada em {formatLongDateTime(match.attendanceOpensAt, match.timeZone, false)}. Você receberá um aviso.
                   </Text>
                 </YStack>
               )}
@@ -960,7 +918,7 @@ export default function MatchScreen() {
               {showCurrentPayment && match.myPaymentStatus != null ? (
                 <YStack
                   backgroundColor={match.myPaymentStatus === 'PAID'
-                    ? '#EAF7EF'
+                    ? '$onzeSuccessBg'
                     : '$onzeSurface'}
                   borderColor={match.myPaymentStatus === 'PAID'
                     ? '$onzeGreen'
@@ -1012,16 +970,16 @@ export default function MatchScreen() {
                         </YStack>
                       ) : null}
                       {match.myPaymentStatus === 'PENDING' && match.canReportPayment ? (
-                        <Button
-                          backgroundColor="$onzeGreen"
+                        <AppButton
+                          variant="primary"
                           disabled={Boolean(updatingPayment)}
-                          height={50}
+
                           onPress={() => void reportPayment()}
                         >
                           <Text color="$onzeSurface" fontWeight="900">
                             {updatingPayment === 'current-user' ? 'Informando...' : 'Já paguei'}
                           </Text>
-                        </Button>
+                        </AppButton>
                       ) : match.myPaymentStatus === 'PENDING' ? (
                         <Text color="$onzeDanger" fontSize={13} lineHeight={19}>
                           O prazo de pagamento terminou. Se você entrou como reposição, peça ao administrador para conferir sua vaga.
@@ -1055,13 +1013,13 @@ export default function MatchScreen() {
                       {currentAttendance?.replacementRequiredAt
                           && isSettlementOpen(match.myPaymentSettlementStatus) ? (
                         <YStack
-                          backgroundColor={currentAttendance.settlementAvailable ? '#EAF7EF' : '#FFF7E6'}
+                          backgroundColor={currentAttendance.settlementAvailable ? '$onzeSuccessBg' : '$onzeWarningBg'}
                           borderRadius="$4"
                           gap="$1"
                           padding="$4"
                         >
                           <Text
-                            color={currentAttendance.settlementAvailable ? '$onzeGreen' : '#8A6414'}
+                            color={currentAttendance.settlementAvailable ? '$onzeGreen' : '$onzeWarningText'}
                             fontSize={12}
                             fontWeight="900"
                           >
@@ -1108,10 +1066,10 @@ export default function MatchScreen() {
                 />
                 {match.canManage && match.status === 'SCHEDULED' ? (
                   <YStack gap="$2">
-                    <Button
-                      backgroundColor="$onzeSurface"
-                      borderColor="$onzeGreen"
-                      borderWidth={1}
+                    <AppButton
+                      variant="outline"
+
+
                       disabled={match.goingCount >= match.maxPlayers}
                       onPress={() => router.push({
                         pathname: '/add-match-guest',
@@ -1122,7 +1080,7 @@ export default function MatchScreen() {
                       })}
                     >
                       <Text color="$onzeGreen" fontWeight="900">+ Adicionar convidado</Text>
-                    </Button>
+                    </AppButton>
                     {match.goingCount >= match.maxPlayers ? (
                       <Text color="$onzeMuted" fontSize={12}>
                         O limite de jogadores já foi preenchido.
@@ -1132,15 +1090,15 @@ export default function MatchScreen() {
                 ) : null}
                 {match.canManage && match.status === 'SCHEDULED' && match.missingGoalkeepers <= 0 ? (
                   <YStack gap="$2">
-                    <Button
-                      backgroundColor="$onzeSurface"
-                      borderColor="$onzeGreen"
-                      borderWidth={1}
+                    <AppButton
+                      variant="outline"
+
+
                       disabled={Boolean(managingRentalId) || match.goingCount >= match.maxPlayers}
                       onPress={openRentalGoalkeeperModal}
                     >
                       <Text color="$onzeGreen" fontWeight="900">+ Adicionar goleiro de aluguel</Text>
-                    </Button>
+                    </AppButton>
                     {match.goingCount >= match.maxPlayers ? (
                       <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
                         Remova ou libere uma vaga antes de adicionar outro goleiro.
@@ -1180,10 +1138,10 @@ export default function MatchScreen() {
                     </Text>
                   </YStack>
                   {match.status === 'CANCELLED' && openSettlements.length ? (
-                    <Button
-                      backgroundColor="$onzeSurface"
-                      borderColor="$onzeBorder"
-                      borderWidth={1}
+                    <AppButton
+                      variant="secondary"
+
+
                       justifyContent="flex-start"
                       onPress={() => setSelectedSettlements(
                         selectedSettlements.length === openSettlements.length
@@ -1194,7 +1152,7 @@ export default function MatchScreen() {
                       <Text color="$onzeInk" fontWeight="800">
                         {selectedSettlements.length === openSettlements.length ? '☑' : '☐'} Selecionar todos
                       </Text>
-                    </Button>
+                    </AppButton>
                   ) : null}
                   {payments.map((attendance) => (
                     <YStack
@@ -1207,14 +1165,14 @@ export default function MatchScreen() {
                       <XStack alignItems="center" gap="$3">
                         {match.status === 'CANCELLED'
                             && isSettlementOpen(attendance.paymentSettlementStatus) ? (
-                          <Button
+                          <AppButton
                             circular
                             backgroundColor={selectedSettlements.includes(attendance.userId)
                               ? '$onzeGreen'
                               : '$onzeSurface'}
                             borderColor="$onzeGreen"
                             borderWidth={1}
-                            height={36}
+
                             onPress={() => toggleSettlementSelection(attendance.userId)}
                             width={36}
                           >
@@ -1226,7 +1184,7 @@ export default function MatchScreen() {
                             >
                               {selectedSettlements.includes(attendance.userId) ? '✓' : ''}
                             </Text>
-                          </Button>
+                          </AppButton>
                         ) : null}
                         <YStack flex={1} gap="$1">
                           <Text color="$onzeInk" fontSize={14} fontWeight="800">{attendance.displayName}</Text>
@@ -1250,7 +1208,7 @@ export default function MatchScreen() {
                           ) : null}
                           {attendance.replacementRequiredAt ? (
                             <Text
-                              color={attendance.settlementAvailable ? '$onzeGreen' : '#8A6414'}
+                              color={attendance.settlementAvailable ? '$onzeGreen' : '$onzeWarningText'}
                               fontSize={11}
                               fontWeight="900"
                             >
@@ -1264,47 +1222,47 @@ export default function MatchScreen() {
                       {attendance.status === 'GOING'
                           && attendance.paymentStatus !== 'PAID'
                           && attendance.paymentStatus !== 'CANCELLED' ? (
-                        <Button
-                          backgroundColor="$onzeSurface"
-                          borderColor="$onzeGreen"
-                          borderWidth={1}
+                        <AppButton
+                          variant="outline"
+
+
                           disabled={Boolean(updatingPayment)}
                           onPress={() => void confirmPlayerPayment(attendance.userId)}
                         >
                           <Text color="$onzeGreen" fontSize={12} fontWeight="900">
                             {updatingPayment === attendance.userId ? 'Validando...' : 'Confirmar'}
                           </Text>
-                        </Button>
+                        </AppButton>
                       ) : null}
                       {match.status === 'SCHEDULED'
                           && attendance.replacementRequiredAt != null
                           && attendance.replacementFilledAt == null ? (
-                        <Button
+                        <AppButton
                           backgroundColor="$onzeSurface"
-                          borderColor="#8A6414"
+                          borderColor="$onzeWarningText"
                           borderWidth={1}
                           disabled={replacingPlayer || Boolean(updatingPayment)}
                           onPress={() => void openReplacementPicker(attendance)}
                         >
-                          <Text color="#8A6414" fontSize={12} fontWeight="900">
+                          <Text color="$onzeWarningText" fontSize={12} fontWeight="900">
                             Adicionar reposição
                           </Text>
-                        </Button>
+                        </AppButton>
                       ) : null}
                       {(attendance.status === 'NOT_GOING' || match.status === 'CANCELLED')
                           && isSettlementOpen(attendance.paymentSettlementStatus)
                           && match.status !== 'CANCELLED'
                           && (attendance.settlementAvailable
                             || attendance.paymentSettlementStatus === 'REVIEW_REQUIRED') ? (
-                        <Button
-                          backgroundColor="$onzeGreen"
+                        <AppButton
+                          variant="primary"
                           disabled={Boolean(updatingPayment)}
                           onPress={() => setSettlementPlayer(attendance)}
                         >
                           <Text color="$onzeSurface" fontSize={12} fontWeight="900">
                             {attendance.settlementAvailable ? 'Resolver acerto' : 'Conferir pagamento'}
                           </Text>
-                        </Button>
+                        </AppButton>
                       ) : null}
                     </YStack>
                   ))}
@@ -1313,22 +1271,22 @@ export default function MatchScreen() {
                       <Text color="$onzeMuted" fontSize={12} fontWeight="800">
                         {selectedSettlements.length} {selectedSettlements.length === 1 ? 'jogador selecionado' : 'jogadores selecionados'}
                       </Text>
-                      <Button
-                        backgroundColor="$onzeSurface"
-                        borderColor="$onzeGreen"
-                        borderWidth={1}
+                      <AppButton
+                        variant="outline"
+
+
                         disabled={Boolean(updatingPayment)}
                         onPress={() => setBulkResolution('REFUNDED')}
                       >
                         <Text color="$onzeGreen" fontWeight="900">Reembolsar selecionados</Text>
-                      </Button>
-                      <Button
-                        backgroundColor="$onzeGreen"
+                      </AppButton>
+                      <AppButton
+                        variant="primary"
                         disabled={Boolean(updatingPayment)}
                         onPress={() => setBulkResolution('CREDITED')}
                       >
                         <Text color="$onzeSurface" fontWeight="900">Manter como crédito</Text>
-                      </Button>
+                      </AppButton>
                     </YStack>
                   ) : null}
                 </YStack>
@@ -1337,28 +1295,28 @@ export default function MatchScreen() {
               {match.canManage && match.status === 'SCHEDULED' ? (
                 <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
                   <Text color="$onzeInk" fontSize={17} fontWeight="900">Gerenciar jogo</Text>
-                  <Button backgroundColor="$onzeGreen" height={48} onPress={() => void openStartModal()}>
-                    <Text color="$onzeSurface" fontWeight="900">Iniciar partida</Text>
-                  </Button>
-                  <Button
-                    backgroundColor="$onzeSurface"
-                    borderColor="$onzeDanger"
-                    borderWidth={1}
-                    height={48}
+                  <AppButton variant="primary"  onPress={() => void openStartModal()}>
+                    <Text color="$onzeSurface" fontWeight="900">Iniciar jogo</Text>
+                  </AppButton>
+                  <AppButton
+                    variant="destructiveOutline"
+
+
+
                     onPress={() => setManagementAction('cancel-occurrence')}
                   >
                     <Text color="$onzeDanger" fontWeight="800">
                       {match.recurrence === 'WEEKLY' ? 'Cancelar somente este jogo' : 'Cancelar jogo'}
                     </Text>
-                  </Button>
+                  </AppButton>
                   {match.recurrence === 'WEEKLY' && match.seriesActive ? (
-                    <Button
-                      backgroundColor="$onzeDanger"
-                      height={48}
+                    <AppButton
+                      variant="destructive"
+
                       onPress={() => setManagementAction('end-series')}
                     >
                       <Text color="$onzeSurface" fontWeight="800">Encerrar jogos semanais</Text>
-                    </Button>
+                    </AppButton>
                   ) : null}
                 </YStack>
               ) : null}
@@ -1367,9 +1325,9 @@ export default function MatchScreen() {
           ) : (
             <YStack backgroundColor="$onzeSurface" borderColor="$onzeDanger" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
               <Text color="$onzeDanger">{error ?? 'Jogo não encontrado.'}</Text>
-              <Button backgroundColor="$onzeGreen" onPress={() => void loadMatch()}>
+              <AppButton variant="primary" onPress={() => void loadMatch()}>
                 <Text color="$onzeSurface" fontWeight="800">Tentar novamente</Text>
-              </Button>
+              </AppButton>
             </YStack>
           )}
         </YStack>
@@ -1437,10 +1395,10 @@ export default function MatchScreen() {
           title={goalkeeperTargetState ? 'Definir como goleiro?' : 'Remover papel de goleiro?'}
           message={goalkeeperTargetState
             ? match.goalkeeperPays
-              ? `${goalkeeperChange?.displayName ?? 'O jogador'} será identificado como goleiro, mas seguirá a cobrança normal desta partida.`
-              : `${goalkeeperChange?.displayName ?? 'O jogador'} ficará isento nesta partida. Crédito sem dinheiro será devolvido; pagamento em dinheiro já informado ou confirmado bloqueará a alteração.`
+              ? `${goalkeeperChange?.displayName ?? 'O jogador'} será identificado como goleiro, mas seguirá a cobrança normal deste jogo.`
+              : `${goalkeeperChange?.displayName ?? 'O jogador'} ficará isento neste jogo. Crédito sem dinheiro será devolvido; pagamento em dinheiro já informado ou confirmado bloqueará a alteração.`
             : goalkeeperChange?.paymentExempt
-              ? `${goalkeeperChange.displayName} deixará de ser goleiro e voltará a ter a cobrança normal desta partida.`
+              ? `${goalkeeperChange.displayName} deixará de ser goleiro e voltará a ter a cobrança normal deste jogo.`
               : `${goalkeeperChange?.displayName ?? 'O jogador'} deixará de ser identificado como goleiro. A situação de pagamento não será alterada.`}
           confirmLabel={goalkeeperTargetState ? 'Definir goleiro' : 'Remover papel'}
           loading={updatingGoalkeeperId === goalkeeperChange?.userId}
@@ -1469,7 +1427,7 @@ export default function MatchScreen() {
       <ConfirmActionModal
         visible={rentalToRemove != null}
         title="Remover goleiro de aluguel?"
-        message={`${rentalToRemove?.displayName ?? 'Este goleiro'} será removido somente desta partida e a vaga ficará disponível novamente.`}
+        message={`${rentalToRemove?.displayName ?? 'Este goleiro'} será removido somente deste jogo e a vaga ficará disponível novamente.`}
         confirmLabel="Remover goleiro"
         destructive
         loading={managingRentalId === rentalToRemove?.id}
@@ -1504,7 +1462,7 @@ export default function MatchScreen() {
           ? 'Manter valores como crédito?'
           : 'Confirmar reembolsos?'}
         message={bulkResolution === 'CREDITED'
-          ? `O saldo de ${selectedSettlements.length} ${selectedSettlements.length === 1 ? 'jogador' : 'jogadores'} será aplicado automaticamente à próxima partida paga do grupo.`
+          ? `O saldo de ${selectedSettlements.length} ${selectedSettlements.length === 1 ? 'jogador' : 'jogadores'} será aplicado automaticamente ao próximo jogo pago do grupo.`
           : `Confirme que o reembolso de ${selectedSettlements.length} ${selectedSettlements.length === 1 ? 'jogador foi realizado' : 'jogadores foi realizado'}.`}
         confirmLabel={bulkResolution === 'CREDITED' ? 'Manter como crédito' : 'Confirmar reembolso'}
         loading={updatingPayment === 'bulk'}
@@ -1574,7 +1532,7 @@ function PaymentBadge({
         : status === 'PAID'
       ? '$onzeGreen'
       : status === 'REPORTED'
-        ? '#8A6414'
+        ? '$onzeWarningText'
         : status === 'CANCELLED'
           ? '$onzeMuted'
           : '$onzeDanger');
@@ -1591,7 +1549,7 @@ function settlementBadge(status: PaymentSettlementStatus | null): {
 } | null {
   switch (status) {
     case 'REVIEW_REQUIRED':
-      return { label: 'PAGAMENTO EM REVISÃO', color: '#8A6414' };
+      return { label: 'PAGAMENTO EM REVISÃO', color: '$onzeWarningText' };
     case 'PENDING':
       return { label: 'ACERTO PENDENTE', color: '$onzeDanger' };
     case 'NOT_RECEIVED':
@@ -1601,7 +1559,7 @@ function settlementBadge(status: PaymentSettlementStatus | null): {
     case 'CREDITED':
       return { label: 'CRÉDITO REGISTRADO', color: '$onzeGreen' };
     case 'RETAINED':
-      return { label: 'PAGAMENTO MANTIDO', color: '#8A6414' };
+      return { label: 'PAGAMENTO MANTIDO', color: '$onzeWarningText' };
     default:
       return null;
   }
@@ -1622,7 +1580,7 @@ function withdrawalConfirmationMessage(
     return status === 'PAID'
       ? 'Sua vaga será liberada, mas o crédito usado ficará bloqueado até outra pessoa preencher a vaga. Somente um administrador poderá readicionar você.'
       : creditAllocationStatus === 'RESERVED'
-      ? 'A reserva será removida e o crédito continuará disponível para outra partida deste grupo.'
+      ? 'A reserva será removida e o crédito continuará disponível para outro jogo deste grupo.'
       : 'Sua vaga será liberada e o crédito ainda pendente voltará ao saldo.';
   }
   if (status === 'PENDING') {
@@ -1656,7 +1614,7 @@ function withdrawalPaymentMessage(
     case 'REFUNDED':
       return 'O administrador registrou que o pagamento foi reembolsado.';
     case 'CREDITED':
-      return 'O valor ficou registrado como crédito para uma próxima partida.';
+      return 'O valor ficou registrado como crédito para um próximo jogo.';
     case 'RETAINED':
       return 'O administrador registrou que o pagamento será mantido.';
     default:
@@ -1715,10 +1673,10 @@ function ConfirmedAttendanceList({
             ) : null}
           </YStack>
           {canManage && canRemoveGoalkeeperRole(attendance) ? (
-            <Button
-              backgroundColor="$onzeSurface"
-              borderColor="$onzeDanger"
-              borderWidth={1}
+            <AppButton
+              variant="destructiveOutline"
+
+
               disabled={Boolean(updatingGoalkeeperId)}
               minHeight={36}
               onPress={() => onChangeGoalkeeper(attendance)}
@@ -1733,7 +1691,7 @@ function ConfirmedAttendanceList({
                   ? 'Salvando...'
                   : 'Remover'}
               </Text>
-            </Button>
+            </AppButton>
           ) : null}
         </XStack>
       ))}
@@ -1750,10 +1708,10 @@ function ConfirmedAttendanceList({
             {guest.primaryPosition === 'GOALKEEPER' ? <RoleBadge label="GOLEIRO" /> : null}
           </YStack>
           {canManage ? (
-            <Button
-              backgroundColor="$onzeSurface"
-              borderColor="$onzeDanger"
-              borderWidth={1}
+            <AppButton
+              variant="destructiveOutline"
+
+
               disabled={Boolean(managingGuestId)}
               minHeight={36}
               onPress={() => onRemoveGuest(guest)}
@@ -1762,7 +1720,7 @@ function ConfirmedAttendanceList({
               <Text color="$onzeDanger" fontSize={11} fontWeight="900">
                 {managingGuestId === guest.id ? 'Removendo...' : 'Remover'}
               </Text>
-            </Button>
+            </AppButton>
           ) : null}
         </XStack>
       ))}
@@ -1776,10 +1734,10 @@ function ConfirmedAttendanceList({
             <RoleBadge label="GOLEIRO" />
           </YStack>
           {canManage ? (
-            <Button
-              backgroundColor="$onzeSurface"
-              borderColor="$onzeDanger"
-              borderWidth={1}
+            <AppButton
+              variant="destructiveOutline"
+
+
               disabled={Boolean(managingRentalId)}
               minHeight={36}
               onPress={() => onRemoveRental(goalkeeper)}
@@ -1788,7 +1746,7 @@ function ConfirmedAttendanceList({
               <Text color="$onzeDanger" fontSize={11} fontWeight="900">
                 {managingRentalId === goalkeeper.id ? 'Removendo...' : 'Remover'}
               </Text>
-            </Button>
+            </AppButton>
           ) : null}
         </XStack>
       ))}
@@ -1799,9 +1757,9 @@ function ConfirmedAttendanceList({
 function RoleBadge({ label, exempt = false }: { label: string; exempt?: boolean }) {
   return (
     <Text
-      backgroundColor={exempt ? '#FFF7E6' : '#EAF7EF'}
+      backgroundColor={exempt ? '$onzeWarningBg' : '$onzeSuccessBg'}
       borderRadius={999}
-      color={exempt ? '#8A6414' : '$onzeGreen'}
+      color={exempt ? '$onzeWarningText' : '$onzeGreen'}
       fontSize={10}
       fontWeight="900"
       paddingHorizontal="$2"

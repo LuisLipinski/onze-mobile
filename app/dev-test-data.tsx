@@ -1,7 +1,13 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
-import { Button, Text, XStack, YStack } from 'tamagui';
+import { Text, XStack, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
 
 import { getAccessToken } from '../src/lib/auth-storage';
 import {
@@ -26,7 +32,7 @@ export default function DevTestDataScreen() {
 
   const load = useCallback(async () => {
     if (!params.matchId) {
-      setError('Não foi possível identificar a partida.');
+      setError('Não foi possível identificar o jogo.');
       return;
     }
     try {
@@ -38,9 +44,7 @@ export default function DevTestDataScreen() {
       setStatus(await getDevTestStatus(token, params.matchId));
       setError(null);
     } catch (exception) {
-      setError(exception instanceof Error
-        ? exception.message
-        : 'Não foi possível carregar as ferramentas de teste.');
+      setError(getErrorMessage(exception, 'Não foi possível carregar as ferramentas de teste.'));
     }
   }, [params.matchId, router]);
 
@@ -62,9 +66,7 @@ export default function DevTestDataScreen() {
       setMessage(await operation(token, params.matchId));
       setStatus(await getDevTestStatus(token, params.matchId));
     } catch (exception) {
-      setError(exception instanceof Error
-        ? exception.message
-        : 'Não foi possível concluir a operação de teste.');
+      setError(getErrorMessage(exception, 'Não foi possível concluir a operação de teste.'));
     } finally {
       setRunning(null);
     }
@@ -90,50 +92,50 @@ export default function DevTestDataScreen() {
     void runAction('add-attendance', async (token, matchId) => {
       const result = await addDevTestPlayersToMatch(token, matchId);
       const capacityMessage = result.skippedCapacity > 0
-        ? ` ${result.skippedCapacity} ficaram de fora porque a partida atingiu o máximo.`
+        ? ` ${result.skippedCapacity} ficaram de fora porque o jogo atingiu o máximo.`
         : '';
-      return `${result.added} jogador(es) adicionado(s) à partida.${capacityMessage}`;
+      return `${result.added} jogador(es) adicionado(s) ao jogo.${capacityMessage}`;
     });
   }
 
   function removeFromMatch() {
     void runAction('remove-attendance', async (token, matchId) => {
       const result = await removeDevTestPlayersFromMatch(token, matchId);
-      return `${result.removed} jogador(es) de teste removido(s) desta partida.`;
+      return `${result.removed} jogador(es) de teste removido(s) deste jogo.`;
     });
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <Button alignSelf="flex-start" backgroundColor="transparent" onPress={() => router.back()}>
+          <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
             <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-          </Button>
+          </AppButton>
 
           <YStack gap="$1">
-            <Text color="#8A6414" fontSize={13} fontWeight="900">AMBIENTE DE TESTE</Text>
+            <Text color="$onzeWarningText" fontSize={13} fontWeight="900">AMBIENTE DE TESTE</Text>
             <Text color="$onzeInk" fontSize={28} fontWeight="900">Massa de jogadores</Text>
             <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
               Crie uma massa nova, variada e com goleiros para validar a formação dos times.
             </Text>
           </YStack>
 
-          <YStack backgroundColor="#FFF7E6" borderRadius="$5" gap="$2" padding="$4">
-            <Text color="#8A6414" fontSize={13} fontWeight="900">Somente development</Text>
-            <Text color="#8A6414" fontSize={12} lineHeight={18}>
+          <YStack backgroundColor="$onzeWarningBg" borderRadius="$5" gap="$2" padding="$4">
+            <Text color="$onzeWarningText" fontSize={13} fontWeight="900">Somente development</Text>
+            <Text color="$onzeWarningText" fontSize={12} lineHeight={18}>
               Esta ferramenta só funciona no backend de desenvolvimento e apenas para o Administrador Principal. Os cenários sobrescrevem posições e habilidades somente dos jogadores Teste XX.
             </Text>
           </YStack>
 
           {error ? (
-            <YStack backgroundColor="#FDECEC" borderRadius="$5" padding="$4">
+            <YStack backgroundColor="$onzeDangerBg" borderRadius="$5" padding="$4">
               <Text color="$onzeDanger" fontSize={13} lineHeight={19}>{error}</Text>
             </YStack>
           ) : null}
 
           {message ? (
-            <YStack backgroundColor="#EAF5EE" borderRadius="$5" padding="$4">
+            <YStack backgroundColor="$onzeSuccessBg" borderRadius="$5" padding="$4">
               <Text color="$onzeGreen" fontSize={13} fontWeight="800" lineHeight={19}>{message}</Text>
             </YStack>
           ) : null}
@@ -147,7 +149,7 @@ export default function DevTestDataScreen() {
                   <Text color="$onzeInk" fontSize={18} fontWeight="900">{status.testPlayers}</Text>
                 </YStack>
                 <YStack backgroundColor="$onzeCanvas" borderRadius="$4" flex={1} gap="$1" padding="$3">
-                  <Text color="$onzeMuted" fontSize={10} fontWeight="800">NA PARTIDA</Text>
+                  <Text color="$onzeMuted" fontSize={10} fontWeight="800">NO JOGO</Text>
                   <Text color="$onzeInk" fontSize={18} fontWeight="900">{status.testPlayersGoing}</Text>
                 </YStack>
                 <YStack backgroundColor="$onzeCanvas" borderRadius="$4" flex={1} gap="$1" padding="$3">
@@ -169,7 +171,7 @@ export default function DevTestDataScreen() {
             </YStack>
             <XStack flexWrap="wrap" gap="$2">
               {DEV_TEST_PLAYER_PRESETS.map((preset) => (
-                <Button
+                <AppButton
                   key={preset.count}
                   backgroundColor="$onzeCanvas"
                   disabled={Boolean(running)}
@@ -178,7 +180,7 @@ export default function DevTestDataScreen() {
                   <Text color="$onzeGreen" fontSize={12} fontWeight="900">
                     {running === `generate-${preset.count}` ? 'Gerando...' : preset.label}
                   </Text>
-                </Button>
+                </AppButton>
               ))}
             </XStack>
           </YStack>
@@ -191,7 +193,7 @@ export default function DevTestDataScreen() {
               </Text>
             </YStack>
             {DEV_TEST_SCENARIOS.map((scenario) => (
-              <Button
+              <AppButton
                 key={scenario.value}
                 alignItems="flex-start"
                 backgroundColor="$onzeCanvas"
@@ -209,45 +211,45 @@ export default function DevTestDataScreen() {
                     {scenario.description}
                   </Text>
                 </YStack>
-              </Button>
+              </AppButton>
             ))}
           </YStack>
 
           <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
             <YStack gap="$1">
-              <Text color="$onzeInk" fontSize={17} fontWeight="900">3. Colocar na partida</Text>
+              <Text color="$onzeInk" fontSize={17} fontWeight="900">3. Colocar no jogo</Text>
               <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                Adiciona os Teste XX como “Vou jogar” até atingir o máximo configurado da partida. Times já gerados são invalidados para você gerar novamente.
+                Adiciona os Teste XX como “Vou jogar” até atingir o máximo configurado do jogo. Times já gerados são invalidados para você gerar novamente.
               </Text>
             </YStack>
-            <Button
-              backgroundColor="$onzeGreen"
+            <AppButton
+              variant="primary"
               disabled={Boolean(running) || !status?.testPlayers}
-              height={50}
+
               onPress={addToMatch}
             >
               <Text color="$onzeSurface" fontWeight="900">
-                {running === 'add-attendance' ? 'Adicionando...' : 'Adicionar jogadores à partida'}
+                {running === 'add-attendance' ? 'Adicionando...' : 'Adicionar jogadores ao jogo'}
               </Text>
-            </Button>
-            <Button
+            </AppButton>
+            <AppButton
               backgroundColor="$onzeCanvas"
               disabled={Boolean(running) || !status?.testPlayersGoing}
-              height={46}
+              buttonSize="sm"
               onPress={removeFromMatch}
             >
               <Text color="$onzeDanger" fontWeight="900">
-                {running === 'remove-attendance' ? 'Removendo...' : 'Remover jogadores de teste da partida'}
+                {running === 'remove-attendance' ? 'Removendo...' : 'Remover jogadores de teste do jogo'}
               </Text>
-            </Button>
+            </AppButton>
           </YStack>
 
-          <Button
+          <AppButton
             backgroundColor="$onzeCanvas"
             onPress={() => router.back()}
           >
             <Text color="$onzeGreen" fontWeight="900">Voltar para a escalação</Text>
-          </Button>
+          </AppButton>
         </YStack>
       </ScrollView>
     </SafeAreaView>

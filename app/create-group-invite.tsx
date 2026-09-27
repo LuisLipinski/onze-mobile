@@ -1,17 +1,20 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, SafeAreaView } from 'react-native';
-import { Button, Text, YStack } from 'tamagui';
+import { useState } from 'react';
+import { SafeAreaView } from 'react-native';
+import { Text, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { AppButton } from '../src/components/app-button';
+import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 
 export default function CreateGroupInviteScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ groupId: string; groupName?: string }>();
+  const [skipInfoVisible, setSkipInfoVisible] = useState(false);
 
   function skip() {
-    Alert.alert(
-      'Você pode convidar depois',
-      'Novos jogadores podem ser adicionados a qualquer momento no menu do grupo > Jogadores e convites.',
-      [{ text: 'Ir para meus grupos', onPress: () => router.replace('/groups') }],
-    );
+    setSkipInfoVisible(true);
   }
 
   function addPlayers() {
@@ -22,7 +25,7 @@ export default function CreateGroupInviteScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <YStack flex={1} justifyContent="center" padding="$5">
         <YStack gap="$5">
           <YStack gap="$1">
@@ -54,31 +57,40 @@ export default function CreateGroupInviteScreen() {
               Você pode gerar um convite para compartilhar com quem participa da pelada.
             </Text>
 
-            <Button
-              backgroundColor="$onzeGreen"
-              height={52}
+            <AppButton
+              variant="primary"
+
               onPress={addPlayers}
               pressStyle={{ backgroundColor: '$onzeGreenPress' }}
             >
               <Text color="$onzeSurface" fontSize={16} fontWeight="800">
                 Adicionar jogadores
               </Text>
-            </Button>
+            </AppButton>
 
-            <Button
-              backgroundColor="$onzeSurface"
-              borderColor="$onzeBorder"
-              borderWidth={1}
-              height={50}
+            <AppButton
+              variant="secondary"
+
+
+
               onPress={skip}
             >
               <Text color="$onzeInk" fontSize={15} fontWeight="700">
                 Pular
               </Text>
-            </Button>
+            </AppButton>
           </YStack>
         </YStack>
       </YStack>
+      <ConfirmActionModal
+        visible={skipInfoVisible}
+        title="Você pode convidar depois"
+        message="Novos jogadores podem ser adicionados a qualquer momento no menu do grupo > Jogadores e convites."
+        confirmLabel="Ir para meus grupos"
+        cancelLabel={null}
+        onCancel={() => setSkipInfoVisible(false)}
+        onConfirm={() => router.replace('/groups')}
+      />
     </SafeAreaView>
   );
 }

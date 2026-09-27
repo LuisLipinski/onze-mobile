@@ -6,7 +6,14 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { Button, Input, Text, YStack } from 'tamagui';
+import { Input, Text, YStack } from 'tamagui';
+
+import { ONZE_COLORS } from '../src/theme/colors';
+
+import { getErrorMessage } from '../src/lib/errors';
+
+import { AppButton } from '../src/components/app-button';
+import { OnzeWordmark } from '../src/components/onze-wordmark';
 
 import { ApiRequestError, joinGroup, JoinGroupResponse } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
@@ -55,7 +62,7 @@ export default function JoinGroupScreen() {
       }
 
       setError(
-        exception instanceof Error ? exception.message : 'Não foi possível entrar neste grupo.',
+        getErrorMessage(exception, 'Não foi possível entrar neste grupo.'),
       );
     } finally {
       setLoading(false);
@@ -64,11 +71,9 @@ export default function JoinGroupScreen() {
 
   if (result) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
         <YStack flex={1} justifyContent="center" gap="$4" padding="$5">
-          <Text color="$onzeGreen" fontSize={18} fontWeight="900">
-            ONZE
-          </Text>
+          <OnzeWordmark />
           <YStack
             backgroundColor="$onzeSurface"
             borderColor="$onzeBorder"
@@ -88,9 +93,9 @@ export default function JoinGroupScreen() {
                 ? 'Esse grupo já estava vinculado à sua conta. Confira seu perfil esportivo antes de continuar.'
                 : 'O grupo foi adicionado. Agora preencha seu perfil esportivo para utilizar normalmente a pelada.'}
             </Text>
-            <Button
-              backgroundColor="$onzeGreen"
-              height={50}
+            <AppButton
+              variant="primary"
+
               onPress={() => router.replace({
                 pathname: '/sports-profile',
                 params: {
@@ -103,7 +108,7 @@ export default function JoinGroupScreen() {
               <Text color="$onzeSurface" fontWeight="800">
                 Preencher perfil esportivo
               </Text>
-            </Button>
+            </AppButton>
           </YStack>
         </YStack>
       </SafeAreaView>
@@ -111,7 +116,7 @@ export default function JoinGroupScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F7F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -123,9 +128,7 @@ export default function JoinGroupScreen() {
         >
           <YStack gap="$5">
             <YStack gap="$1">
-              <Text color="$onzeGreen" fontSize={18} fontWeight="900">
-                ONZE
-              </Text>
+              <OnzeWordmark />
               <Text color="$onzeInk" fontSize={30} fontWeight="800">
                 Entrar em um grupo
               </Text>
@@ -168,27 +171,27 @@ export default function JoinGroupScreen() {
                 </Text>
               ) : null}
 
-              <Button
-                backgroundColor="$onzeGreen"
+              <AppButton
+                variant="primary"
                 disabled={loading}
-                height={52}
+
                 onPress={() => void submit()}
               >
                 <Text color="$onzeSurface" fontSize={16} fontWeight="800">
                   {loading ? 'Entrando...' : 'Entrar no grupo'}
                 </Text>
-              </Button>
+              </AppButton>
 
-              <Button
-                backgroundColor="$onzeSurface"
-                borderColor="$onzeBorder"
-                borderWidth={1}
+              <AppButton
+                variant="secondary"
+
+
                 onPress={() => router.replace('/groups')}
               >
                 <Text color="$onzeInk" fontWeight="700">
                   Voltar
                 </Text>
-              </Button>
+              </AppButton>
             </YStack>
           </YStack>
         </ScrollView>

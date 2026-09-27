@@ -1,6 +1,8 @@
 import { Fragment } from 'react';
 import { Image, Modal, Pressable, ScrollView } from 'react-native';
-import { Button, Input, Spinner, Text, XStack, YStack } from 'tamagui';
+import { Input, Spinner, Text, XStack, YStack } from 'tamagui';
+
+import { AppButton } from './app-button';
 
 import type { MatchTeamIdentity } from '../lib/api';
 
@@ -30,7 +32,7 @@ function TeamEditor({
       >
         <YStack
           alignItems="center"
-          backgroundColor="#E8F7EE"
+          backgroundColor="$onzeSuccessBg"
           borderColor="$onzeGreen"
           borderRadius={24}
           borderWidth={2}
@@ -118,7 +120,7 @@ export function StartLiveMatchModal({
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <YStack gap="$5" paddingBottom="$3">
               <YStack gap="$1">
-                <Text color="$onzeInk" fontSize={22} fontWeight="900">Iniciar partida</Text>
+                <Text color="$onzeInk" fontSize={22} fontWeight="900">Iniciar jogo</Text>
                 <Text color="$onzeMuted" lineHeight={20}>
                   Confira a identidade dos times. Nomes e imagens serão reutilizados nos próximos jogos e nas escalações.
                 </Text>
@@ -162,27 +164,27 @@ export function StartLiveMatchModal({
               )}
 
               {error ? (
-                <YStack backgroundColor="#FDECEC" borderRadius="$4" padding="$3">
+                <YStack backgroundColor="$onzeDangerBg" borderRadius="$4" padding="$3">
                   <Text color="$onzeDanger" fontSize={12} lineHeight={18}>{error}</Text>
                 </YStack>
               ) : null}
 
               <XStack gap="$3">
-                <Button flex={1} height={52} disabled={saving} onPress={onCancel}>
+                <AppButton variant="secondary" flex={1} disabled={saving} onPress={onCancel}>
                   Agora não
-                </Button>
-                <Button
-                  backgroundColor="$onzeGreen"
+                </AppButton>
+                <AppButton
+                  variant="primary"
                   disabled={disabled || invalidName || identities.length < 2}
                   flex={1}
-                  height={52}
+
                   opacity={disabled || invalidName || identities.length < 2 ? 0.55 : 1}
                   onPress={onConfirm}
                 >
                   <Text color="$onzeSurface" fontWeight="900">
-                    {saving ? 'Iniciando...' : 'Iniciar partida'}
+                    {saving ? 'Iniciando...' : 'Iniciar jogo'}
                   </Text>
-                </Button>
+                </AppButton>
               </XStack>
             </YStack>
           </ScrollView>
