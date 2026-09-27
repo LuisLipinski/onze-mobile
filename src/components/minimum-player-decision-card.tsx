@@ -72,7 +72,7 @@ export function MinimumPlayerDecisionCard({ match, onCancelMatch }: Props) {
       setStatus(await approveMatchBelowMinimum(token, match.id));
       setConfirmKeep(false);
     } catch (exception) {
-      setError(getErrorMessage(exception, 'Não foi possível manter a partida abaixo do mínimo.'));
+      setError(getErrorMessage(exception, 'Não foi possível manter o jogo abaixo do mínimo.'));
     } finally {
       setSaving(false);
     }
@@ -85,7 +85,7 @@ export function MinimumPlayerDecisionCard({ match, onCancelMatch }: Props) {
   if (status?.belowMinimumApproved) {
     return (
       <YStack backgroundColor="$onzeWarningBg" borderColor="$onzeWarningBorder" borderRadius="$6" borderWidth={1} gap="$2" padding="$5">
-        <Text color="$onzeWarningText" fontSize={15} fontWeight="900">Partida mantida abaixo do mínimo</Text>
+        <Text color="$onzeWarningText" fontSize={15} fontWeight="900">Jogo mantido abaixo do mínimo</Text>
         <Text color="$onzeInk" fontSize={13} lineHeight={19}>
           O administrador decidiu manter esta ocorrência com {status.confirmedPlayers} de {status.minimumPlayers} jogadores mínimos. O formador poderá ser usado, mas posições e equilíbrio podem não ficar ideais. Revise os times antes de confirmar.
         </Text>
@@ -143,7 +143,7 @@ export function MinimumPlayerDecisionCard({ match, onCancelMatch }: Props) {
         visible={confirmKeep}
         title="Manter abaixo do mínimo?"
         message="O formador de times será liberado, mas com menos jogadores a distribuição de posições e o equilíbrio podem não ficar ideais. Revise a escalação antes de usar os times."
-        confirmLabel="Manter partida"
+        confirmLabel="Manter jogo"
         loading={saving}
         onCancel={() => setConfirmKeep(false)}
         onConfirm={() => void keepBelowMinimum()}

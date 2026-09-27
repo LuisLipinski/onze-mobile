@@ -67,7 +67,7 @@ async function decisionRequest<T>(
       clearTimeout(timeout);
     }
   }, loadingMessage ? {
-    title: 'Atualizando a partida...',
+    title: 'Atualizando o jogo...',
     message: loadingMessage,
   } : {});
 }

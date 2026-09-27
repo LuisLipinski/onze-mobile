@@ -78,7 +78,7 @@ export function PaymentSettlementModal({
                 onPress={() => onResolve('REFUNDED')}
               />
               <SettlementButton
-                label="Registrar crédito para próxima partida"
+                label="Registrar crédito para próximo jogo"
                 color="$onzeGreen"
                 disabled={loading || !settlementAvailable}
                 onPress={() => onResolve('CREDITED')}

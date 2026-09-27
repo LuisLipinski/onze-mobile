@@ -276,7 +276,7 @@ export default function GroupSettingsScreen() {
                   <YStack gap="$1">
                     <Text color="$onzeInk" fontSize={16} fontWeight="900">Cobrança padrão</Text>
                     <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                      Estes dados serão preenchidos automaticamente ao marcar um jogo e poderão ser alterados naquela partida.
+                      Estes dados serão preenchidos automaticamente ao marcar um jogo e poderão ser alterados naquele jogo.
                     </Text>
                   </YStack>
                   <OptionalInput

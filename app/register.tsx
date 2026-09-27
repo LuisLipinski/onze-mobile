@@ -86,7 +86,7 @@ export default function RegisterScreen() {
                 <Text color="$onzeMuted" fontSize={14}>
                   {params.joinCode
                     ? 'Crie seu acesso para aceitar o convite da pelada.'
-                    : 'Crie seu acesso para começar a organizar suas partidas.'}
+                    : 'Crie seu acesso para começar a organizar seus jogos.'}
                 </Text>
               </YStack>
 

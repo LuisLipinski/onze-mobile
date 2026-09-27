@@ -32,7 +32,7 @@ export default function DevTestDataScreen() {
 
   const load = useCallback(async () => {
     if (!params.matchId) {
-      setError('Não foi possível identificar a partida.');
+      setError('Não foi possível identificar o jogo.');
       return;
     }
     try {
@@ -92,16 +92,16 @@ export default function DevTestDataScreen() {
     void runAction('add-attendance', async (token, matchId) => {
       const result = await addDevTestPlayersToMatch(token, matchId);
       const capacityMessage = result.skippedCapacity > 0
-        ? ` ${result.skippedCapacity} ficaram de fora porque a partida atingiu o máximo.`
+        ? ` ${result.skippedCapacity} ficaram de fora porque o jogo atingiu o máximo.`
         : '';
-      return `${result.added} jogador(es) adicionado(s) à partida.${capacityMessage}`;
+      return `${result.added} jogador(es) adicionado(s) ao jogo.${capacityMessage}`;
     });
   }
 
   function removeFromMatch() {
     void runAction('remove-attendance', async (token, matchId) => {
       const result = await removeDevTestPlayersFromMatch(token, matchId);
-      return `${result.removed} jogador(es) de teste removido(s) desta partida.`;
+      return `${result.removed} jogador(es) de teste removido(s) deste jogo.`;
     });
   }
 
@@ -149,7 +149,7 @@ export default function DevTestDataScreen() {
                   <Text color="$onzeInk" fontSize={18} fontWeight="900">{status.testPlayers}</Text>
                 </YStack>
                 <YStack backgroundColor="$onzeCanvas" borderRadius="$4" flex={1} gap="$1" padding="$3">
-                  <Text color="$onzeMuted" fontSize={10} fontWeight="800">NA PARTIDA</Text>
+                  <Text color="$onzeMuted" fontSize={10} fontWeight="800">NO JOGO</Text>
                   <Text color="$onzeInk" fontSize={18} fontWeight="900">{status.testPlayersGoing}</Text>
                 </YStack>
                 <YStack backgroundColor="$onzeCanvas" borderRadius="$4" flex={1} gap="$1" padding="$3">
@@ -217,9 +217,9 @@ export default function DevTestDataScreen() {
 
           <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
             <YStack gap="$1">
-              <Text color="$onzeInk" fontSize={17} fontWeight="900">3. Colocar na partida</Text>
+              <Text color="$onzeInk" fontSize={17} fontWeight="900">3. Colocar no jogo</Text>
               <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                Adiciona os Teste XX como “Vou jogar” até atingir o máximo configurado da partida. Times já gerados são invalidados para você gerar novamente.
+                Adiciona os Teste XX como “Vou jogar” até atingir o máximo configurado do jogo. Times já gerados são invalidados para você gerar novamente.
               </Text>
             </YStack>
             <AppButton
@@ -229,7 +229,7 @@ export default function DevTestDataScreen() {
               onPress={addToMatch}
             >
               <Text color="$onzeSurface" fontWeight="900">
-                {running === 'add-attendance' ? 'Adicionando...' : 'Adicionar jogadores à partida'}
+                {running === 'add-attendance' ? 'Adicionando...' : 'Adicionar jogadores ao jogo'}
               </Text>
             </AppButton>
             <AppButton
@@ -239,7 +239,7 @@ export default function DevTestDataScreen() {
               onPress={removeFromMatch}
             >
               <Text color="$onzeDanger" fontWeight="900">
-                {running === 'remove-attendance' ? 'Removendo...' : 'Remover jogadores de teste da partida'}
+                {running === 'remove-attendance' ? 'Removendo...' : 'Remover jogadores de teste do jogo'}
               </Text>
             </AppButton>
           </YStack>

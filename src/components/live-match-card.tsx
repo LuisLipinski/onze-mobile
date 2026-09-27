@@ -65,7 +65,7 @@ export function LiveMatchCard({
           <XStack alignItems="center" justifyContent="space-between">
             <Text color="$onzeMuted" flex={1} fontSize={12} numberOfLines={1}>{match.venue}</Text>
             <Text color="$onzeGreen" fontSize={12} fontWeight="900">
-              {match.canManage ? 'Gerenciar partida  ›' : 'Acompanhar partida  ›'}
+              {match.canManage ? 'Gerenciar jogo  ›' : 'Acompanhar jogo  ›'}
             </Text>
           </XStack>
         </YStack>

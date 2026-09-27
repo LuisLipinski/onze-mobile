@@ -39,7 +39,7 @@ test('separa jogos ao vivo dos próximos jogos na home', () => {
   assert.deepEqual(scheduledHomeMatches(matches, live), [matches[0]]);
 });
 
-test('inclui, atualiza e remove partidas da home pelos eventos em tempo real', () => {
+test('inclui, atualiza e remove jogos da home pelos eventos em tempo real', () => {
   const first = {
     matchId: 'match-1', status: 'IN_PROGRESS', startedAt: '2026-09-19T18:00:00Z', scores: [],
   };

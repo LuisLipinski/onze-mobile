@@ -106,7 +106,7 @@ export default function GroupCreditsScreen() {
             <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$2" padding="$5">
               <Text color="$onzeInk" fontSize={17} fontWeight="900">Nenhum crédito ativo</Text>
               <Text color="$onzeMuted" fontSize={13} lineHeight={20}>
-                Quando um pagamento for mantido para a próxima partida, ele aparecerá aqui.
+                Quando um pagamento for mantido para o próximo jogo, ele aparecerá aqui.
               </Text>
             </YStack>
           ) : null}
@@ -138,7 +138,7 @@ export default function GroupCreditsScreen() {
               {credit.availableAmount > 0 ? (
                 <CreditStatusRow
                   label="Disponível"
-                  detail="Será reservado na próxima partida paga deste grupo."
+                  detail="Será reservado no próximo jogo pago deste grupo."
                   color="$onzeGreen"
                 />
               ) : null}
@@ -155,7 +155,7 @@ export default function GroupCreditsScreen() {
                   </XStack>
                   <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
                     {credit.allocationStatus === 'APPLIED'
-                      ? 'A presença foi confirmada e o valor já quitou esta partida.'
+                      ? 'A presença foi confirmada e o valor já quitou este jogo.'
                       : 'Aguardando a resposta de presença. Se a pessoa não for, o saldo será liberado novamente.'}
                   </Text>
                   {credit.allocatedMatchId ? (
@@ -168,7 +168,7 @@ export default function GroupCreditsScreen() {
                         params: { matchId: credit.allocatedMatchId ?? '' },
                       })}
                     >
-                      <Text color="$onzeGreen" fontWeight="900">Ver partida</Text>
+                      <Text color="$onzeGreen" fontWeight="900">Ver jogo</Text>
                     </AppButton>
                   ) : null}
                 </YStack>

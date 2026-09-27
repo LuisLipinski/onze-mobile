@@ -276,13 +276,13 @@ export default function CreateMatchScreen() {
                 {params.groupName || 'Novo jogo'}
               </Text>
               <Text color="$onzeMuted" fontSize={14} lineHeight={20}>
-                Defina os dados da partida. Os membros poderão confirmar presença assim que ela for criada.
+                Defina os dados do jogo. Os membros poderão confirmar presença assim que ele for criado.
               </Text>
             </YStack>
 
             <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
               <YStack gap="$1">
-                <Text color="$onzeInk" fontSize={17} fontWeight="900">Prazos da partida</Text>
+                <Text color="$onzeInk" fontSize={17} fontWeight="900">Prazos do jogo</Text>
                 <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
                   Depois do primeiro prazo ninguém novo entra na lista. Use o segundo para garantir os pagamentos antes do jogo.
                 </Text>
@@ -452,12 +452,12 @@ export default function CreateMatchScreen() {
                     modality,
                     matchType,
                     matchType === 'INTERNAL' ? Number.parseInt(teamCount, 10) || 2 : null,
-                  )}. Ao trocar modalidade, tipo de partida ou quantidade de times, o mínimo e o máximo voltam para este valor ideal.
+                  )}. Ao trocar modalidade, tipo de jogo ou quantidade de times, o mínimo e o máximo voltam para este valor ideal.
                 </Text>
               </Field>
 
               <YStack gap="$3">
-                <Text color="$onzeMuted" fontSize={11} fontWeight="900">TIPO DE PARTIDA</Text>
+                <Text color="$onzeMuted" fontSize={11} fontWeight="900">TIPO DE JOGO</Text>
                 <XStack gap="$2">
                   <MatchTypeButton
                     label="Entre os membros"

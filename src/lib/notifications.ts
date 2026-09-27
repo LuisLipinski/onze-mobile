@@ -51,8 +51,8 @@ async function prepareNotificationPermission() {
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(MATCHES_CHANNEL_ID, {
-      name: 'Jogos e partidas ao vivo',
-      description: 'Avisos de jogos, presença, pagamentos e acontecimentos das partidas ao vivo.',
+      name: 'Jogos e placares ao vivo',
+      description: 'Avisos de jogos, presença, pagamentos e acontecimentos ao vivo.',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 180, 250],
       lightColor: ONZE_COLORS.green,

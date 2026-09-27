@@ -53,7 +53,7 @@ export function RentalGoalkeeperModal({
                   Adicionar goleiro de aluguel
                 </Text>
                 <Text color="$onzeMuted" fontSize={14} lineHeight={21}>
-                  Informe somente o nome. Ele ocupará uma vaga apenas nesta partida e não terá conta, cobrança ou notificações.
+                  Informe somente o nome. Ele ocupará uma vaga apenas neste jogo e não terá conta, cobrança ou notificações.
                 </Text>
               </YStack>
 

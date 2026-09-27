@@ -120,7 +120,7 @@ export function StartLiveMatchModal({
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <YStack gap="$5" paddingBottom="$3">
               <YStack gap="$1">
-                <Text color="$onzeInk" fontSize={22} fontWeight="900">Iniciar partida</Text>
+                <Text color="$onzeInk" fontSize={22} fontWeight="900">Iniciar jogo</Text>
                 <Text color="$onzeMuted" lineHeight={20}>
                   Confira a identidade dos times. Nomes e imagens serão reutilizados nos próximos jogos e nas escalações.
                 </Text>
@@ -182,7 +182,7 @@ export function StartLiveMatchModal({
                   onPress={onConfirm}
                 >
                   <Text color="$onzeSurface" fontWeight="900">
-                    {saving ? 'Iniciando...' : 'Iniciar partida'}
+                    {saving ? 'Iniciando...' : 'Iniciar jogo'}
                   </Text>
                 </AppButton>
               </XStack>

@@ -27,6 +27,6 @@ export function canRemoveGoalkeeperRole(attendance: MatchAttendance) {
 export function missingGoalkeepersMessage(missingGoalkeepers: number) {
   if (missingGoalkeepers <= 0) return null;
   return missingGoalkeepers === 1
-    ? 'Falta 1 goleiro para esta partida.'
-    : `Faltam ${missingGoalkeepers} goleiros para esta partida.`;
+    ? 'Falta 1 goleiro para este jogo.'
+    : `Faltam ${missingGoalkeepers} goleiros para este jogo.`;
 }

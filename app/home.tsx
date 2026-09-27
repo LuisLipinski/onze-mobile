@@ -200,7 +200,7 @@ export default function HomeScreen() {
               <YStack gap="$1">
                 <Text color="$onzeInk" fontSize={20} fontWeight="900">Jogos ao vivo</Text>
                 <Text color="$onzeMuted" fontSize={13}>
-                  Acompanhe o placar e os acontecimentos das partidas em andamento.
+                  Acompanhe o placar e os acontecimentos dos jogos em andamento.
                 </Text>
               </YStack>
 
@@ -213,7 +213,7 @@ export default function HomeScreen() {
                   padding="$4"
                 >
                   <Text color="$onzeMuted" fontSize={13} textAlign="center">
-                    Nenhuma partida ao vivo agora.
+                    Nenhum jogo ao vivo agora.
                   </Text>
                 </YStack>
               ) : (
@@ -248,7 +248,7 @@ export default function HomeScreen() {
                     Você não tem nenhum próximo jogo agendado.
                   </Text>
                   <Text color="$onzeMuted" fontSize={14} lineHeight={21} textAlign="center">
-                    Quando uma partida for marcada em um dos seus grupos, ela aparecerá aqui.
+                    Quando um jogo for marcado em um dos seus grupos, ele aparecerá aqui.
                   </Text>
                 </YStack>
               ) : (

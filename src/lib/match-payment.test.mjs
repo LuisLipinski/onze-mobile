@@ -39,7 +39,7 @@ test('oculta cobrança e bloqueia lembrete local para goleiro isento', () => {
   assert.equal(hasPendingCurrentPlayerPayment(match), false);
 });
 
-test('não trata preferência esportiva como papel da partida', () => {
+test('não trata preferência esportiva como papel do jogo', () => {
   const match = matchWithCurrentAttendance({
     canPlayGoalkeeper: true,
     isGoalkeeper: false,

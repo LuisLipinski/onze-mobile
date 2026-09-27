@@ -273,7 +273,7 @@ export default function SportsProfileScreen() {
           {showGoalkeeperAvailability ? (
             <ProfileSection
               title="Disponibilidade no gol"
-              description="Isso só informa que você aceita jogar no gol quando necessário; o administrador ainda define seu papel em cada partida."
+              description="Isso só informa que você aceita jogar no gol quando necessário; o administrador ainda define seu papel em cada jogo."
             >
               <XStack alignItems="center" justifyContent="space-between" gap="$4">
                 <Text color="$onzeInk" flex={1} fontSize={14} fontWeight="700">

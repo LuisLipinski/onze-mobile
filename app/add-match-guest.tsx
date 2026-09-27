@@ -96,7 +96,7 @@ export default function AddMatchGuestScreen() {
             <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
           </AppButton>
           <YStack gap="$1">
-            <Text color="$onzeGreen" fontSize={13} fontWeight="900">CONVIDADO DA PARTIDA</Text>
+            <Text color="$onzeGreen" fontSize={13} fontWeight="900">CONVIDADO DO JOGO</Text>
             <Text color="$onzeInk" fontSize={28} fontWeight="900">Adicionar jogador</Text>
             <Text color="$onzeMuted" fontSize={13} lineHeight={20}>
               Este cadastro vale somente para esta participação e não cria uma conta Onze.

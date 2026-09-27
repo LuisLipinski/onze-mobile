@@ -47,7 +47,7 @@ const PERMISSIONS: {
   {
     value: 'SCHEDULE_GAMES',
     label: 'Marcar jogos',
-    description: 'Marcar partidas e administrar presença, pagamentos, créditos e reposições.',
+    description: 'Marcar jogos e administrar presença, pagamentos, créditos e reposições.',
   },
   {
     value: 'EDIT_PLAYER_PROFILES',

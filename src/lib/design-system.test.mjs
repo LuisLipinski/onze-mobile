@@ -14,6 +14,9 @@ const interfaceFiles = [...filesIn('app'), ...filesIn('src/components')]
   .filter((file) => file.endsWith('.tsx'))
   .filter((file) => !file.endsWith(`${path.sep}app-button.tsx`));
 
+const productCopyFiles = [...filesIn('app'), ...filesIn('src')]
+  .filter((file) => /\.(?:ts|tsx)$/.test(file));
+
 test('centraliza botões, confirmações e cores da interface', () => {
   for (const file of interfaceFiles) {
     const source = fs.readFileSync(file, 'utf8');
@@ -27,4 +30,11 @@ test('centraliza botões, confirmações e cores da interface', () => {
 test('mantém o aplicativo no tema claro definido pela marca', () => {
   const appConfig = JSON.parse(fs.readFileSync('app.json', 'utf8'));
   assert.equal(appConfig.expo.userInterfaceStyle, 'light');
+});
+
+test('usa jogo como termo único nos textos do produto', () => {
+  for (const file of productCopyFiles) {
+    const source = fs.readFileSync(file, 'utf8');
+    assert.doesNotMatch(source, /\bpartidas?\b/i, file);
+  }
 });

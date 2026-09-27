@@ -18,15 +18,15 @@ export function getMatchFormatValidationError(
 ) {
   if (matchType === 'INTERNAL') {
     if (!Number.isInteger(teamCount) || (teamCount ?? 0) < 2) {
-      return 'Partidas entre membros precisam ter pelo menos 2 times.';
+      return 'Jogos entre membros precisam ter pelo menos 2 times.';
     }
     if (!Number.isInteger(requiredGoalkeepers) || requiredGoalkeepers < (teamCount ?? 2)) {
-      return `Informe pelo menos ${teamCount} goleiros para esta partida.`;
+      return `Informe pelo menos ${teamCount} goleiros para este jogo.`;
     }
     return null;
   }
   if (!Number.isInteger(requiredGoalkeepers) || requiredGoalkeepers < 1) {
-    return 'Partidas contra outro time precisam de pelo menos 1 goleiro.';
+    return 'Jogos contra outro time precisam de pelo menos 1 goleiro.';
   }
   return null;
 }

@@ -131,7 +131,7 @@ export default function MatchScreen() {
       setLiveAction(null);
       router.push({ pathname: '/live-match', params: { matchId: match.id } });
     } catch (exception) {
-      setStartModalError(getErrorMessage(exception, 'Não foi possível iniciar a partida.'));
+      setStartModalError(getErrorMessage(exception, 'Não foi possível iniciar o jogo.'));
     } finally {
       setManaging(false);
     }
@@ -671,8 +671,8 @@ export default function MatchScreen() {
                 {match.paymentRequired ? (
                   <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
                     {match.goalkeeperPays
-                      ? 'Goleiros membros seguem a cobrança normal desta partida.'
-                      : 'Goleiros marcados pelo administrador ficam isentos nesta partida.'}
+                      ? 'Goleiros membros seguem a cobrança normal deste jogo.'
+                      : 'Goleiros marcados pelo administrador ficam isentos neste jogo.'}
                   </Text>
                 ) : null}
               </YStack>
@@ -691,7 +691,7 @@ export default function MatchScreen() {
                 padding="$5"
               >
                 <YStack gap="$1">
-                  <Text color="$onzeInk" fontSize={18} fontWeight="900">Formato da partida</Text>
+                  <Text color="$onzeInk" fontSize={18} fontWeight="900">Formato do jogo</Text>
                   <Text color="$onzeInk" fontSize={14} fontWeight="800">
                     Modalidade: {modalityLabel(match.modality)}
                   </Text>
@@ -823,7 +823,7 @@ export default function MatchScreen() {
               {match.status === 'IN_PROGRESS' || match.status === 'FINISHED' ? (
                 <YStack backgroundColor="$onzeSurface" borderColor="$onzeGreen" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
                   <Text color="$onzeGreen" fontSize={18} fontWeight="900">
-                    {match.status === 'IN_PROGRESS' ? 'Partida em andamento' : 'Partida finalizada'}
+                    {match.status === 'IN_PROGRESS' ? 'Jogo em andamento' : 'Jogo finalizado'}
                   </Text>
                   <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
                     O placar e o cronômetro ficam em uma tela própria para facilitar o acompanhamento.
@@ -835,7 +835,7 @@ export default function MatchScreen() {
                     pressStyle={{ backgroundColor: '$onzeGreenPress', opacity: 0.85 }}
                   >
                     <Text color="$onzeSurface" fontWeight="900">
-                      {match.status === 'IN_PROGRESS' ? 'Acompanhar partida' : 'Ver partida'}
+                      {match.status === 'IN_PROGRESS' ? 'Acompanhar jogo' : 'Ver jogo'}
                     </Text>
                   </AppButton>
                 </YStack>
@@ -1296,7 +1296,7 @@ export default function MatchScreen() {
                 <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
                   <Text color="$onzeInk" fontSize={17} fontWeight="900">Gerenciar jogo</Text>
                   <AppButton variant="primary"  onPress={() => void openStartModal()}>
-                    <Text color="$onzeSurface" fontWeight="900">Iniciar partida</Text>
+                    <Text color="$onzeSurface" fontWeight="900">Iniciar jogo</Text>
                   </AppButton>
                   <AppButton
                     variant="destructiveOutline"
@@ -1395,10 +1395,10 @@ export default function MatchScreen() {
           title={goalkeeperTargetState ? 'Definir como goleiro?' : 'Remover papel de goleiro?'}
           message={goalkeeperTargetState
             ? match.goalkeeperPays
-              ? `${goalkeeperChange?.displayName ?? 'O jogador'} será identificado como goleiro, mas seguirá a cobrança normal desta partida.`
-              : `${goalkeeperChange?.displayName ?? 'O jogador'} ficará isento nesta partida. Crédito sem dinheiro será devolvido; pagamento em dinheiro já informado ou confirmado bloqueará a alteração.`
+              ? `${goalkeeperChange?.displayName ?? 'O jogador'} será identificado como goleiro, mas seguirá a cobrança normal deste jogo.`
+              : `${goalkeeperChange?.displayName ?? 'O jogador'} ficará isento neste jogo. Crédito sem dinheiro será devolvido; pagamento em dinheiro já informado ou confirmado bloqueará a alteração.`
             : goalkeeperChange?.paymentExempt
-              ? `${goalkeeperChange.displayName} deixará de ser goleiro e voltará a ter a cobrança normal desta partida.`
+              ? `${goalkeeperChange.displayName} deixará de ser goleiro e voltará a ter a cobrança normal deste jogo.`
               : `${goalkeeperChange?.displayName ?? 'O jogador'} deixará de ser identificado como goleiro. A situação de pagamento não será alterada.`}
           confirmLabel={goalkeeperTargetState ? 'Definir goleiro' : 'Remover papel'}
           loading={updatingGoalkeeperId === goalkeeperChange?.userId}
@@ -1427,7 +1427,7 @@ export default function MatchScreen() {
       <ConfirmActionModal
         visible={rentalToRemove != null}
         title="Remover goleiro de aluguel?"
-        message={`${rentalToRemove?.displayName ?? 'Este goleiro'} será removido somente desta partida e a vaga ficará disponível novamente.`}
+        message={`${rentalToRemove?.displayName ?? 'Este goleiro'} será removido somente deste jogo e a vaga ficará disponível novamente.`}
         confirmLabel="Remover goleiro"
         destructive
         loading={managingRentalId === rentalToRemove?.id}
@@ -1462,7 +1462,7 @@ export default function MatchScreen() {
           ? 'Manter valores como crédito?'
           : 'Confirmar reembolsos?'}
         message={bulkResolution === 'CREDITED'
-          ? `O saldo de ${selectedSettlements.length} ${selectedSettlements.length === 1 ? 'jogador' : 'jogadores'} será aplicado automaticamente à próxima partida paga do grupo.`
+          ? `O saldo de ${selectedSettlements.length} ${selectedSettlements.length === 1 ? 'jogador' : 'jogadores'} será aplicado automaticamente ao próximo jogo pago do grupo.`
           : `Confirme que o reembolso de ${selectedSettlements.length} ${selectedSettlements.length === 1 ? 'jogador foi realizado' : 'jogadores foi realizado'}.`}
         confirmLabel={bulkResolution === 'CREDITED' ? 'Manter como crédito' : 'Confirmar reembolso'}
         loading={updatingPayment === 'bulk'}
@@ -1580,7 +1580,7 @@ function withdrawalConfirmationMessage(
     return status === 'PAID'
       ? 'Sua vaga será liberada, mas o crédito usado ficará bloqueado até outra pessoa preencher a vaga. Somente um administrador poderá readicionar você.'
       : creditAllocationStatus === 'RESERVED'
-      ? 'A reserva será removida e o crédito continuará disponível para outra partida deste grupo.'
+      ? 'A reserva será removida e o crédito continuará disponível para outro jogo deste grupo.'
       : 'Sua vaga será liberada e o crédito ainda pendente voltará ao saldo.';
   }
   if (status === 'PENDING') {
@@ -1614,7 +1614,7 @@ function withdrawalPaymentMessage(
     case 'REFUNDED':
       return 'O administrador registrou que o pagamento foi reembolsado.';
     case 'CREDITED':
-      return 'O valor ficou registrado como crédito para uma próxima partida.';
+      return 'O valor ficou registrado como crédito para um próximo jogo.';
     case 'RETAINED':
       return 'O administrador registrou que o pagamento será mantido.';
     default:

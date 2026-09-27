@@ -16,7 +16,7 @@ import {
 const TIME_ZONE = 'America/Sao_Paulo';
 const DATE_TIME = '2026-09-24T22:00:00Z';
 
-test('formata datas de partida em pt-BR usando o fuso informado', () => {
+test('formata datas de jogo em pt-BR usando o fuso informado', () => {
   assert.equal(formatShortDate(DATE_TIME, TIME_ZONE), '24/09/2026');
   assert.equal(formatTime(DATE_TIME, TIME_ZONE), '19:00');
   assert.match(formatDateTime(DATE_TIME, TIME_ZONE), /24\/09\/2026.*19:00/);

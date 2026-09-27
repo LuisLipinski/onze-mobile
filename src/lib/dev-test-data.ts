@@ -137,7 +137,7 @@ export function addDevTestPlayersToMatch(token: string, matchId: string) {
     token,
     `/api/dev/test-data/matches/${matchId}/attendance`,
     { method: 'POST' },
-    'Adicionando os jogadores de teste à partida.',
+    'Adicionando os jogadores de teste ao jogo.',
   );
 }
 
@@ -146,6 +146,6 @@ export function removeDevTestPlayersFromMatch(token: string, matchId: string) {
     token,
     `/api/dev/test-data/matches/${matchId}/attendance`,
     { method: 'DELETE' },
-    'Removendo os jogadores de teste desta partida.',
+    'Removendo os jogadores de teste deste jogo.',
   );
 }

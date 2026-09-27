@@ -88,7 +88,7 @@ function originLabel(origin: TeamAssignment['positionOrigin']) {
     case 'PRIMARY': return 'Posição principal';
     case 'SECONDARY': return 'Posição secundária';
     case 'ALTERNATIVE': return 'Posição alternativa';
-    case 'GOALKEEPER': return 'Goleiro definido na partida';
+    case 'GOALKEEPER': return 'Goleiro definido no jogo';
     case 'MANUAL': return 'Alterado pelo administrador';
     default: return '';
   }
@@ -193,7 +193,7 @@ function ShareLineupCard({
   return (
     <View style={styles.shareCard}>
       <OnzeWordmark size="sm" suffix="ESCALAÇÃO" />
-      <Text color="$onzeInk" fontSize={28} fontWeight="900">Times da partida</Text>
+      <Text color="$onzeInk" fontSize={28} fontWeight="900">Times do jogo</Text>
       <Text color="$onzeMuted" fontSize={14}>{modalityLabel(data.modality)}</Text>
       <YStack gap="$5" marginTop="$4">
         {data.teams.map((team) => (
@@ -242,7 +242,7 @@ export default function MatchTeamsScreen() {
 
   async function load() {
     if (!params.matchId) {
-      setError('Não foi possível identificar a partida.');
+      setError('Não foi possível identificar o jogo.');
       setLoading(false);
       return;
     }
@@ -428,7 +428,7 @@ export default function MatchTeamsScreen() {
             <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
           </AppButton>
           <YStack gap="$1">
-            <Text color="$onzeGreen" fontSize={13} fontWeight="900">TIMES DA PARTIDA</Text>
+            <Text color="$onzeGreen" fontSize={13} fontWeight="900">TIMES DO JOGO</Text>
             <Text color="$onzeInk" fontSize={28} fontWeight="900">Escalação</Text>
             {data ? (
               <Text color="$onzeMuted" fontSize={13}>
@@ -453,7 +453,7 @@ export default function MatchTeamsScreen() {
 
           {data && data.confirmedPlayers < data.minimumPlayers ? (
             <YStack backgroundColor="$onzeWarningBg" borderColor="$onzeWarningBorder" borderRadius="$5" borderWidth={1} gap="$1" padding="$4">
-              <Text color="$onzeWarningText" fontSize={13} fontWeight="900">Partida abaixo do mínimo</Text>
+              <Text color="$onzeWarningText" fontSize={13} fontWeight="900">Jogo abaixo do mínimo</Text>
               <Text color="$onzeInk" fontSize={12} lineHeight={18}>
                 Há {data.confirmedPlayers} de {data.minimumPlayers} jogadores mínimos. Se o administrador autorizou continuar, o formador tentará equilibrar os disponíveis, mas posições e força podem não ficar ideais. Revise os times antes de confirmar.
               </Text>
@@ -599,7 +599,7 @@ export default function MatchTeamsScreen() {
 
                         {editing && data.technicalDetailsVisible ? (
                           <YStack backgroundColor="$onzeInfoBg" borderColor="$onzeBorder" borderRadius="$4" borderWidth={1} gap="$3" padding="$3">
-                            <Text color="$onzeInk" fontSize={12} fontWeight="900">Posição nesta partida</Text>
+                            <Text color="$onzeInk" fontSize={12} fontWeight="900">Posição neste jogo</Text>
                             <XStack flexWrap="wrap" gap="$2">
                               {editableRoles(data.modality).map((role) => (
                                 <AppButton
@@ -643,7 +643,7 @@ export default function MatchTeamsScreen() {
                               </AppButton>
                             </XStack>
                             <Text color="$onzeMuted" fontSize={10} lineHeight={15}>
-                              A posição vale apenas para esta partida. A força é recalculada usando a função escolhida.
+                              A posição vale apenas para este jogo. A força é recalculada usando a função escolhida.
                             </Text>
                           </YStack>
                         ) : null}

@@ -300,7 +300,7 @@ export default function LoginScreen() {
                 <Text color="$onzeMuted" fontSize={14} lineHeight={20}>
                   {params.joinCode
                     ? 'Entre na sua conta para aceitar o convite da pelada.'
-                    : 'Entre para organizar sua próxima partida.'}
+                    : 'Entre para organizar seu próximo jogo.'}
                 </Text>
               </YStack>
 

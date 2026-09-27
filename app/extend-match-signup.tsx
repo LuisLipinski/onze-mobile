@@ -36,7 +36,7 @@ export default function ExtendMatchSignupScreen() {
   useEffect(() => {
     async function load() {
       if (!params.matchId) {
-        setError('Não foi possível identificar a partida.');
+        setError('Não foi possível identificar o jogo.');
         setLoading(false);
         return;
       }
@@ -49,7 +49,7 @@ export default function ExtendMatchSignupScreen() {
         setPaymentDate(payment.date);
         setPaymentTime(payment.time);
       } catch (exception) {
-        setError(getErrorMessage(exception, 'Não foi possível carregar a partida.'));
+        setError(getErrorMessage(exception, 'Não foi possível carregar o jogo.'));
       } finally {
         setLoading(false);
       }
@@ -150,7 +150,7 @@ export default function ExtendMatchSignupScreen() {
                 <YStack backgroundColor="$onzeWarningBg" borderColor="$onzeWarningBorder" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
                   <Text color="$onzeWarningText" fontSize={16} fontWeight="900">Revise o pagamento</Text>
                   <Text color="$onzeInk" fontSize={12} lineHeight={18}>
-                    Como esta partida possui cobrança, o prazo de pagamento não pode ficar antes do novo prazo de inscrição. Confirme ou ajuste os campos abaixo.
+                    Como este jogo possui cobrança, o prazo de pagamento não pode ficar antes do novo prazo de inscrição. Confirme ou ajuste os campos abaixo.
                   </Text>
                   <Input
                     keyboardType="number-pad"

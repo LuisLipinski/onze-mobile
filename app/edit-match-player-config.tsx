@@ -36,7 +36,7 @@ export default function EditMatchPlayerConfigScreen() {
 
   useEffect(() => {
     if (!params.matchId) {
-      setError('Não foi possível identificar a partida.');
+      setError('Não foi possível identificar o jogo.');
       return;
     }
     void getAccessToken().then(async (token) => {
@@ -51,7 +51,7 @@ export default function EditMatchPlayerConfigScreen() {
       setMaxPlayers(String(loaded.maxPlayers));
       setMaxPlayersCustomized(loaded.maxPlayers !== loaded.minimumPlayers);
     }).catch((exception) => {
-      setError(getErrorMessage(exception, 'Não foi possível carregar a partida.'));
+      setError(getErrorMessage(exception, 'Não foi possível carregar o jogo.'));
     });
   }, [params.matchId, router]);
 

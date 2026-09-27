@@ -109,7 +109,7 @@ export default function LiveMatchScreen() {
         goToLogin();
         return;
       }
-      setError(getErrorMessage(exception, 'Não foi possível carregar a partida.'));
+      setError(getErrorMessage(exception, 'Não foi possível carregar o jogo.'));
     } finally {
       if (!silent) setLoading(false);
     }
@@ -400,14 +400,14 @@ export default function LiveMatchScreen() {
       setLiveState(updatedLiveState);
       setManagementAction(null);
     } catch (exception) {
-      setError(getErrorMessage(exception, 'Não foi possível atualizar a partida.'));
+      setError(getErrorMessage(exception, 'Não foi possível atualizar o jogo.'));
     } finally {
       setManaging(false);
     }
   }
 
   if (loading) {
-    return <ServerLoadingScreen title="Carregando a partida..." message="Estamos buscando o placar e o cronômetro." />;
+    return <ServerLoadingScreen title="Carregando o jogo..." message="Estamos buscando o placar e o cronômetro." />;
   }
 
   return (
@@ -417,7 +417,7 @@ export default function LiveMatchScreen() {
           <XStack alignItems="center" gap="$3">
             <AppButton variant="secondary" onPress={() => router.back()}>Voltar</AppButton>
             <YStack flex={1}>
-              <Text color="$onzeInk" fontSize={24} fontWeight="900">Partida ao vivo</Text>
+              <Text color="$onzeInk" fontSize={24} fontWeight="900">Jogo ao vivo</Text>
               <Text color="$onzeMuted">{match?.groupName ?? 'Onze'}</Text>
             </YStack>
           </XStack>
@@ -479,7 +479,7 @@ export default function LiveMatchScreen() {
                     onPress={() => setManagementAction('finish')}
                     pressStyle={{ backgroundColor: '$onzeGreenPress', opacity: 0.85 }}
                   >
-                    <Text color="$onzeSurface" fontWeight="900">Finalizar partida</Text>
+                    <Text color="$onzeSurface" fontWeight="900">Finalizar jogo</Text>
                   </AppButton>
                   <AppButton
                     variant="destructiveOutline"
@@ -504,11 +504,11 @@ export default function LiveMatchScreen() {
 
       <ConfirmActionModal
         visible={managementAction != null}
-        title={managementAction === 'reset' ? 'Resetar este jogo?' : 'Finalizar esta partida?'}
+        title={managementAction === 'reset' ? 'Resetar este jogo?' : 'Finalizar este jogo?'}
         message={managementAction === 'reset'
           ? 'O jogo voltará para Agendado. O cronômetro e todo o placar atual serão apagados.'
-          : 'A partida será encerrada, o cronômetro ficará congelado e o placar será salvo.'}
-        confirmLabel={managementAction === 'reset' ? 'Resetar jogo' : 'Finalizar partida'}
+          : 'O jogo será encerrado, o cronômetro ficará congelado e o placar será salvo.'}
+        confirmLabel={managementAction === 'reset' ? 'Resetar jogo' : 'Finalizar jogo'}
         destructive={managementAction === 'reset'}
         loading={managing}
         onCancel={() => setManagementAction(null)}

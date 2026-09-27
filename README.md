@@ -8,7 +8,7 @@ Aplicativo Android do **Onze — Organizador de Pelada**.
 
 | Branch | Estado |
 |---|---|
-| `development` | Versão funcional corrente: partidas, presença, financeiro, prazos, notificações e reposições. |
+| `development` | Versão funcional corrente: jogos, presença, financeiro, prazos, notificações e reposições. |
 | `feature/paid-withdrawal-replacement-refund` | Branch histórica que originou a linha funcional já integrada em `development`. |
 | `master` | Branch de release estável; recebe somente versões validadas em `development` e autorizadas explicitamente. |
 
@@ -45,7 +45,7 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 - Convite por link HTTPS/código, compartilhamento e regeneração.
 - Membros, promoção, rebaixamento, transferência do Principal e permissões individuais.
 - Perfil esportivo próprio e edição administrativa por jogador.
-- Criação de partida, detalhe da partida, presença, pagamentos e cancelamentos.
+- Criação de jogo, detalhe do jogo, presença, pagamentos e cancelamentos.
 - Créditos do grupo, acertos em lote e seleção de reposição.
 - Loading global para operações assíncronas, incluindo o despertar da API no Render.
 
@@ -66,7 +66,7 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 - Promoção de membros depende de `PROMOTE_MEMBERS`.
 - Somente o Principal edita permissões, rebaixa administradores e transfere o cargo.
 - Após a transferência, o antigo Principal permanece como `ADMIN` sem permissões automáticas.
-- Edição, convites, remoção de membros e partidas respeitam as permissões devolvidas pelo backend.
+- Edição, convites, remoção de membros e jogos respeitam as permissões devolvidas pelo backend.
 - O Principal pode delegar `EDIT_PLAYER_PROFILES` para permitir a edição dos perfis esportivos de terceiros.
 
 ## Perfil esportivo
@@ -79,9 +79,9 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 - A lista administrativa de membros resume posições, goleiro, pé dominante e avaliação técnica, além de indicar perfis ainda não preenchidos.
 - Todas as consultas e gravações usam o loading global e mantêm mensagens de erro recuperáveis na tela.
 
-## Partidas e presença
+## Jogos e presença
 
-- Partida avulsa ou série semanal.
+- Jogo avulso ou série semanal.
 - Data, horário, fuso, local, limite de jogadores, observações e cobrança opcional.
 - Prazo final de inscrição e, quando há cobrança, prazo final de pagamento.
 - O jogador escolhe **Vou jogar** ou **Não vou**; **Talvez** não está implementado.
@@ -92,22 +92,22 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 
 ## Pagamentos, créditos e reposições
 
-- Valor e PIX próprios da partida, com padrões opcionais do grupo.
+- Valor e PIX próprios do jogo, com padrões opcionais do grupo.
 - Botão **Já paguei** e confirmação por administrador autorizado.
 - Jogador comum vê apenas o próprio pagamento; Principal ou `ADMIN` com `SCHEDULE_GAMES` acessa o painel completo.
-- Crédito disponível, reservado e aplicado exibido na tela do grupo e da partida.
+- Crédito disponível, reservado e aplicado exibido na tela do grupo e do jogo.
 - Acertos individuais ou em lote: não recebido, reembolso, crédito ou retenção.
 - Jogador com pagamento informado ou confirmado pode sair.
 - O acerto fica bloqueado até a vaga ser preenchida, exceto a decisão **não recebido** aplicável a pagamento apenas informado.
 - O jogador que saiu não retorna sozinho; um administrador autorizado pode recolocá-lo ou escolher outro membro.
-- O cancelamento da partida libera os acertos sem exigir reposição.
+- O cancelamento do jogo libera os acertos sem exigir reposição.
 
 ## Notificações
 
 - Push remoto por Expo/FCM para eventos da API.
 - Jogo criado, presença liberada, lembretes, pagamento, crédito, reposição, time completo e cancelamento.
 - Aviso no dia anterior ao jogo.
-- Ao tocar, o aplicativo abre diretamente a partida.
+- Ao tocar, o aplicativo abre diretamente o jogo.
 - Quando o push remoto não está disponível, o aplicativo agenda lembretes locais.
 - O fallback local agenda no máximo 30 dias futuros e é refeito após sincronização dos jogos.
 - Recibos do Expo/FCM e limpeza automática de tokens rejeitados ainda estão pendentes.
@@ -137,6 +137,12 @@ Variáveis opcionais:
 - `EXPO_PUBLIC_API_URL`: URL da API; sem ela, usa o Render de desenvolvimento.
 - `EXPO_PUBLIC_EAS_PROJECT_ID`: projeto usado para gerar o Expo Push Token; o `projectId` do `app.json` é o fallback.
 - `EXPO_PUBLIC_ENV`: use `development` somente nos APKs internos que podem exibir ferramentas de teste; builds de produção devem usar `production`.
+
+## Linguagem do produto
+
+- Toda comunicação exibida ao usuário usa **jogo** ou **jogos**. O termo **partida** não deve aparecer em telas, alertas, erros nem notificações.
+- Identificadores técnicos existentes, como `Match`, rotas `/matches` e nomes de banco, permanecem inalterados para evitar mudanças incompatíveis sem benefício ao usuário.
+- Novos textos devem seguir a mesma regra tanto no aplicativo quanto na API.
 
 ## Planejado, ainda não disponível
 
