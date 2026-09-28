@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Image, Pressable } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
-import type { FootballMatch, LiveMatchState, LiveScoreSide } from '../lib/api';
+import type { FootballMatch, LiveMatchState, LiveScoreSide, MatchCardType } from '../lib/api';
 import {
   activeMatchPeriod,
   formatMatchTimer,
@@ -19,6 +19,7 @@ type Props = {
   state: LiveMatchState;
   onChangeScore: (sideNumber: number, score: number) => void;
   onRegisterGoal: (sideNumber: number) => void;
+  onRegisterCard: (sideNumber: number, cardType: MatchCardType) => void;
 };
 
 type TeamIdentityProps = {
@@ -50,47 +51,89 @@ type ScoreControlsProps = {
   side: LiveScoreSide;
   onChangeScore: Props['onChangeScore'];
   onRegisterGoal: Props['onRegisterGoal'];
+  onRegisterCard: Props['onRegisterCard'];
 };
 
-function ScoreControls({ label, side, onChangeScore, onRegisterGoal }: ScoreControlsProps) {
+function CardButton({ label, cardType, onPress }: {
+  label: string;
+  cardType: MatchCardType;
+  onPress: () => void;
+}) {
+  const yellow = cardType === 'YELLOW';
   return (
-    <XStack gap="$2" justifyContent="center">
-      <Pressable
-        accessibilityLabel={`Diminuir placar de ${label}`}
-        disabled={side.score === 0}
-        hitSlop={12}
-        onPress={() => onChangeScore(side.sideNumber, -1)}
-        style={({ pressed }) => ({
-          alignItems: 'center',
-          backgroundColor: ONZE_COLORS.surface,
-          borderColor: ONZE_COLORS.border,
-          borderRadius: 12,
-          borderWidth: 1,
-          height: 54,
-          justifyContent: 'center',
-          opacity: side.score === 0 ? 0.4 : pressed ? 0.65 : 1,
-          width: 54,
-        })}
-      >
-        <Text color="$onzeInk" fontSize={30} fontWeight="900" lineHeight={34}>−</Text>
-      </Pressable>
-      <Pressable
-        accessibilityLabel={`Aumentar placar de ${label}`}
-        hitSlop={12}
-        onPress={() => onRegisterGoal(side.sideNumber)}
-        style={({ pressed }) => ({
-          alignItems: 'center',
-          backgroundColor: pressed ? ONZE_COLORS.greenPress : ONZE_COLORS.green,
-          borderRadius: 12,
-          height: 54,
-          justifyContent: 'center',
-          opacity: pressed ? 0.82 : 1,
-          width: 54,
-        })}
-      >
-        <Text color="$onzeSurface" fontSize={30} fontWeight="900" lineHeight={34}>+</Text>
-      </Pressable>
-    </XStack>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Registrar cartão ${yellow ? 'amarelo' : 'vermelho'} para ${label}`}
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignItems: 'center',
+        backgroundColor: yellow ? ONZE_COLORS.warningBg : ONZE_COLORS.dangerBg,
+        borderColor: yellow ? ONZE_COLORS.warningBorder : ONZE_COLORS.dangerBorder,
+        borderRadius: 12,
+        borderWidth: 1,
+        height: 48,
+        justifyContent: 'center',
+        opacity: pressed ? 0.72 : 1,
+        width: 54,
+      })}
+    >
+      <View style={{
+        backgroundColor: yellow ? ONZE_COLORS.warning : ONZE_COLORS.danger,
+        borderRadius: 3,
+        height: 29,
+        transform: [{ rotate: '-12deg' }],
+        width: 20,
+      }} />
+    </Pressable>
+  );
+}
+
+function ScoreControls({ label, side, onChangeScore, onRegisterGoal, onRegisterCard }: ScoreControlsProps) {
+  return (
+    <YStack alignItems="center" gap="$2">
+      <XStack gap="$2" justifyContent="center">
+        <Pressable
+          accessibilityLabel={`Diminuir placar de ${label}`}
+          disabled={side.score === 0}
+          hitSlop={12}
+          onPress={() => onChangeScore(side.sideNumber, -1)}
+          style={({ pressed }) => ({
+            alignItems: 'center',
+            backgroundColor: ONZE_COLORS.surface,
+            borderColor: ONZE_COLORS.border,
+            borderRadius: 12,
+            borderWidth: 1,
+            height: 54,
+            justifyContent: 'center',
+            opacity: side.score === 0 ? 0.4 : pressed ? 0.65 : 1,
+            width: 54,
+          })}
+        >
+          <Text color="$onzeInk" fontSize={30} fontWeight="900" lineHeight={34}>−</Text>
+        </Pressable>
+        <Pressable
+          accessibilityLabel={`Aumentar placar de ${label}`}
+          hitSlop={12}
+          onPress={() => onRegisterGoal(side.sideNumber)}
+          style={({ pressed }) => ({
+            alignItems: 'center',
+            backgroundColor: pressed ? ONZE_COLORS.greenPress : ONZE_COLORS.green,
+            borderRadius: 12,
+            height: 54,
+            justifyContent: 'center',
+            opacity: pressed ? 0.82 : 1,
+            width: 54,
+          })}
+        >
+          <Text color="$onzeSurface" fontSize={30} fontWeight="900" lineHeight={34}>+</Text>
+        </Pressable>
+      </XStack>
+      <XStack gap="$2" justifyContent="center">
+        <CardButton label={label} cardType="YELLOW" onPress={() => onRegisterCard(side.sideNumber, 'YELLOW')} />
+        <CardButton label={label} cardType="RED" onPress={() => onRegisterCard(side.sideNumber, 'RED')} />
+      </XStack>
+    </YStack>
   );
 }
 
@@ -99,6 +142,7 @@ export function LiveScoreboard({
   state,
   onChangeScore,
   onRegisterGoal,
+  onRegisterCard,
 }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(() => liveMatchElapsedSeconds(state));
   const activePeriod = activeMatchPeriod(state);
@@ -212,6 +256,7 @@ export function LiveScoreboard({
                   side={firstSide}
                   onChangeScore={onChangeScore}
                   onRegisterGoal={onRegisterGoal}
+                  onRegisterCard={onRegisterCard}
                 />
               </YStack>
               <YStack flex={1}>
@@ -220,6 +265,7 @@ export function LiveScoreboard({
                   side={secondSide}
                   onChangeScore={onChangeScore}
                   onRegisterGoal={onRegisterGoal}
+                  onRegisterCard={onRegisterCard}
                 />
               </YStack>
             </XStack>
@@ -253,6 +299,7 @@ export function LiveScoreboard({
                     side={side}
                     onChangeScore={onChangeScore}
                     onRegisterGoal={onRegisterGoal}
+                    onRegisterCard={onRegisterCard}
                   />
                 ) : null}
               </YStack>
