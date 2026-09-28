@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { useColorScheme } from 'react-native';
+import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 import { TamaguiProvider } from 'tamagui';
 
 import { GlobalLoadingOverlay } from '../src/components/global-loading-overlay';
@@ -28,12 +29,14 @@ export default function RootLayout() {
   }, [lastNotificationResponse, router]);
 
   return (
-    <TamaguiProvider
-      config={tamaguiConfig}
-      defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}
-    >
-      <Stack screenOptions={{ headerShown: false }} />
-      <GlobalLoadingOverlay />
-    </TamaguiProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <TamaguiProvider
+        config={tamaguiConfig}
+        defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}
+      >
+        <Stack screenOptions={{ headerShown: false }} />
+        <GlobalLoadingOverlay />
+      </TamaguiProvider>
+    </SafeAreaProvider>
   );
 }

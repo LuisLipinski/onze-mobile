@@ -1,6 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { SafeAreaView } from 'react-native';
 import { Text, YStack } from 'tamagui';
 
 import { ONZE_COLORS } from '../src/theme/colors';

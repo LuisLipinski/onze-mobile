@@ -1,6 +1,7 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, SafeAreaView, ScrollView } from 'react-native';
+import { AppState, ScrollView } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { ONZE_COLORS } from '../src/theme/colors';

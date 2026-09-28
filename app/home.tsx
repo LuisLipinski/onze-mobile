@@ -1,6 +1,7 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { AppState, SafeAreaView, ScrollView } from 'react-native';
+import { AppState, ScrollView } from 'react-native';
 import { Text, YStack } from 'tamagui';
 
 import { ONZE_COLORS } from '../src/theme/colors';
@@ -167,7 +168,10 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}
+    >
       <YStack flex={1}>
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
           <YStack gap="$6" paddingVertical="$3">
