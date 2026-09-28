@@ -188,6 +188,52 @@ export type MatchRecurrence = 'NONE' | 'WEEKLY';
 export type MatchType = 'INTERNAL' | 'VERSUS_EXTERNAL';
 export type MatchModality = 'FIELD' | 'FUT7' | 'FUTSAL';
 export type MatchStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELLED';
+export type MatchPeriodType = 'REGULATION' | 'OVERTIME';
+export type LiveMatchPhase = 'LEGACY' | 'REGULATION' | 'OVERTIME' | 'PENALTY_SHOOTOUT' | 'FINISHED';
+export type MatchPeriod = {
+  id: string;
+  periodType: MatchPeriodType;
+  periodNumber: number;
+  durationMinutes: number;
+  addedTimeMinutes: number | null;
+  startedAt: string;
+  endedAt: string | null;
+};
+export type PenaltyShootoutStatus = 'SETUP' | 'IN_PROGRESS' | 'AWAITING_CONFIRMATION' | 'COMPLETED';
+export type PenaltyTaker = {
+  teamNumber: number;
+  kickOrder: number;
+  assignmentId: string | null;
+  participantType: TeamParticipantType | null;
+  participantId: string | null;
+  displayName: string;
+};
+export type PenaltyAttempt = {
+  id: string;
+  sequenceNumber: number;
+  roundNumber: number;
+  teamNumber: number;
+  assignmentId: string | null;
+  participantType: TeamParticipantType | null;
+  participantId: string | null;
+  displayName: string;
+  scored: boolean;
+  createdAt: string;
+};
+export type PenaltyShootout = {
+  status: PenaltyShootoutStatus;
+  teamOneScore: number;
+  teamTwoScore: number;
+  teamOneAttempts: number;
+  teamTwoAttempts: number;
+  nextTeamNumber: number | null;
+  nextRoundNumber: number | null;
+  nextTakerSelectionRequired: boolean;
+  nextTaker: PenaltyTaker | null;
+  winnerTeamNumber: number | null;
+  takers: PenaltyTaker[];
+  attempts: PenaltyAttempt[];
+};
 export type LiveScoreSide = {
   sideNumber: number;
   score: number;
@@ -203,6 +249,9 @@ export type LiveMatchState = {
   scores: LiveScoreSide[];
   goalEvents: GoalEvent[];
   cardEvents: CardEvent[];
+  phase: LiveMatchPhase;
+  periods: MatchPeriod[];
+  penaltyShootout: PenaltyShootout | null;
   canManage: boolean;
 };
 export type LiveMatchSummary = {
@@ -218,6 +267,8 @@ export type LiveMatchSummary = {
   teamCount: number | null;
   version: number;
   scores: LiveScoreSide[];
+  phase: LiveMatchPhase;
+  currentPeriod: MatchPeriod | null;
   canManage: boolean;
 };
 export type LiveMatchSnapshot = Omit<LiveMatchState, 'canManage'>;
@@ -229,6 +280,13 @@ export type LiveMatchChangeType =
   | 'GOAL_REMOVED'
   | 'CARD_REMOVED'
   | 'TEAM_IMAGE_UPDATED'
+  | 'PERIOD_ADDED_TIME_UPDATED'
+  | 'PERIOD_FINISHED'
+  | 'PERIOD_STARTED'
+  | 'PENALTY_SHOOTOUT_READY'
+  | 'PENALTY_SHOOTOUT_STARTED'
+  | 'PENALTY_ATTEMPT_RECORDED'
+  | 'PENALTY_SHOOTOUT_DECIDED'
   | 'MATCH_FINISHED'
   | 'MATCH_RESET';
 export type LiveMatchStreamEvent = {
@@ -253,6 +311,9 @@ export type GoalEvent = {
   assistDisplayName: string | null;
   penalty: boolean;
   elapsedSeconds: number;
+  periodType: MatchPeriodType | null;
+  periodNumber: number | null;
+  periodElapsedSeconds: number | null;
   createdAt: string;
 };
 export type CreateGoalEventResponse = { event: GoalEvent; liveMatch: LiveMatchState };
@@ -267,6 +328,9 @@ export type CardEvent = {
   playerDisplayName: string;
   cardType: MatchCardType;
   elapsedSeconds: number;
+  periodType: MatchPeriodType | null;
+  periodNumber: number | null;
+  periodElapsedSeconds: number | null;
   createdAt: string;
 };
 export type CreateCardEventResponse = { event: CardEvent; liveMatch: LiveMatchState };
@@ -460,6 +524,13 @@ export type FootballMatch = {
   modality: MatchModality;
   minimumPlayers: number;
   idealPlayers: number;
+  periodsEnabled: boolean;
+  periodCount: number | null;
+  periodDurationMinutes: number | null;
+  overtimeEnabled: boolean;
+  overtimePeriodCount: number | null;
+  overtimePeriodDurationMinutes: number | null;
+  penaltyShootoutEnabled: boolean;
   missingMinimumPlayers: number;
   currentGoalkeepers: number;
   missingGoalkeepers: number;
@@ -510,6 +581,13 @@ export type CreateMatchInput = {
   requiredGoalkeepers: number;
   modality: MatchModality;
   minimumPlayers: number;
+  periodsEnabled: boolean;
+  periodCount?: number;
+  periodDurationMinutes?: number;
+  overtimeEnabled: boolean;
+  overtimePeriodCount?: number;
+  overtimePeriodDurationMinutes?: number;
+  penaltyShootoutEnabled: boolean;
   signupDeadlineDate: string;
   signupDeadlineTime: string;
   paymentDeadlineDate?: string;
@@ -1140,6 +1218,78 @@ export function resetLiveMatch(accessToken: string, matchId: string) {
     method: 'PUT',
     headers: authenticatedHeaders(accessToken),
     loading: { title: 'Resetando o jogo...', message: 'Estamos voltando o jogo para agendado.' },
+  });
+}
+
+export function updatePeriodAddedTime(
+  accessToken: string,
+  matchId: string,
+  minutes: number,
+) {
+  return request<LiveMatchState>(`/api/matches/${matchId}/live/period/added-time`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ minutes }),
+    loading: false,
+  });
+}
+
+export function finishCurrentPeriod(accessToken: string, matchId: string) {
+  return request<LiveMatchState>(`/api/matches/${matchId}/live/period/finish`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    loading: { title: 'Encerrando o tempo...', message: 'Estamos salvando o cronômetro.' },
+  });
+}
+
+export function startNextPeriod(accessToken: string, matchId: string) {
+  return request<LiveMatchState>(`/api/matches/${matchId}/live/period/start-next`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    loading: { title: 'Iniciando o próximo tempo...', message: 'Estamos iniciando o cronômetro.' },
+  });
+}
+
+export type PenaltyLineupInput = {
+  teamNumber: number;
+  kickOrder: number;
+  assignmentId?: string;
+  displayName?: string;
+};
+
+export function setPenaltyLineup(
+  accessToken: string,
+  matchId: string,
+  takers: PenaltyLineupInput[],
+) {
+  return request<LiveMatchState>(`/api/matches/${matchId}/live/penalties/lineup`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ takers }),
+    loading: { title: 'Iniciando os pênaltis...', message: 'Estamos salvando a ordem dos batedores.' },
+  });
+}
+
+export function recordPenaltyAttempt(
+  accessToken: string,
+  matchId: string,
+  scored: boolean,
+  takerAssignmentId?: string,
+  takerDisplayName?: string,
+) {
+  return request<LiveMatchState>(`/api/matches/${matchId}/live/penalties/attempts`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ scored, takerAssignmentId, takerDisplayName }),
+    loading: false,
+  });
+}
+
+export function confirmPenaltyWinner(accessToken: string, matchId: string) {
+  return request<LiveMatchState>(`/api/matches/${matchId}/live/penalties/confirm-winner`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    loading: { title: 'Finalizando o jogo...', message: 'Estamos salvando o vencedor.' },
   });
 }
 

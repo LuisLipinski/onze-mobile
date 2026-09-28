@@ -1,8 +1,9 @@
+import { Fragment } from 'react';
 import { Pressable } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import type { CardEvent, FootballMatch, GoalEvent, LiveScoreSide } from '../lib/api';
-import { formatMatchTimer, liveScoreSideLabel, secondYellowCardEventIds } from '../lib/live-match';
+import { formatMatchTimer, liveScoreSideLabel, periodLabel, secondYellowCardEventIds } from '../lib/live-match';
 import { ONZE_COLORS } from '../theme/colors';
 
 type EventKind = 'GOAL' | 'CARD';
@@ -132,6 +133,12 @@ export function GoalTimeline({
   ].sort((a, b) => b.elapsedSeconds - a.elapsedSeconds || b.createdAt.localeCompare(a.createdAt));
   if (timeline.length === 0) return null;
 
+  function eventPeriodKey(event: TimelineEvent) {
+    return event.periodType && event.periodNumber
+      ? `${event.periodType}:${event.periodNumber}`
+      : 'LEGACY';
+  }
+
   return (
     <YStack
       backgroundColor="$onzeSurface"
@@ -152,8 +159,27 @@ export function GoalTimeline({
             ? () => onDelete(event.kind, event.id)
             : undefined;
           const deletionDisabled = deletingEventKey != null;
+          const periodKey = eventPeriodKey(event);
+          const previousPeriodKey = index > 0 ? eventPeriodKey(timeline[index - 1]) : null;
           return (
-            <XStack key={event.id} alignItems="stretch" minHeight={72}>
+            <Fragment key={event.id}>
+              {periodKey !== previousPeriodKey ? (
+                <YStack
+                  alignItems="center"
+                  backgroundColor="$onzeCanvas"
+                  borderRadius="$4"
+                  marginBottom="$2"
+                  marginTop={index === 0 ? 0 : '$3'}
+                  padding="$2"
+                >
+                  <Text color="$onzeGreen" fontSize={12} fontWeight="900" textTransform="uppercase">
+                    {event.periodType && event.periodNumber
+                      ? periodLabel({ periodType: event.periodType, periodNumber: event.periodNumber })
+                      : 'Jogo'}
+                  </Text>
+                </YStack>
+              ) : null}
+              <XStack alignItems="stretch" minHeight={72}>
               <YStack flex={1} justifyContent="center" paddingRight="$2">
                 {left ? (event.kind === 'GOAL'
                   ? <GoalDetails event={event} align="left" deletionDisabled={deletionDisabled} onDelete={deleteEvent} />
@@ -172,7 +198,7 @@ export function GoalTimeline({
                   paddingVertical="$1"
                 >
                   <Text color="$onzeSurface" fontSize={12} fontVariant={['tabular-nums']} fontWeight="900">
-                    {formatMatchTimer(event.elapsedSeconds)}
+                    {formatMatchTimer(event.periodElapsedSeconds ?? event.elapsedSeconds)}
                   </Text>
                 </YStack>
                 {index < timeline.length - 1 ? <YStack backgroundColor="$onzeBorder" flex={1} width={2} /> : null}
@@ -183,7 +209,8 @@ export function GoalTimeline({
                   ? <GoalDetails event={event} align="right" deletionDisabled={deletionDisabled} onDelete={deleteEvent} />
                   : <CardDetails event={event} align="right" secondYellow={secondYellowIds.has(event.id)} deletionDisabled={deletionDisabled} onDelete={deleteEvent} />) : null}
               </YStack>
-            </XStack>
+              </XStack>
+            </Fragment>
           );
         })}
       </YStack>

@@ -3,12 +3,22 @@ import { Pressable } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import type { LiveMatchSummary } from '../lib/api';
-import { formatMatchTimer, liveSummaryScoreLabel } from '../lib/live-match';
+import {
+  formatMatchTimer,
+  liveSummaryScoreLabel,
+  matchPeriodElapsedSeconds,
+  periodLabel,
+} from '../lib/live-match';
 
 function elapsedSeconds(startedAt: string, nowMs = Date.now()) {
   const startedAtMs = Date.parse(startedAt);
   if (!Number.isFinite(startedAtMs)) return 0;
   return Math.min(10_800, Math.max(0, Math.floor((nowMs - startedAtMs) / 1_000)));
+}
+
+function summaryElapsedSeconds(match: LiveMatchSummary, nowMs = Date.now()) {
+  if (match.currentPeriod) return matchPeriodElapsedSeconds(match.currentPeriod, nowMs);
+  return elapsedSeconds(match.startedAt, nowMs);
 }
 
 export function LiveMatchCard({
@@ -18,13 +28,26 @@ export function LiveMatchCard({
   match: LiveMatchSummary;
   onPress: () => void;
 }) {
-  const [elapsed, setElapsed] = useState(() => elapsedSeconds(match.startedAt));
+  const [elapsed, setElapsed] = useState(() => summaryElapsedSeconds(match));
 
   useEffect(() => {
-    setElapsed(elapsedSeconds(match.startedAt));
-    const interval = setInterval(() => setElapsed(elapsedSeconds(match.startedAt)), 1_000);
+    setElapsed(summaryElapsedSeconds(match));
+    const interval = setInterval(() => setElapsed(summaryElapsedSeconds(match)), 1_000);
     return () => clearInterval(interval);
-  }, [match.startedAt]);
+  }, [match.startedAt, match.currentPeriod, match.phase]);
+
+  const periodDurationSeconds = (match.currentPeriod?.durationMinutes ?? 0) * 60;
+  const timerLabel = match.phase === 'PENALTY_SHOOTOUT'
+    ? 'PÊNALTIS'
+    : match.currentPeriod
+      ? `${formatMatchTimer(Math.min(elapsed, periodDurationSeconds))}${
+        elapsed > periodDurationSeconds
+          ? `  +${formatMatchTimer(elapsed - periodDurationSeconds)}`
+          : ''
+      }`
+      : match.phase === 'LEGACY'
+        ? formatMatchTimer(elapsed)
+        : 'INTERVALO';
 
   const matchup = match.scores.length === 2
     ? `${match.scores[0].name} × ${match.scores[1].name}`
@@ -48,9 +71,15 @@ export function LiveMatchCard({
               <Text color="$onzeDanger" fontSize={12} fontWeight="900">AO VIVO</Text>
             </XStack>
             <Text color="$onzeInk" fontSize={17} fontVariant={['tabular-nums']} fontWeight="900">
-              {formatMatchTimer(elapsed)}
+              {timerLabel}
             </Text>
           </XStack>
+
+          {match.currentPeriod ? (
+            <Text color="$onzeMuted" fontSize={11} fontWeight="900" textAlign="right" textTransform="uppercase">
+              {periodLabel(match.currentPeriod)}
+            </Text>
+          ) : null}
 
           <YStack alignItems="center" gap="$1">
             <Text color="$onzeGreen" fontSize={12} fontWeight="900" numberOfLines={1}>

@@ -81,6 +81,13 @@ export default function CreateMatchScreen() {
   });
   const [pixKey, setPixKey] = useState(params.pixKey ?? '');
   const [notes, setNotes] = useState('');
+  const [periodsEnabled, setPeriodsEnabled] = useState(false);
+  const [periodCount, setPeriodCount] = useState('2');
+  const [periodDurationMinutes, setPeriodDurationMinutes] = useState('20');
+  const [overtimeEnabled, setOvertimeEnabled] = useState(false);
+  const [overtimePeriodCount, setOvertimePeriodCount] = useState('2');
+  const [overtimePeriodDurationMinutes, setOvertimePeriodDurationMinutes] = useState('5');
+  const [penaltyShootoutEnabled, setPenaltyShootoutEnabled] = useState(false);
   const [weekly, setWeekly] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +102,10 @@ export default function CreateMatchScreen() {
       return;
     }
     const parsedTeamCount = Number.parseInt(teamCount, 10);
+    if (parsedTeamCount !== 2) {
+      setOvertimeEnabled(false);
+      setPenaltyShootoutEnabled(false);
+    }
     const minimum = Number.isInteger(parsedTeamCount) && parsedTeamCount >= 2 ? parsedTeamCount : 2;
     setRequiredGoalkeepers((current) => String(requiredGoalkeepersAfterTeamCountChange(
       Number.parseInt(current, 10) || 0,
@@ -109,6 +120,10 @@ export default function CreateMatchScreen() {
       updateSuggestedPlayerCounts(modality, 'INTERNAL', parsed);
     }
     setTeamCount(normalized);
+    if (Number.isInteger(parsed) && parsed !== 2) {
+      setOvertimeEnabled(false);
+      setPenaltyShootoutEnabled(false);
+    }
     if (Number.isInteger(parsed) && parsed >= 2) {
       setRequiredGoalkeepers((current) => String(requiredGoalkeepersAfterTeamCountChange(
         Number.parseInt(current, 10) || 0,
@@ -150,6 +165,10 @@ export default function CreateMatchScreen() {
     const parsedMinimumPlayers = Number.parseInt(minimumPlayers, 10);
     const parsedTeamCount = matchType === 'INTERNAL' ? Number.parseInt(teamCount, 10) : null;
     const parsedRequiredGoalkeepers = Number.parseInt(requiredGoalkeepers, 10);
+    const parsedPeriodCount = Number.parseInt(periodCount, 10);
+    const parsedPeriodDuration = Number.parseInt(periodDurationMinutes, 10);
+    const parsedOvertimePeriodCount = Number.parseInt(overtimePeriodCount, 10);
+    const parsedOvertimePeriodDuration = Number.parseInt(overtimePeriodDurationMinutes, 10);
     if (!parsedDate) {
       setError('Informe a data no formato DD/MM/AAAA.');
       return;
@@ -206,6 +225,31 @@ export default function CreateMatchScreen() {
       setError(matchFormatError);
       return;
     }
+    if (periodsEnabled && (!Number.isInteger(parsedPeriodCount)
+      || parsedPeriodCount < 1 || parsedPeriodCount > 4)) {
+      setError('A quantidade de tempos deve ficar entre 1 e 4.');
+      return;
+    }
+    if (periodsEnabled && (!Number.isInteger(parsedPeriodDuration)
+      || parsedPeriodDuration < 1 || parsedPeriodDuration > 180)) {
+      setError('A duração de cada tempo deve ficar entre 1 e 180 minutos.');
+      return;
+    }
+    const exactlyTwoTeams = matchType === 'VERSUS_EXTERNAL' || parsedTeamCount === 2;
+    if (periodsEnabled && (overtimeEnabled || penaltyShootoutEnabled) && !exactlyTwoTeams) {
+      setError('Prorrogação e disputa por pênaltis estão disponíveis somente para jogos com dois times.');
+      return;
+    }
+    if (periodsEnabled && overtimeEnabled && (!Number.isInteger(parsedOvertimePeriodCount)
+      || parsedOvertimePeriodCount < 1 || parsedOvertimePeriodCount > 4)) {
+      setError('A quantidade de tempos da prorrogação deve ficar entre 1 e 4.');
+      return;
+    }
+    if (periodsEnabled && overtimeEnabled && (!Number.isInteger(parsedOvertimePeriodDuration)
+      || parsedOvertimePeriodDuration < 1 || parsedOvertimePeriodDuration > 180)) {
+      setError('A duração de cada tempo da prorrogação deve ficar entre 1 e 180 minutos.');
+      return;
+    }
     const parsedPaymentAmount = paymentRequired ? parsePaymentAmount(paymentAmount) : null;
     if (paymentRequired && parsedPaymentAmount == null) {
       setError('Informe um valor por jogador válido, como 25,00.');
@@ -238,6 +282,17 @@ export default function CreateMatchScreen() {
         requiredGoalkeepers: parsedRequiredGoalkeepers,
         modality,
         minimumPlayers: parsedMinimumPlayers,
+        periodsEnabled,
+        periodCount: periodsEnabled ? parsedPeriodCount : undefined,
+        periodDurationMinutes: periodsEnabled ? parsedPeriodDuration : undefined,
+        overtimeEnabled: periodsEnabled && overtimeEnabled,
+        overtimePeriodCount: periodsEnabled && overtimeEnabled
+          ? parsedOvertimePeriodCount
+          : undefined,
+        overtimePeriodDurationMinutes: periodsEnabled && overtimeEnabled
+          ? parsedOvertimePeriodDuration
+          : undefined,
+        penaltyShootoutEnabled: periodsEnabled && penaltyShootoutEnabled,
         signupDeadlineDate: parsedSignupDeadlineDate,
         signupDeadlineTime: parsedSignupDeadlineTime,
         paymentDeadlineDate: parsedPaymentDeadlineDate ?? undefined,
@@ -278,6 +333,141 @@ export default function CreateMatchScreen() {
               <Text color="$onzeMuted" fontSize={14} lineHeight={20}>
                 Defina os dados do jogo. Os membros poderão confirmar presença assim que ele for criado.
               </Text>
+            </YStack>
+
+            <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
+              <XStack alignItems="center" gap="$4" justifyContent="space-between">
+                <YStack flex={1} gap="$1">
+                  <Text color="$onzeInk" fontSize={17} fontWeight="900">Controlar os tempos do jogo</Text>
+                  <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
+                    Ative para usar relógios separados, acréscimos, intervalo, prorrogação e pênaltis.
+                  </Text>
+                </YStack>
+                <Switch
+                  accessibilityLabel="Controlar os tempos do jogo"
+                  onValueChange={(enabled) => {
+                    setPeriodsEnabled(enabled);
+                    if (!enabled) {
+                      setOvertimeEnabled(false);
+                      setPenaltyShootoutEnabled(false);
+                    }
+                  }}
+                  thumbColor={ONZE_COLORS.surface}
+                  trackColor={{ false: ONZE_COLORS.switchTrack, true: ONZE_COLORS.green }}
+                  value={periodsEnabled}
+                />
+              </XStack>
+
+              {periodsEnabled ? (
+                <YStack gap="$4">
+                  <XStack gap="$3">
+                    <Field flex={1} label="QUANTIDADE DE TEMPOS">
+                      <Input
+                        accessibilityLabel="Quantidade de tempos do jogo"
+                        backgroundColor="$onzeSurface"
+                        borderColor="$onzeBorder"
+                        color="$onzeInk"
+                        keyboardType="number-pad"
+                        maxLength={1}
+                        onChangeText={(value) => setPeriodCount(value.replace(/\D/g, '').slice(0, 1))}
+                        placeholder="2"
+                        placeholderTextColor="$onzeMuted"
+                        value={periodCount}
+                      />
+                    </Field>
+                    <Field flex={1} label="MINUTOS POR TEMPO">
+                      <Input
+                        accessibilityLabel="Minutos por tempo"
+                        backgroundColor="$onzeSurface"
+                        borderColor="$onzeBorder"
+                        color="$onzeInk"
+                        keyboardType="number-pad"
+                        maxLength={3}
+                        onChangeText={(value) => setPeriodDurationMinutes(value.replace(/\D/g, '').slice(0, 3))}
+                        placeholder="20"
+                        placeholderTextColor="$onzeMuted"
+                        value={periodDurationMinutes}
+                      />
+                    </Field>
+                  </XStack>
+                  <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                    Escolha de 1 a 4 tempos. Todos terão a mesma duração. Os acréscimos serão definidos durante cada tempo.
+                  </Text>
+
+                  {matchType === 'VERSUS_EXTERNAL' || Number.parseInt(teamCount, 10) === 2 ? (
+                    <>
+                      <XStack alignItems="center" gap="$4" justifyContent="space-between">
+                        <YStack flex={1} gap="$1">
+                          <Text color="$onzeInk" fontSize={15} fontWeight="900">Terá prorrogação em caso de empate?</Text>
+                          <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                            A prorrogação só começa se os tempos normais terminarem empatados.
+                          </Text>
+                        </YStack>
+                        <Switch
+                          accessibilityLabel="Jogo terá prorrogação em caso de empate"
+                          onValueChange={setOvertimeEnabled}
+                          thumbColor={ONZE_COLORS.surface}
+                          trackColor={{ false: ONZE_COLORS.switchTrack, true: ONZE_COLORS.green }}
+                          value={overtimeEnabled}
+                        />
+                      </XStack>
+
+                      {overtimeEnabled ? (
+                        <XStack gap="$3">
+                          <Field flex={1} label="TEMPOS DA PRORROGAÇÃO">
+                            <Input
+                              backgroundColor="$onzeSurface"
+                              borderColor="$onzeBorder"
+                              color="$onzeInk"
+                              keyboardType="number-pad"
+                              maxLength={1}
+                              onChangeText={(value) => setOvertimePeriodCount(value.replace(/\D/g, '').slice(0, 1))}
+                              placeholder="2"
+                              placeholderTextColor="$onzeMuted"
+                              value={overtimePeriodCount}
+                            />
+                          </Field>
+                          <Field flex={1} label="MINUTOS POR TEMPO">
+                            <Input
+                              backgroundColor="$onzeSurface"
+                              borderColor="$onzeBorder"
+                              color="$onzeInk"
+                              keyboardType="number-pad"
+                              maxLength={3}
+                              onChangeText={(value) => setOvertimePeriodDurationMinutes(value.replace(/\D/g, '').slice(0, 3))}
+                              placeholder="5"
+                              placeholderTextColor="$onzeMuted"
+                              value={overtimePeriodDurationMinutes}
+                            />
+                          </Field>
+                        </XStack>
+                      ) : null}
+
+                      <XStack alignItems="center" gap="$4" justifyContent="space-between">
+                        <YStack flex={1} gap="$1">
+                          <Text color="$onzeInk" fontSize={15} fontWeight="900">Terá disputa por pênaltis?</Text>
+                          <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                            Se continuar empatado, serão cinco cobranças por time e depois alternadas.
+                          </Text>
+                        </YStack>
+                        <Switch
+                          accessibilityLabel="Jogo terá disputa por pênaltis em caso de empate"
+                          onValueChange={setPenaltyShootoutEnabled}
+                          thumbColor={ONZE_COLORS.surface}
+                          trackColor={{ false: ONZE_COLORS.switchTrack, true: ONZE_COLORS.green }}
+                          value={penaltyShootoutEnabled}
+                        />
+                      </XStack>
+                    </>
+                  ) : (
+                    <YStack backgroundColor="$onzeCanvas" borderRadius="$4" padding="$4">
+                      <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                        Prorrogação e pênaltis ficam disponíveis quando o jogo possui exatamente dois times.
+                      </Text>
+                    </YStack>
+                  )}
+                </YStack>
+              ) : null}
             </YStack>
 
             <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
@@ -618,7 +808,7 @@ export default function CreateMatchScreen() {
                 <YStack backgroundColor="$onzeCanvas" borderRadius="$4" gap="$1" padding="$4">
                   <Text color="$onzeGreen" fontSize={13} fontWeight="900">Como funciona</Text>
                   <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                    No dia seguinte a cada jogo, às 09:00, a presença da próxima semana será liberada. Tipo, modalidade, times, mínimo, máximo e goleiros serão mantidos; convidados e goleiros de aluguel não serão copiados.
+                    No dia seguinte a cada jogo, às 09:00, a presença da próxima semana será liberada. Tipo, modalidade, tempos, prorrogação, pênaltis, mínimo, máximo e goleiros serão mantidos; convidados e goleiros de aluguel não serão copiados.
                   </Text>
                 </YStack>
               ) : null}
