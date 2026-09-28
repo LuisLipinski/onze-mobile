@@ -2,12 +2,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  activeMatchPeriod,
   formatMatchTimer,
   applyLiveMatchSummaryEvent,
   liveMatchElapsedSeconds,
   liveScoreSideLabel,
   liveSummaryScoreLabel,
+  matchPeriodElapsedSeconds,
   mergeLiveMatchStreamEvent,
+  periodClock,
+  periodLabel,
   scheduledHomeMatches,
   secondYellowCardEventIds,
   sentOffPlayerAssignmentIds,
@@ -26,6 +30,55 @@ test('calcula tempo ao vivo e congela no encerramento', () => {
   const finished = { ...running, finishedAt: '2026-09-19T18:10:00Z' };
   assert.equal(liveMatchElapsedSeconds(finished, Date.parse('2026-09-20T18:00:00Z')), 600);
   assert.equal(liveMatchElapsedSeconds(running, Date.parse('2026-09-20T00:00:00Z')), 10_800);
+});
+
+test('calcula o relógio de cada tempo e congela quando ele é encerrado', () => {
+  const running = {
+    id: 'period-1',
+    periodType: 'REGULATION',
+    periodNumber: 1,
+    durationMinutes: 20,
+    addedTimeMinutes: 3,
+    startedAt: '2026-09-19T18:00:00Z',
+    endedAt: null,
+  };
+  assert.equal(
+    matchPeriodElapsedSeconds(running, Date.parse('2026-09-19T18:22:00Z')),
+    1_320,
+  );
+  assert.deepEqual(
+    periodClock(running, Date.parse('2026-09-19T18:22:00Z')),
+    {
+      elapsedSeconds: 1_320,
+      regulationElapsedSeconds: 1_200,
+      addedElapsedSeconds: 120,
+      plannedAddedSeconds: 180,
+      regulationFinished: true,
+      canFinish: false,
+    },
+  );
+  assert.equal(
+    periodClock(running, Date.parse('2026-09-19T18:24:00Z')).canFinish,
+    true,
+  );
+
+  const finished = { ...running, endedAt: '2026-09-19T18:24:12Z' };
+  assert.equal(
+    matchPeriodElapsedSeconds(finished, Date.parse('2026-09-20T18:00:00Z')),
+    1_452,
+  );
+});
+
+test('identifica o tempo ativo e nomeia tempos normais e de prorrogação', () => {
+  const ended = {
+    id: 'period-1', periodType: 'REGULATION', periodNumber: 1, endedAt: '2026-09-19T18:20:00Z',
+  };
+  const active = {
+    id: 'period-2', periodType: 'OVERTIME', periodNumber: 1, endedAt: null,
+  };
+  assert.equal(activeMatchPeriod({ periods: [ended, active] }), active);
+  assert.equal(periodLabel(ended), '1º tempo');
+  assert.equal(periodLabel(active), '1º tempo da prorrogação');
 });
 
 test('separa jogos ao vivo dos próximos jogos na home', () => {

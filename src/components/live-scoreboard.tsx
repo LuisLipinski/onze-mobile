@@ -3,7 +3,13 @@ import { Image, Pressable } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import type { FootballMatch, LiveMatchState, LiveScoreSide } from '../lib/api';
-import { formatMatchTimer, liveMatchElapsedSeconds, liveScoreSideLabel } from '../lib/live-match';
+import {
+  activeMatchPeriod,
+  formatMatchTimer,
+  liveMatchElapsedSeconds,
+  liveScoreSideLabel,
+  periodLabel,
+} from '../lib/live-match';
 import { ONZE_COLORS } from '../theme/colors';
 
 const DEFAULT_TEAM_IMAGE = require('../../assets/icon.png');
@@ -95,7 +101,17 @@ export function LiveScoreboard({
   onRegisterGoal,
 }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(() => liveMatchElapsedSeconds(state));
-  const canManage = state.canManage && state.status === 'IN_PROGRESS';
+  const activePeriod = activeMatchPeriod(state);
+  const canManage = state.canManage
+    && state.status === 'IN_PROGRESS'
+    && (state.phase === 'LEGACY' || activePeriod != null);
+  const regularDurationSeconds = (activePeriod?.durationMinutes ?? 0) * 60;
+  const regularElapsedSeconds = activePeriod
+    ? Math.min(elapsedSeconds, regularDurationSeconds)
+    : elapsedSeconds;
+  const addedElapsedSeconds = activePeriod
+    ? Math.max(0, elapsedSeconds - regularDurationSeconds)
+    : 0;
 
   useEffect(() => {
     setElapsedSeconds(liveMatchElapsedSeconds(state));
@@ -117,7 +133,7 @@ export function LiveScoreboard({
       borderWidth={1}
       overflow="hidden"
     >
-      <XStack
+      <YStack
         alignItems="center"
         backgroundColor={state.status === 'IN_PROGRESS' ? '$onzeSuccessBg' : '$onzeCanvas'}
         borderBottomColor="$onzeBorder"
@@ -127,20 +143,44 @@ export function LiveScoreboard({
         paddingHorizontal="$4"
         paddingVertical="$3"
       >
-        <YStack
-          backgroundColor={state.status === 'IN_PROGRESS' ? '$onzeGreen' : '$onzeMuted'}
-          borderRadius={999}
-          paddingHorizontal="$3"
-          paddingVertical="$1"
-        >
-          <Text color="$onzeSurface" fontSize={12} fontWeight="900">
-            {state.status === 'IN_PROGRESS' ? 'AO VIVO' : 'FINALIZADA'}
+        <XStack alignItems="center" gap="$2">
+          <YStack
+            backgroundColor={state.status === 'IN_PROGRESS' ? '$onzeGreen' : '$onzeMuted'}
+            borderRadius={999}
+            paddingHorizontal="$3"
+            paddingVertical="$1"
+          >
+            <Text color="$onzeSurface" fontSize={12} fontWeight="900">
+              {state.status === 'IN_PROGRESS' ? 'AO VIVO' : 'FINALIZADA'}
+            </Text>
+          </YStack>
+          <Text color="$onzeInk" fontSize={24} fontVariant={['tabular-nums']} fontWeight="900">
+            {state.phase === 'PENALTY_SHOOTOUT'
+              ? 'PÊNALTIS'
+              : activePeriod
+                ? formatMatchTimer(regularElapsedSeconds)
+                : formatMatchTimer(elapsedSeconds)}
           </Text>
-        </YStack>
-        <Text color="$onzeInk" fontSize={24} fontVariant={['tabular-nums']} fontWeight="900">
-          {formatMatchTimer(elapsedSeconds)}
-        </Text>
-      </XStack>
+        </XStack>
+        {activePeriod ? (
+          <Text color="$onzeMuted" fontSize={12} fontWeight="900" textTransform="uppercase">
+            {periodLabel(activePeriod)}
+          </Text>
+        ) : state.status === 'IN_PROGRESS' && state.phase !== 'PENALTY_SHOOTOUT' ? (
+          <Text color="$onzeMuted" fontSize={12} fontWeight="900">INTERVALO</Text>
+        ) : null}
+        {activePeriod && elapsedSeconds >= regularDurationSeconds ? (
+          <YStack alignItems="center" backgroundColor="$onzeWarningBg" borderRadius="$4" gap="$1" paddingHorizontal="$3" paddingVertical="$2">
+            <Text color="$onzeWarningText" fontSize={11} fontWeight="900">ACRÉSCIMOS</Text>
+            <Text color="$onzeInk" fontSize={20} fontVariant={['tabular-nums']} fontWeight="900">
+              +{formatMatchTimer(addedElapsedSeconds)}
+              {activePeriod.addedTimeMinutes != null
+                ? ` / +${formatMatchTimer(activePeriod.addedTimeMinutes * 60)}`
+                : ''}
+            </Text>
+          </YStack>
+        ) : null}
+      </YStack>
 
       {state.scores.length === 2 && firstSide && secondSide ? (
         <YStack gap="$4" paddingHorizontal="$3" paddingVertical="$5">

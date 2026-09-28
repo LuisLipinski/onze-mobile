@@ -1,17 +1,56 @@
 import type {
   CardEvent,
   FootballMatch,
+  MatchPeriod,
   LiveMatchState,
   LiveMatchStreamEvent,
   LiveMatchSummary,
 } from './api';
 
 export function liveMatchElapsedSeconds(state: LiveMatchState, nowMs = Date.now()) {
+  if (state.periods?.length) {
+    const current = state.periods.find((period) => period.endedAt == null)
+      ?? state.periods[state.periods.length - 1];
+    return matchPeriodElapsedSeconds(current, nowMs);
+  }
   if (!state.startedAt) return 0;
   const startMs = new Date(state.startedAt).getTime();
   const endMs = state.finishedAt ? new Date(state.finishedAt).getTime() : nowMs;
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return 0;
   return Math.min(10_800, Math.max(0, Math.floor((endMs - startMs) / 1000)));
+}
+
+export function matchPeriodElapsedSeconds(period: MatchPeriod, nowMs = Date.now()) {
+  const startMs = new Date(period.startedAt).getTime();
+  const endMs = period.endedAt ? new Date(period.endedAt).getTime() : nowMs;
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return 0;
+  return Math.max(0, Math.floor((endMs - startMs) / 1000));
+}
+
+export function activeMatchPeriod(state: LiveMatchState) {
+  return state.periods?.find((period) => period.endedAt == null) ?? null;
+}
+
+export function periodClock(period: MatchPeriod, nowMs = Date.now()) {
+  const elapsedSeconds = matchPeriodElapsedSeconds(period, nowMs);
+  const regulationSeconds = period.durationMinutes * 60;
+  const addedElapsedSeconds = Math.max(0, elapsedSeconds - regulationSeconds);
+  const plannedAddedSeconds = (period.addedTimeMinutes ?? 0) * 60;
+  return {
+    elapsedSeconds,
+    regulationElapsedSeconds: Math.min(elapsedSeconds, regulationSeconds),
+    addedElapsedSeconds,
+    plannedAddedSeconds,
+    regulationFinished: elapsedSeconds >= regulationSeconds,
+    canFinish: elapsedSeconds >= regulationSeconds + plannedAddedSeconds,
+  };
+}
+
+export function periodLabel(period: Pick<MatchPeriod, 'periodType' | 'periodNumber'>) {
+  const ordinal = `${period.periodNumber}º`;
+  return period.periodType === 'OVERTIME'
+    ? `${ordinal} tempo da prorrogação`
+    : `${ordinal} tempo`;
 }
 
 export function formatMatchTimer(totalSeconds: number) {

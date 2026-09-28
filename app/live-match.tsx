@@ -15,13 +15,17 @@ import { CardEventModal } from '../src/components/card-event-modal';
 import { GoalEventModal } from '../src/components/goal-event-modal';
 import { LiveScoreboard } from '../src/components/live-scoreboard';
 import { GoalTimeline } from '../src/components/goal-timeline';
+import { MatchPeriodControls } from '../src/components/match-period-controls';
+import { PenaltyShootoutPanel } from '../src/components/penalty-shootout-panel';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
+  confirmPenaltyWinner,
   createCardEvent,
   createGoalEvent,
   deleteCardEvent,
   deleteGoalEvent,
+  finishCurrentPeriod,
   finishLiveMatch,
   FootballMatch,
   getLiveMatch,
@@ -31,11 +35,20 @@ import {
   LiveMatchState,
   LiveMatchStreamEvent,
   MatchCardType,
+  PenaltyLineupInput,
+  recordPenaltyAttempt,
   resetLiveMatch,
+  setPenaltyLineup,
+  startNextPeriod,
+  updatePeriodAddedTime,
   updateLiveMatchScore,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
-import { mergeLiveMatchStreamEvent, sentOffPlayerAssignmentIds } from '../src/lib/live-match';
+import {
+  activeMatchPeriod,
+  mergeLiveMatchStreamEvent,
+  sentOffPlayerAssignmentIds,
+} from '../src/lib/live-match';
 import {
   LiveMatchStreamConnection,
   openLiveMatchStream,
@@ -72,6 +85,8 @@ export default function LiveMatchScreen() {
   const [savingCard, setSavingCard] = useState(false);
   const [deletingEventKey, setDeletingEventKey] = useState<string | null>(null);
   const [pendingTimelineDeletion, setPendingTimelineDeletion] = useState<PendingTimelineDeletion>(null);
+  const [periodManaging, setPeriodManaging] = useState(false);
+  const [penaltyManaging, setPenaltyManaging] = useState(false);
   const liveStateRef = useRef<LiveMatchState | null>(null);
 
   function goToLogin() {
@@ -189,16 +204,30 @@ export default function LiveMatchScreen() {
   }, [applyLiveMatchEvent, loadLiveMatch, params.matchId]));
 
   useEffect(() => {
-    if (liveState?.status !== 'IN_PROGRESS' || !liveState.startedAt) return;
+    if (match?.periodsEnabled || liveState?.status !== 'IN_PROGRESS' || !liveState.startedAt) return;
     const remainingMs = Math.max(0, Date.parse(liveState.startedAt) + 10_800_000 - Date.now());
     const timeout = setTimeout(() => void loadLiveMatch(), remainingMs + 250);
     return () => clearTimeout(timeout);
-  }, [liveState?.startedAt, liveState?.status, loadLiveMatch]);
+  }, [liveState?.startedAt, liveState?.status, loadLiveMatch, match?.periodsEnabled]);
 
   const sentOffAssignmentIds = useMemo(
     () => sentOffPlayerAssignmentIds(liveState?.cardEvents ?? []),
     [liveState?.cardEvents],
   );
+
+  const canRegisterMatchEvents = Boolean(
+    match
+      && liveState
+      && liveState.status === 'IN_PROGRESS'
+      && (liveState.phase === 'LEGACY' || activeMatchPeriod(liveState) != null),
+  );
+
+  const penaltyWinnerName = useMemo(() => {
+    const winner = liveState?.penaltyShootout?.winnerTeamNumber;
+    if (!winner) return null;
+    return liveState?.scores.find((side) => side.sideNumber === winner)?.name
+      ?? `Time ${winner}`;
+  }, [liveState?.penaltyShootout?.winnerTeamNumber, liveState?.scores]);
 
   function applyDesiredScores(state: LiveMatchState) {
     return {
@@ -208,6 +237,24 @@ export default function LiveMatchScreen() {
         score: desiredScoresRef.current.get(side.sideNumber) ?? side.score,
       })),
     };
+  }
+
+  function storeLiveState(state: LiveMatchState) {
+    desiredScoresRef.current = new Map(
+      state.scores.map((side) => [side.sideNumber, side.score]),
+    );
+    confirmedScoresRef.current = new Map(
+      state.scores.map((side) => [side.sideNumber, side.score]),
+    );
+    scoreRequestRunningRef.current.clear();
+    liveStateRef.current = state;
+    setLiveState(state);
+    setMatch((current) => current ? {
+      ...current,
+      status: state.status,
+      startedAt: state.startedAt,
+      finishedAt: state.finishedAt,
+    } : current);
   }
 
   async function flushScoreUpdates(sideNumber: number) {
@@ -255,6 +302,7 @@ export default function LiveMatchScreen() {
   }
 
   function openGoalModal(sideNumber: number) {
+    if (!canRegisterMatchEvents) return;
     const selectedTeam = matchTeams?.teams.find(
       (team) => team.teamNumber === sideNumber && team.assignments.length > 0,
     );
@@ -296,6 +344,7 @@ export default function LiveMatchScreen() {
   }
 
   function openCardModal() {
+    if (!canRegisterMatchEvents) return;
     const teams = matchTeams?.teams.filter((team) => team.assignments.length > 0) ?? [];
     if (teams.length === 0) {
       setError('Gere os times e adicione os jogadores antes de registrar um cartão.');
@@ -361,7 +410,7 @@ export default function LiveMatchScreen() {
   }
 
   function changeScore(sideNumber: number, delta: number) {
-    if (!match || !liveState) return;
+    if (!match || !liveState || !canRegisterMatchEvents) return;
     const displayedScore = liveState.scores.find((side) => side.sideNumber === sideNumber)?.score ?? 0;
     const currentScore = desiredScoresRef.current.get(sideNumber) ?? displayedScore;
     const nextScore = Math.max(0, currentScore + delta);
@@ -407,6 +456,108 @@ export default function LiveMatchScreen() {
     }
   }
 
+  async function savePeriodAddedTime(minutes: number) {
+    if (!match || periodManaging || scoreSaving) return false;
+    setPeriodManaging(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return false; }
+      storeLiveState(await updatePeriodAddedTime(token, match.id, minutes));
+      return true;
+    } catch (exception) {
+      setError(getErrorMessage(exception, 'Não foi possível salvar os acréscimos.'));
+      return false;
+    } finally {
+      setPeriodManaging(false);
+    }
+  }
+
+  async function endCurrentPeriod() {
+    if (!match || periodManaging || scoreSaving) return;
+    setPeriodManaging(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      storeLiveState(await finishCurrentPeriod(token, match.id));
+    } catch (exception) {
+      setError(getErrorMessage(exception, 'Não foi possível encerrar este tempo.'));
+    } finally {
+      setPeriodManaging(false);
+    }
+  }
+
+  async function beginNextPeriod() {
+    if (!match || periodManaging || scoreSaving) return;
+    setPeriodManaging(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      storeLiveState(await startNextPeriod(token, match.id));
+    } catch (exception) {
+      setError(getErrorMessage(exception, 'Não foi possível iniciar o próximo tempo.'));
+    } finally {
+      setPeriodManaging(false);
+    }
+  }
+
+  async function savePenaltyLineup(takers: PenaltyLineupInput[]) {
+    if (!match || penaltyManaging || scoreSaving) return;
+    setPenaltyManaging(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      storeLiveState(await setPenaltyLineup(token, match.id, takers));
+    } catch (exception) {
+      setError(getErrorMessage(exception, 'Não foi possível iniciar a disputa por pênaltis.'));
+    } finally {
+      setPenaltyManaging(false);
+    }
+  }
+
+  async function savePenaltyAttempt(
+    scored: boolean,
+    takerAssignmentId?: string,
+    takerDisplayName?: string,
+  ) {
+    if (!match || penaltyManaging) return;
+    setPenaltyManaging(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      storeLiveState(await recordPenaltyAttempt(
+        token,
+        match.id,
+        scored,
+        takerAssignmentId,
+        takerDisplayName,
+      ));
+    } catch (exception) {
+      setError(getErrorMessage(exception, 'Não foi possível registrar a cobrança.'));
+    } finally {
+      setPenaltyManaging(false);
+    }
+  }
+
+  async function finishPenaltyShootout() {
+    if (!match || penaltyManaging) return;
+    setPenaltyManaging(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      storeLiveState(await confirmPenaltyWinner(token, match.id));
+    } catch (exception) {
+      setError(getErrorMessage(exception, 'Não foi possível encerrar o jogo.'));
+    } finally {
+      setPenaltyManaging(false);
+    }
+  }
+
   if (loading) {
     return <ServerLoadingScreen title="Carregando o jogo..." message="Estamos buscando o placar e o cronômetro." />;
   }
@@ -438,12 +589,31 @@ export default function LiveMatchScreen() {
                 onRegisterGoal={openGoalModal}
               />
 
+              <MatchPeriodControls
+                match={match}
+                state={liveState}
+                busy={periodManaging || penaltyManaging || scoreSaving}
+                onSetAddedTime={savePeriodAddedTime}
+                onFinishPeriod={endCurrentPeriod}
+                onStartNextPeriod={beginNextPeriod}
+              />
+
+              <PenaltyShootoutPanel
+                state={liveState}
+                teams={matchTeams}
+                busy={penaltyManaging || periodManaging || scoreSaving}
+                onSetLineup={savePenaltyLineup}
+                onRecordAttempt={savePenaltyAttempt}
+              />
+
               <GoalTimeline
                 events={liveState.goalEvents ?? []}
                 cardEvents={liveState.cardEvents ?? []}
                 match={match}
                 sides={liveState.scores}
-                canDelete={liveState.canManage && liveState.status === 'IN_PROGRESS'}
+                canDelete={liveState.canManage
+                  && liveState.status === 'IN_PROGRESS'
+                  && (liveState.phase === 'LEGACY' || activeMatchPeriod(liveState) != null)}
                 deletingEventKey={deletingEventKey ?? (scoreSaving ? 'SCORE' : null)}
                 onDelete={confirmTimelineEventDeletion}
               />
@@ -466,22 +636,24 @@ export default function LiveMatchScreen() {
 
               {liveState.canManage && liveState.status === 'IN_PROGRESS' ? (
                 <YStack gap="$3">
-                  <AppButton
-                    variant="warning"
-
-                    onPress={openCardModal}
-                    pressStyle={{ opacity: 0.8 }}
-                  >
-                    <Text color="$onzeSurface" fontWeight="900">Registrar cartão</Text>
-                  </AppButton>
-                  <AppButton
-                    variant="primary"
-
-                    onPress={() => setManagementAction('finish')}
-                    pressStyle={{ backgroundColor: '$onzeGreenPress', opacity: 0.85 }}
-                  >
-                    <Text color="$onzeSurface" fontWeight="900">Finalizar jogo</Text>
-                  </AppButton>
+                  {canRegisterMatchEvents ? (
+                    <AppButton
+                      variant="warning"
+                      onPress={openCardModal}
+                      pressStyle={{ opacity: 0.8 }}
+                    >
+                      <Text color="$onzeSurface" fontWeight="900">Registrar cartão</Text>
+                    </AppButton>
+                  ) : null}
+                  {!match.periodsEnabled ? (
+                    <AppButton
+                      variant="primary"
+                      onPress={() => setManagementAction('finish')}
+                      pressStyle={{ backgroundColor: '$onzeGreenPress', opacity: 0.85 }}
+                    >
+                      <Text color="$onzeSurface" fontWeight="900">Finalizar jogo</Text>
+                    </AppButton>
+                  ) : null}
                   <AppButton
                     variant="destructiveOutline"
 
@@ -514,6 +686,21 @@ export default function LiveMatchScreen() {
         loading={managing}
         onCancel={() => setManagementAction(null)}
         onConfirm={() => void confirmManagementAction()}
+      />
+      <ConfirmActionModal
+        visible={Boolean(
+          liveState?.canManage
+            && liveState.penaltyShootout?.status === 'AWAITING_CONFIRMATION'
+            && penaltyWinnerName,
+        )}
+        title={`${penaltyWinnerName ?? 'O time vencedor'} venceu nos pênaltis!`}
+        message="O resultado da disputa foi salvo separadamente. Confirme para encerrar o jogo."
+        confirmLabel="OK e encerrar jogo"
+        cancelLabel={null}
+        loading={penaltyManaging}
+        loadingLabel="Encerrando..."
+        onCancel={() => {}}
+        onConfirm={() => void finishPenaltyShootout()}
       />
       <ConfirmActionModal
         visible={pendingTimelineDeletion != null}

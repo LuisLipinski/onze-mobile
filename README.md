@@ -91,6 +91,14 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 - Cancelamento de uma ocorrência ou encerramento da série.
 - Lista de espera e promoção automática ainda não estão implementadas.
 
+### Tempos e pênaltis no jogo ao vivo
+
+- Ao criar o jogo, o administrador pode controlar de 1 a 4 tempos com a mesma duração. Prorrogação (até 4 tempos) e pênaltis têm switches independentes para jogos com dois times.
+- Durante cada tempo, o administrador define acréscimos e encerra o tempo quando o relógio permitir. O relógio para no intervalo e recomeça ao iniciar o próximo tempo.
+- Se houver empate, a prorrogação começa quando configurada; a disputa por pênaltis pode começar após o tempo normal ou após a prorrogação.
+- O administrador escolhe os cinco primeiros batedores de cada time, registra gol ou erro alternadamente e escolhe os próximos batedores na morte súbita. O vencedor aparece em uma modal; confirmar a modal encerra o jogo.
+- Cobranças de disputa aparecem em placar próprio e não alteram gols e estatísticas dos jogadores ou times. Pênalti marcado durante o jogo continua sendo um gol normal.
+
 ## Pagamentos, créditos e reposições
 
 - Valor e PIX próprios do jogo, com padrões opcionais do grupo.
