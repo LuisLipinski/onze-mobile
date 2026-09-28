@@ -343,16 +343,18 @@ export default function LiveMatchScreen() {
     }
   }
 
-  function openCardModal() {
+  function openCardModal(sideNumber: number, selectedCardType: MatchCardType) {
     if (!canRegisterMatchEvents) return;
-    const teams = matchTeams?.teams.filter((team) => team.assignments.length > 0) ?? [];
-    if (teams.length === 0) {
+    const selectedTeam = matchTeams?.teams.find(
+      (team) => team.teamNumber === sideNumber && team.assignments.length > 0,
+    );
+    if (!selectedTeam) {
       setError('Gere os times e adicione os jogadores antes de registrar um cartão.');
       return;
     }
-    setCardTeamNumber(teams[0].teamNumber);
+    setCardTeamNumber(selectedTeam.teamNumber);
     setCardPlayerAssignmentId(null);
-    setCardType('YELLOW');
+    setCardType(selectedCardType);
     setCardModalVisible(true);
   }
 
@@ -587,6 +589,7 @@ export default function LiveMatchScreen() {
                 state={liveState}
                 onChangeScore={changeScore}
                 onRegisterGoal={openGoalModal}
+                onRegisterCard={openCardModal}
               />
 
               <MatchPeriodControls
@@ -636,15 +639,6 @@ export default function LiveMatchScreen() {
 
               {liveState.canManage && liveState.status === 'IN_PROGRESS' ? (
                 <YStack gap="$3">
-                  {canRegisterMatchEvents ? (
-                    <AppButton
-                      variant="warning"
-                      onPress={openCardModal}
-                      pressStyle={{ opacity: 0.8 }}
-                    >
-                      <Text color="$onzeSurface" fontWeight="900">Registrar cartão</Text>
-                    </AppButton>
-                  ) : null}
                   {!match.periodsEnabled ? (
                     <AppButton
                       variant="primary"
@@ -745,18 +739,12 @@ export default function LiveMatchScreen() {
       />
       <CardEventModal
         visible={cardModalVisible}
-        teams={matchTeams?.teams.filter((team) => team.assignments.length > 0) ?? []}
+        team={matchTeams?.teams.find((team) => team.teamNumber === cardTeamNumber) ?? null}
         sentOffAssignmentIds={sentOffAssignmentIds}
-        teamNumber={cardTeamNumber}
         playerAssignmentId={cardPlayerAssignmentId}
         cardType={cardType}
         saving={savingCard}
-        onSelectTeam={(teamNumber) => {
-          setCardTeamNumber(teamNumber);
-          setCardPlayerAssignmentId(null);
-        }}
         onSelectPlayer={setCardPlayerAssignmentId}
-        onSelectCardType={setCardType}
         onCancel={() => { if (!savingCard) setCardModalVisible(false); }}
         onSave={() => void saveCard()}
       />
