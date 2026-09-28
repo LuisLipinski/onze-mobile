@@ -126,7 +126,8 @@ export function PenaltyShootoutPanel({
     return result;
   }, [teams]);
 
-  if (!shootout || state.phase !== 'PENALTY_SHOOTOUT') return null;
+  if (!shootout || (state.phase !== 'PENALTY_SHOOTOUT'
+      && shootout.status !== 'COMPLETED')) return null;
 
   const selectedPickerAssignments = pickerTarget
     ? assignmentsByTeam.get(pickerTarget.teamNumber) ?? []
@@ -349,6 +350,11 @@ export function PenaltyShootoutPanel({
             ) : shootout.status === 'AWAITING_CONFIRMATION' ? (
               <Text color="$onzeGreen" fontWeight="900" textAlign="center">
                 Vencedor definido. Aguardando a confirmação para encerrar o jogo.
+              </Text>
+            ) : shootout.status === 'COMPLETED' && shootout.winnerTeamNumber ? (
+              <Text color="$onzeGreen" fontSize={15} fontWeight="900" textAlign="center">
+                {teamLabel(state, shootout.winnerTeamNumber)} venceu nos pênaltis por{' '}
+                {shootout.teamOneScore} × {shootout.teamTwoScore}.
               </Text>
             ) : null}
           </YStack>
