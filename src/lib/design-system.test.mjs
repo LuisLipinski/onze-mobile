@@ -32,6 +32,42 @@ test('mantém o aplicativo no tema claro definido pela marca', () => {
   assert.equal(appConfig.expo.userInterfaceStyle, 'light');
 });
 
+test('protege menus e ações da área reservada pelo sistema operacional', () => {
+  for (const file of interfaceFiles) {
+    const source = fs.readFileSync(file, 'utf8');
+    if (!source.includes('<SafeAreaView')) continue;
+
+    assert.match(
+      source,
+      /from 'react-native-safe-area-context'/,
+      `${file} deve usar a implementação multiplataforma de área segura`,
+    );
+    assert.doesNotMatch(
+      source,
+      /import \{[^}]*\bSafeAreaView\b[^}]*\} from 'react-native'/,
+      file,
+    );
+  }
+
+  const rootLayout = fs.readFileSync('app/_layout.tsx', 'utf8');
+  assert.match(rootLayout, /<SafeAreaProvider\b/);
+
+  const bottomNavigation = fs.readFileSync('src/components/bottom-navigation.tsx', 'utf8');
+  assert.match(bottomNavigation, /useSafeAreaInsets\(\)/);
+  assert.match(bottomNavigation, /paddingBottom=\{bottomPadding\}/);
+
+  for (const file of [
+    'app/group.tsx',
+    'src/components/start-live-match-modal.tsx',
+    'src/components/goal-event-modal.tsx',
+    'src/components/card-event-modal.tsx',
+  ]) {
+    const source = fs.readFileSync(file, 'utf8');
+    assert.match(source, /useSafeAreaInsets\(\)/, file);
+    assert.match(source, /paddingBottom=\{insets\.bottom \+ 20\}/, file);
+  }
+});
+
 test('usa jogo como termo único nos textos do produto', () => {
   for (const file of productCopyFiles) {
     const source = fs.readFileSync(file, 'utf8');

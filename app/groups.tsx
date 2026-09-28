@@ -1,6 +1,7 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Image, Pressable, SafeAreaView, ScrollView } from 'react-native';
+import { Image, Pressable, ScrollView } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { ONZE_COLORS } from '../src/theme/colors';
@@ -48,7 +49,10 @@ export default function GroupsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}
+    >
       <YStack flex={1}>
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
           <YStack gap="$5" paddingVertical="$3">

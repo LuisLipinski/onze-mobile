@@ -1,4 +1,5 @@
 import { Modal, Pressable, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { AppButton } from './app-button';
@@ -79,6 +80,7 @@ function PlayerChoices({ assignments, sentOffAssignmentIds, selectedId, onSelect
 }
 
 export function GoalEventModal(props: Props) {
+  const insets = useSafeAreaInsets();
   const selectedTeam = props.teams.find((team) => team.teamNumber === props.selectedTeamNumber);
   const assistCandidates = selectedTeam?.assignments.filter(
     (assignment) => assignment.id !== props.scorerAssignmentId,
@@ -93,6 +95,7 @@ export function GoalEventModal(props: Props) {
           borderTopRightRadius="$7"
           maxHeight="90%"
           padding="$5"
+          paddingBottom={insets.bottom + 20}
         >
           <ScrollView showsVerticalScrollIndicator={false}>
             <YStack gap="$5" paddingBottom="$3">

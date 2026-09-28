@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, XStack, YStack } from 'tamagui';
 
 export type MainTab = 'home' | 'groups' | 'settings';
@@ -12,14 +13,16 @@ const ITEMS: Array<{ key: MainTab; label: string; icon: string; route: '/home' |
 
 export function BottomNavigation({ active }: { active: MainTab }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 8);
 
   return (
     <XStack
       backgroundColor="$onzeSurface"
       borderColor="$onzeBorder"
       borderTopWidth={1}
-      minHeight={72}
-      paddingBottom="$2"
+      minHeight={64 + bottomPadding}
+      paddingBottom={bottomPadding}
       paddingHorizontal="$2"
       paddingTop="$2"
     >

@@ -1,6 +1,7 @@
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Image, Modal, Pressable, SafeAreaView, ScrollView } from 'react-native';
+import { Image, Modal, Pressable, ScrollView } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { ONZE_COLORS } from '../src/theme/colors';
@@ -45,6 +46,7 @@ const ROLE_LABELS: Record<GroupRole, string> = {
 
 export default function GroupScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ groupId: string }>();
   const [group, setGroup] = useState<Group | null>(null);
   const [matches, setMatches] = useState<FootballMatch[]>([]);
@@ -299,7 +301,8 @@ export default function GroupScreen() {
                 borderBottomLeftRadius="$7"
                 gap="$2"
                 padding="$5"
-                paddingTop="$8"
+                paddingBottom={insets.bottom + 20}
+                paddingTop={insets.top + 20}
                 minHeight="100%"
               >
                 <XStack alignItems="center" justifyContent="space-between" marginBottom="$3">

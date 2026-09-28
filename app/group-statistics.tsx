@@ -1,6 +1,7 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView } from 'react-native';
+import { Pressable, ScrollView } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { AppButton } from '../src/components/app-button';

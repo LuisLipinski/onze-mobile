@@ -1,4 +1,5 @@
 import { Modal, Pressable, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { AppButton } from './app-button';
@@ -40,11 +41,19 @@ function Choice({ label, selected, color, disabled = false, onPress }: {
 }
 
 export function CardEventModal(props: Props) {
+  const insets = useSafeAreaInsets();
   const team = props.teams.find((item) => item.teamNumber === props.teamNumber);
   return (
     <Modal animationType="slide" transparent visible={props.visible} onRequestClose={props.onCancel}>
       <YStack backgroundColor="rgba(15, 23, 42, 0.48)" flex={1} justifyContent="flex-end">
-        <YStack backgroundColor="$onzeSurface" borderTopLeftRadius="$7" borderTopRightRadius="$7" maxHeight="90%" padding="$5">
+        <YStack
+          backgroundColor="$onzeSurface"
+          borderTopLeftRadius="$7"
+          borderTopRightRadius="$7"
+          maxHeight="90%"
+          padding="$5"
+          paddingBottom={insets.bottom + 20}
+        >
           <ScrollView showsVerticalScrollIndicator={false}>
             <YStack gap="$5" paddingBottom="$3">
               <YStack gap="$1">

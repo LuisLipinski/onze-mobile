@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { Image, Modal, Pressable, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Input, Spinner, Text, XStack, YStack } from 'tamagui';
 
 import { AppButton } from './app-button';
@@ -104,6 +105,7 @@ export function StartLiveMatchModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const insets = useSafeAreaInsets();
   const disabled = loading || saving || uploadingTeamNumber != null;
   const invalidName = identities.some((identity) => !identity.name.trim());
 
@@ -116,6 +118,7 @@ export function StartLiveMatchModal({
           borderTopRightRadius="$7"
           maxHeight="92%"
           padding="$5"
+          paddingBottom={insets.bottom + 20}
         >
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <YStack gap="$5" paddingBottom="$3">
