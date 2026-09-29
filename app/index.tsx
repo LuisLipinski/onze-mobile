@@ -234,7 +234,7 @@ export default function LoginScreen() {
     }
   }
 
-  function usePasswordLogin(clearAccount: boolean) {
+  function showPasswordLogin(clearAccount: boolean) {
     setError(null);
     setPassword('');
     setPasswordLoginMode(true);
@@ -370,7 +370,7 @@ export default function LoginScreen() {
                     borderRadius="$4"
 
                     buttonSize="sm"
-                    onPress={() => usePasswordLogin(false)}
+                    onPress={() => showPasswordLogin(false)}
                   >
                     <Text color="$onzeInk" fontSize={14} fontWeight="800">
                       Entrar com senha
@@ -379,7 +379,7 @@ export default function LoginScreen() {
                   <AppButton
                     variant="ghost"
                     buttonSize="sm"
-                    onPress={() => usePasswordLogin(true)}
+                    onPress={() => showPasswordLogin(true)}
                   >
                     <Text color="$onzeGreen" fontSize={14} fontWeight="800">
                       Entrar com outra conta
