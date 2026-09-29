@@ -123,7 +123,7 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 
 ## Validação atual
 
-- `Mobile CI`: instala dependências, executa os testes unitários com `npm test` e valida o TypeScript com `npm run typecheck`.
+- `Mobile CI`: instala dependências, executa `npm test`, `npm run typecheck` e `npm run lint`.
 - `Android APK`: executa o prebuild limpo, compila `assembleRelease` para `arm64-v8a` e publica o APK por 14 dias.
 - A integração em `development` passou no [Mobile CI #154](https://github.com/LuisLipinski/onze-mobile/actions/runs/34223392704) e no [Android APK #127](https://github.com/LuisLipinski/onze-mobile/actions/runs/34223392624), que publicou o artifact `onze-development-apk`.
 - O perfil EAS `preview` gera APK de distribuição interna.
@@ -136,10 +136,13 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 npm install
 npm test
 npm run typecheck
+npm run lint
 npx expo config --type public
 npx expo export --platform android
 npx expo start
 ```
+
+ESLint usa a configuração do Expo. Prettier está disponível em `npm run format` e `npm run format:check`; a checagem de formatação de toda a base ainda não faz parte da CI para permitir a adoção gradual sem reformatar todas as telas neste PR.
 
 Variáveis opcionais:
 
