@@ -68,6 +68,7 @@ import {
   currentMatchAttendance,
   shouldShowCurrentPlayerPayment,
 } from '../src/lib/match-payment';
+import { paymentDeadlineState, signupDeadlineState } from '../src/lib/match-deadlines';
 import { modalityLabel } from '../src/lib/match-modality';
 import { positionLabel } from '../src/lib/sports-profile';
 
@@ -604,6 +605,8 @@ export default function MatchScreen() {
   const openSettlements = payments.filter((attendance) => isSettlementOpen(attendance.paymentSettlementStatus));
   const currentAttendance = match ? currentMatchAttendance(match) : null;
   const showCurrentPayment = match ? shouldShowCurrentPlayerPayment(match) : false;
+  const signupState = match ? signupDeadlineState(match) : null;
+  const paymentState = match ? paymentDeadlineState(match) : null;
   const actionIsEndSeries = managementAction === 'end-series';
   const goalkeeperTargetState = goalkeeperChange ? !goalkeeperChange.isGoalkeeper : false;
   const secondaryCandidates = match ? secondaryGoalkeeperCandidates(match) : [];
@@ -652,8 +655,13 @@ export default function MatchScreen() {
                       {formatDateTime(match.signupDeadline, match.timeZone)}
                     </Text>
                   </YStack>
-                  <Text color={match.signupOpen ? '$onzeGreen' : '$onzeDanger'} fontSize={11} fontWeight="900">
-                    {match.signupOpen ? 'ABERTA' : 'ENCERRADA'}
+                  <Text
+                    color={signupState === 'open' ? '$onzeGreen' : signupState === 'pending' ? '$onzeMuted' : '$onzeDanger'}
+                    fontSize={11}
+                    fontWeight="900"
+                    textAlign="right"
+                  >
+                    {signupState === 'open' ? 'ABERTA' : signupState === 'pending' ? 'AINDA NÃO ABERTA' : 'ENCERRADA'}
                   </Text>
                 </XStack>
                 {match.paymentRequired && match.paymentDeadline ? (
@@ -664,10 +672,20 @@ export default function MatchScreen() {
                         {formatDateTime(match.paymentDeadline, match.timeZone)}
                       </Text>
                     </YStack>
-                    <Text color={match.paymentOpen ? '$onzeGreen' : '$onzeDanger'} fontSize={11} fontWeight="900">
-                      {match.paymentOpen ? 'EM ABERTO' : 'ENCERRADO'}
+                    <Text
+                      color={paymentState === 'open' ? '$onzeGreen' : paymentState === 'pending' ? '$onzeMuted' : '$onzeDanger'}
+                      fontSize={11}
+                      fontWeight="900"
+                      textAlign="right"
+                    >
+                      {paymentState === 'open' ? 'EM ABERTO' : paymentState === 'pending' ? 'AINDA NÃO ABERTO' : 'ENCERRADO'}
                     </Text>
                   </XStack>
+                ) : null}
+                {signupState === 'pending' ? (
+                  <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                    A lista desta rodada abre em {formatDateTime(match.attendanceOpensAt, match.timeZone)}.
+                  </Text>
                 ) : null}
                 {match.paymentRequired ? (
                   <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
