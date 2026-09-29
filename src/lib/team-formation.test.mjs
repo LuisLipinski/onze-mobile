@@ -115,6 +115,28 @@ test('FUT7 usa 2-3-1 e respeita os excedentes marcados como reservas', () => {
   assert.equal(new Set(formation.fieldPlayers.map((item) => item.slotId)).size, 7);
 });
 
+test('FUT7 nunca coloca dois goleiros em campo mesmo com sete jogadores e reservas antigas', () => {
+  const secondKeeper = assignment('2', 'Segundo goleiro', 'GOALKEEPER', 20);
+  const players = [
+    assignment('1', 'Goleiro titular', 'GOALKEEPER', 35),
+    secondKeeper,
+    assignment('3', 'Defesa D', 'RIGHT_DEFENDER'),
+    assignment('4', 'Defesa E', 'LEFT_DEFENDER'),
+    assignment('5', 'Meia D', 'RIGHT_MIDFIELDER'),
+    assignment('6', 'Meia C', 'CENTRAL_MIDFIELDER'),
+    assignment('7', 'Ataque', 'CENTER_FORWARD'),
+  ];
+  const formation = buildTeamFormation(players, 'FUT7');
+
+  assert.equal(formation.fieldPlayers.filter((player) => player.assignment.assignedRole === 'GOALKEEPER').length, 1);
+  assert.equal(formation.fieldPlayers.length, 6);
+  assert.deepEqual(formation.reserves.map((player) => player.id), [secondKeeper.id]);
+
+  const rental = { ...secondKeeper, participantType: 'RENTAL_GOALKEEPER' };
+  const withRental = buildTeamFormation([players[0], rental, ...players.slice(2)], 'FUT7');
+  assert.equal(withRental.fieldPlayers.find((player) => player.assignment.assignedRole === 'GOALKEEPER')?.assignment.id, rental.id);
+});
+
 test('FUTSAL mapeia função atribuída e reserva persistida', () => {
   const formation = buildTeamFormation([
     assignment('1', 'GOL', 'GOALKEEPER'),

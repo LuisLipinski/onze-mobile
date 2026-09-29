@@ -146,15 +146,33 @@ export function buildTeamFormation(
   const active = sorted.filter((assignment) => !reserveAssignmentIds.has(assignment.id));
   const capacity = fieldCapacity(modality);
 
-  // Safety fallback for stale/missing reserve state: never squeeze more players than the modality supports.
-  // Stronger players stay on the field; the backend normally persists the authoritative reserve choice.
-  const rankedActive = [...active].sort((left, right) => {
-    const strengthDifference = (right.overallUsed ?? -1) - (left.overallUsed ?? -1);
-    if (strengthDifference !== 0) return strengthDifference;
-    return left.id.localeCompare(right.id);
-  });
-  const activeIds = new Set(rankedActive.slice(0, capacity).map((assignment) => assignment.id));
-  const fieldAssignments = active.filter((assignment) => activeIds.has(assignment.id));
+  // An older lineup or a briefly stale reserve snapshot may include extra goalkeepers.
+  // Keep one on the pitch and place every other goalkeeper on the bench.
+  const goalkeeper = active
+    .filter((assignment) => assignment.assignedRole === 'GOALKEEPER')
+    .sort((left, right) => {
+      const rentalDifference = Number(right.participantType === 'RENTAL_GOALKEEPER')
+        - Number(left.participantType === 'RENTAL_GOALKEEPER');
+      if (rentalDifference !== 0) return rentalDifference;
+      return (right.overallUsed ?? -1) - (left.overallUsed ?? -1) || left.id.localeCompare(right.id);
+    })[0];
+  const eligibleActive = active.filter((assignment) => (
+    assignment.assignedRole !== 'GOALKEEPER' || assignment.id === goalkeeper?.id
+  ));
+
+  // Safety fallback for stale/missing reserve state: never exceed the modality capacity.
+  const rankedOutfield = eligibleActive
+    .filter((assignment) => assignment.id !== goalkeeper?.id)
+    .sort((left, right) => {
+      const strengthDifference = (right.overallUsed ?? -1) - (left.overallUsed ?? -1);
+      if (strengthDifference !== 0) return strengthDifference;
+      return left.id.localeCompare(right.id);
+    });
+  const activeIds = new Set([
+    ...(goalkeeper ? [goalkeeper.id] : []),
+    ...rankedOutfield.slice(0, capacity - (goalkeeper ? 1 : 0)).map((assignment) => assignment.id),
+  ]);
+  const fieldAssignments = eligibleActive.filter((assignment) => activeIds.has(assignment.id));
   const overflowReserves = active.filter((assignment) => !activeIds.has(assignment.id));
 
   const bySector = new Map<FormationSector, TeamAssignment[]>([

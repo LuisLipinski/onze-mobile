@@ -279,8 +279,8 @@ export default function MatchTeamsScreen() {
         return;
       }
       const generated = await generateMatchTeams(token, params.matchId);
-      setData(generated);
       const reserves = await autoAssignMatchTeamReserves(token, params.matchId);
+      setData(generated);
       setReserveIds(new Set(reserves.reserveAssignmentIds));
       setEditingId(null);
     } catch (exception) {
@@ -354,6 +354,12 @@ export default function MatchTeamsScreen() {
     if (!params.matchId || !data || savingId) return;
     const isReserve = reserveIds.has(assignment.id);
     if (isReserve) {
+      if (assignment.assignedRole === 'GOALKEEPER'
+        && teamAssignments.some((item) => item.id !== assignment.id
+          && item.assignedRole === 'GOALKEEPER' && !reserveIds.has(item.id))) {
+        setError('Cada time pode ter apenas um goleiro em campo. Coloque o outro goleiro na reserva antes.');
+        return;
+      }
       const playersOnField = teamAssignments.filter((item) => !reserveIds.has(item.id)).length;
       if (playersOnField >= fieldCapacity(data.modality)) {
         setError('O campo já está completo. Coloque outro jogador deste time na reserva antes de promover este jogador.');
@@ -514,7 +520,9 @@ export default function MatchTeamsScreen() {
           ) : null}
 
           {data?.teams.map((team) => {
-            const activeAssignments = team.assignments.filter((assignment) => !reserveIds.has(assignment.id));
+            const activeAssignments = buildTeamFormation(
+              team.assignments, data.modality, reserveIds,
+            ).fieldPlayers.map((player) => player.assignment);
             const lineStrengths = calculateTeamLineStrengths(activeAssignments, data.modality);
             const fieldStrength = calculateTeamStrength(activeAssignments, data.modality);
             const sortedAssignments = sortTeamAssignments(team.assignments, data.modality)

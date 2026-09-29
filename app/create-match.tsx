@@ -413,7 +413,7 @@ export default function CreateMatchScreen() {
                       </XStack>
 
                       {overtimeEnabled ? (
-                        <XStack gap="$3">
+                        <XStack alignItems="flex-end" gap="$3">
                           <Field flex={1} label="TEMPOS DA PRORROGAÇÃO">
                             <Input
                               backgroundColor="$onzeSurface"
