@@ -5,7 +5,7 @@ import { Text, XStack, YStack } from 'tamagui';
 
 export type MainTab = 'home' | 'groups' | 'settings';
 
-const ITEMS: Array<{ key: MainTab; label: string; icon: string; route: '/home' | '/groups' | '/settings' }> = [
+const ITEMS: { key: MainTab; label: string; icon: string; route: '/home' | '/groups' | '/settings' }[] = [
   { key: 'home', label: 'Home', icon: '⌂', route: '/home' },
   { key: 'groups', label: 'Grupos', icon: '⚽', route: '/groups' },
   { key: 'settings', label: 'Configurações', icon: '⚙', route: '/settings' },

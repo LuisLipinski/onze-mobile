@@ -31,13 +31,7 @@ export default function GroupCreditsScreen() {
   const [error, setError] = useState<string | null>(null);
   const canManage = params.canManage === 'true';
 
-  useFocusEffect(
-    useCallback(() => {
-      void loadCredits();
-    }, [params.groupId]),
-  );
-
-  async function loadCredits() {
+  const loadCredits = useCallback(async () => {
     if (!params.groupId) {
       setError('Não foi possível identificar o grupo.');
       setLoading(false);
@@ -62,7 +56,11 @@ export default function GroupCreditsScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.groupId, router]);
+
+  useFocusEffect(useCallback(() => {
+    void loadCredits();
+  }, [loadCredits]));
 
   function goBack() {
     if (router.canGoBack()) router.back();
@@ -162,7 +160,6 @@ export default function GroupCreditsScreen() {
                   {credit.allocatedMatchId ? (
                     <AppButton
                       variant="outline"
-
 
                       onPress={() => router.push({
                         pathname: '/match',

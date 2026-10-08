@@ -60,12 +60,6 @@ export default function GroupAdminsScreen() {
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      void loadMembers();
-    }, [params.groupId]),
-  );
-
   const currentMember = members.find((member) => member.currentUser) ?? null;
   const isPrimaryAdmin = currentMember?.role === 'PRIMARY_ADMIN';
   const canPromoteMembers = currentMember
@@ -78,7 +72,7 @@ export default function GroupAdminsScreen() {
     ? hasGroupPermission(currentMember, 'EDIT_PLAYER_PROFILES')
     : false;
 
-  async function loadMembers() {
+  const loadMembers = useCallback(async () => {
     if (!params.groupId) {
       setError('Não foi possível identificar o grupo.');
       setLoading(false);
@@ -108,7 +102,11 @@ export default function GroupAdminsScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.groupId, router]);
+
+  useFocusEffect(useCallback(() => {
+    void loadMembers();
+  }, [loadMembers]));
 
   async function runPendingAction() {
     if (!pendingAction || !params.groupId || actionId) return;
@@ -362,7 +360,6 @@ function MemberCard({
         <AppButton
           variant="outline"
 
-
           disabled={busy}
           buttonSize="sm"
           onPress={onEditSportsProfile}
@@ -397,7 +394,6 @@ function MemberCard({
             <AppButton
               variant="destructiveOutline"
 
-
               disabled={busy}
               flex={1}
               buttonSize="sm"
@@ -414,7 +410,6 @@ function MemberCard({
           <AppButton
             variant="outline"
 
-
             disabled={busy}
             buttonSize="sm"
             onPress={onEditPermissions}
@@ -427,7 +422,6 @@ function MemberCard({
             </AppButton>
             <AppButton
               variant="destructiveOutline"
-
 
               disabled={busy}
               flex={1}

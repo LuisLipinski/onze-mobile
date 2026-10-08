@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
@@ -66,11 +66,7 @@ export default function GroupSettingsScreen() {
     [times],
   );
 
-  useEffect(() => {
-    void loadGroup();
-  }, [params.groupId]);
-
-  async function loadGroup() {
+  const loadGroup = useCallback(async () => {
     if (!params.groupId) {
       setError('Não foi possível identificar o grupo.');
       setLoading(false);
@@ -117,7 +113,11 @@ export default function GroupSettingsScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.groupId, router]);
+
+  useEffect(() => {
+    void loadGroup();
+  }, [loadGroup]);
 
   async function choosePhoto() {
     const result = await ImagePicker.launchImageLibraryAsync({

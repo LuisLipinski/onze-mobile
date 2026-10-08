@@ -56,13 +56,7 @@ export default function GroupScreen() {
   const [leaveModalVisible, setLeaveModalVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      void loadGroup();
-    }, [params.groupId]),
-  );
-
-  async function loadGroup() {
+  const loadGroup = useCallback(async () => {
     if (!params.groupId) {
       setError('Não foi possível identificar o grupo.');
       setLoading(false);
@@ -110,7 +104,11 @@ export default function GroupScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.groupId, router]);
+
+  useFocusEffect(useCallback(() => {
+    void loadGroup();
+  }, [loadGroup]));
 
   function openLeaveFlow() {
     setMenuVisible(false);
@@ -168,7 +166,6 @@ export default function GroupScreen() {
               <AppButton
                 circular
                 variant="secondary"
-
 
                 buttonSize="sm"
                 onPress={() => setMenuVisible(true)}
@@ -395,7 +392,6 @@ export default function GroupScreen() {
                   variant="destructiveOutline"
 
 
-
                   marginTop="$4"
                   onPress={openLeaveFlow}
                 >
@@ -431,7 +427,6 @@ function MenuButton({ label, onPress }: { label: string; onPress: () => void }) 
   return (
     <AppButton
       variant="secondary"
-
 
 
       justifyContent="flex-start"

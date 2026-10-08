@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Share } from 'react-native';
 import { Text, YStack } from 'tamagui';
 
@@ -29,11 +29,7 @@ export default function GroupInviteScreen() {
   const [regenerating, setRegenerating] = useState(false);
   const [regenerateConfirmationVisible, setRegenerateConfirmationVisible] = useState(false);
 
-  useEffect(() => {
-    void loadInvite();
-  }, [params.groupId]);
-
-  async function loadInvite() {
+  const loadInvite = useCallback(async () => {
     if (!params.groupId) {
       setError('Não foi possível identificar o grupo.');
       setLoading(false);
@@ -54,7 +50,11 @@ export default function GroupInviteScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.groupId, router]);
+
+  useEffect(() => {
+    void loadInvite();
+  }, [loadInvite]);
 
   async function shareInvite() {
     if (!invite) return;
@@ -170,7 +170,6 @@ export default function GroupInviteScreen() {
                 alignSelf="stretch"
                 variant="secondary"
 
-
                 disabled={regenerating}
 
                 onPress={confirmRegenerate}
@@ -218,7 +217,6 @@ export default function GroupInviteScreen() {
 
           <AppButton
             variant="secondary"
-
 
 
             onPress={finish}

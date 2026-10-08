@@ -31,11 +31,7 @@ export default function GroupStatisticsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useFocusEffect(useCallback(() => {
-    void loadStatistics();
-  }, [params.groupId]));
-
-  async function loadStatistics() {
+  const loadStatistics = useCallback(async () => {
     if (!params.groupId) {
       setError('Não foi possível identificar o grupo.');
       setLoading(false);
@@ -60,7 +56,11 @@ export default function GroupStatisticsScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.groupId, router]);
+
+  useFocusEffect(useCallback(() => {
+    void loadStatistics();
+  }, [loadStatistics]));
 
   function goBack() {
     if (router.canGoBack()) router.back();

@@ -237,11 +237,7 @@ export default function MatchTeamsScreen() {
   const [sharing, setSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useFocusEffect(useCallback(() => {
-    void load();
-  }, [params.matchId]));
-
-  async function load() {
+  const load = useCallback(async () => {
     if (!params.matchId) {
       setError('Não foi possível identificar o jogo.');
       setLoading(false);
@@ -266,7 +262,11 @@ export default function MatchTeamsScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.matchId, router]);
+
+  useFocusEffect(useCallback(() => {
+    void load();
+  }, [load]));
 
   async function generate() {
     if (!params.matchId || generating) return;

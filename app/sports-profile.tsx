@@ -52,13 +52,7 @@ export default function SportsProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      void loadProfile();
-    }, [params.groupId, params.membershipId]),
-  );
-
-  async function loadProfile() {
+  const loadProfile = useCallback(async () => {
     if (!params.groupId) {
       setError('Não foi possível identificar o grupo.');
       setLoading(false);
@@ -95,7 +89,11 @@ export default function SportsProfileScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [adminMode, params.groupId, params.membershipId, router]);
+
+  useFocusEffect(useCallback(() => {
+    void loadProfile();
+  }, [loadProfile]));
 
   async function saveProfile() {
     if (!params.groupId || saving) return;
@@ -320,7 +318,6 @@ export default function SportsProfileScreen() {
             >
               <AppButton
                 variant="outline"
-
 
                 onPress={() => router.push({
                   pathname: '/technical-profile',

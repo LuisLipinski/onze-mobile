@@ -24,10 +24,10 @@ export type PlayerPositionOption = {
   label: string;
 };
 
-export const PLAYER_POSITION_GROUPS: ReadonlyArray<{
+export const PLAYER_POSITION_GROUPS: readonly {
   label: string;
-  options: ReadonlyArray<PlayerPositionOption>;
-}> = [
+  options: readonly PlayerPositionOption[];
+}[] = [
   {
     label: 'GOLEIRO',
     options: [{ value: 'GOALKEEPER', label: 'Goleiro' }],
@@ -67,10 +67,10 @@ export const PLAYER_POSITION_GROUPS: ReadonlyArray<{
 
 export const PLAYER_POSITION_OPTIONS = PLAYER_POSITION_GROUPS.flatMap((group) => group.options);
 
-export const DOMINANT_FOOT_OPTIONS: ReadonlyArray<{
+export const DOMINANT_FOOT_OPTIONS: readonly {
   value: DominantFoot;
   label: string;
-}> = [
+}[] = [
   { value: 'RIGHT', label: 'Direito' },
   { value: 'LEFT', label: 'Esquerdo' },
   { value: 'BOTH', label: 'Ambos' },

@@ -12,11 +12,11 @@ export const DEV_TEST_PLAYER_PRESETS = [
   { count: 22, label: 'Campo · 22' },
 ] as const;
 
-export const DEV_TEST_SCENARIOS: Array<{
+export const DEV_TEST_SCENARIOS: {
   value: DevTestScenario;
   label: string;
   description: string;
-}> = [
+}[] = [
   {
     value: 'BALANCED',
     label: 'Equilibrado',
