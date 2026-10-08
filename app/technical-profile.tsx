@@ -36,11 +36,7 @@ export default function TechnicalProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  useFocusEffect(useCallback(() => {
-    void load();
-  }, [params.groupId, params.membershipId]));
-
-  async function load() {
+  const load = useCallback(async () => {
     if (!params.groupId || !params.membershipId) {
       setError('Não foi possível identificar o jogador.');
       setLoading(false);
@@ -67,7 +63,11 @@ export default function TechnicalProfileScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.groupId, params.membershipId, router]);
+
+  useFocusEffect(useCallback(() => {
+    void load();
+  }, [load]));
 
   async function save() {
     if (!params.groupId || !params.membershipId || saving) return;

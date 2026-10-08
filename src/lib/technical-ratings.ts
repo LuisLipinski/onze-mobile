@@ -3,10 +3,10 @@ import type {
   TeamAssignmentReason,
 } from './api';
 
-export const PLAYER_SKILL_GROUPS: ReadonlyArray<{
+export const PLAYER_SKILL_GROUPS: readonly {
   label: string;
-  skills: ReadonlyArray<{ value: PlayerSkill; label: string }>;
-}> = [
+  skills: readonly { value: PlayerSkill; label: string }[];
+}[] = [
   {
     label: 'TÉCNICA',
     skills: [

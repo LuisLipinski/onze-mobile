@@ -34,7 +34,7 @@ export function LiveMatchCard({
     setElapsed(summaryElapsedSeconds(match));
     const interval = setInterval(() => setElapsed(summaryElapsedSeconds(match)), 1_000);
     return () => clearInterval(interval);
-  }, [match.startedAt, match.currentPeriod, match.phase]);
+  }, [match]);
 
   const periodDurationSeconds = (match.currentPeriod?.durationMinutes ?? 0) * 60;
   const timerLabel = match.phase === 'PENALTY_SHOOTOUT'

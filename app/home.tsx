@@ -77,6 +77,48 @@ export default function HomeScreen() {
     }
   }, []);
 
+  const loadHome = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        router.replace('/');
+        return;
+      }
+
+      const stored = await getStoredCurrentUser();
+      let currentUser = stored;
+      if (stored) {
+        setUser(stored);
+      } else {
+        currentUser = await getCurrentUser(token);
+        await saveCurrentUser(currentUser);
+        setUser(currentUser);
+      }
+
+      const [upcoming, live] = await Promise.all([
+        listUpcomingMatches(token),
+        listLiveMatches(token),
+      ]);
+      setLiveMatches(live);
+      setMatches(scheduledHomeMatches(upcoming, live));
+
+      void registerNotificationsForSession(token)
+        .then((registration) => syncAttendanceOpeningNotifications(upcoming, registration))
+        .catch(() => undefined);
+    } catch (exception) {
+      if (exception instanceof ApiRequestError && exception.status === 401) {
+        await clearSession();
+        router.replace('/');
+        return;
+      }
+      setError(getErrorMessage(exception, 'Não foi possível carregar sua conta.'));
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -118,50 +160,8 @@ export default function HomeScreen() {
         stream?.close();
         subscription.remove();
       };
-    }, [applyLiveMatchEvent, refreshLiveMatches, router]),
+    }, [applyLiveMatchEvent, loadHome, refreshLiveMatches, router]),
   );
-
-  async function loadHome() {
-    setLoading(true);
-    setError(null);
-    try {
-      const token = await getAccessToken();
-      if (!token) {
-        router.replace('/');
-        return;
-      }
-
-      const stored = await getStoredCurrentUser();
-      let currentUser = stored;
-      if (stored) {
-        setUser(stored);
-      } else {
-        currentUser = await getCurrentUser(token);
-        await saveCurrentUser(currentUser);
-        setUser(currentUser);
-      }
-
-      const [upcoming, live] = await Promise.all([
-        listUpcomingMatches(token),
-        listLiveMatches(token),
-      ]);
-      setLiveMatches(live);
-      setMatches(scheduledHomeMatches(upcoming, live));
-
-      void registerNotificationsForSession(token)
-        .then((registration) => syncAttendanceOpeningNotifications(upcoming, registration))
-        .catch(() => undefined);
-    } catch (exception) {
-      if (exception instanceof ApiRequestError && exception.status === 401) {
-        await clearSession();
-        router.replace('/');
-        return;
-      }
-      setError(getErrorMessage(exception, 'Não foi possível carregar sua conta.'));
-    } finally {
-      setLoading(false);
-    }
-  }
 
   if (loading && !user) {
     return <ServerLoadingScreen title="Carregando o Onze..." message="Preparando sua página inicial." />;

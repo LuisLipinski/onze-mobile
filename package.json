@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test src/lib/*.test.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint app src scripts tamagui.config.ts",
+    "lint": "eslint app src scripts tamagui.config.ts --max-warnings=0",
     "format": "prettier --write app src scripts tamagui.config.ts eslint.config.cjs",
     "format:check": "prettier --check app src scripts tamagui.config.ts eslint.config.cjs"
   },

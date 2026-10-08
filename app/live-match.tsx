@@ -89,12 +89,12 @@ export default function LiveMatchScreen() {
   const [penaltyManaging, setPenaltyManaging] = useState(false);
   const liveStateRef = useRef<LiveMatchState | null>(null);
 
-  function goToLogin() {
+  const goToLogin = useCallback(() => {
     router.replace({
       pathname: '/',
       params: params.matchId ? { matchId: params.matchId, destination: 'live' } : {},
     });
-  }
+  }, [params.matchId, router]);
 
   const loadLiveMatch = useCallback(async (silent = false) => {
     if (!params.matchId) {
@@ -129,7 +129,7 @@ export default function LiveMatchScreen() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [params.matchId]);
+  }, [goToLogin, params.matchId]);
 
   const applyLiveMatchEvent = useCallback((event: LiveMatchStreamEvent) => {
     const current = liveStateRef.current;
@@ -201,7 +201,7 @@ export default function LiveMatchScreen() {
       stream?.close();
       subscription.remove();
     };
-  }, [applyLiveMatchEvent, loadLiveMatch, params.matchId]));
+  }, [applyLiveMatchEvent, goToLogin, loadLiveMatch, params.matchId]));
 
   useEffect(() => {
     if (match?.periodsEnabled || liveState?.status !== 'IN_PROGRESS' || !liveState.startedAt) return;

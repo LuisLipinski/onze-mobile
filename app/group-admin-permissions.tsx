@@ -72,13 +72,7 @@ export default function GroupAdminPermissionsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      void loadAdmin();
-    }, [params.groupId, params.membershipId]),
-  );
-
-  async function loadAdmin() {
+  const loadAdmin = useCallback(async () => {
     if (!params.groupId || !params.membershipId) {
       setError('Não foi possível identificar o administrador.');
       setLoading(false);
@@ -119,7 +113,11 @@ export default function GroupAdminPermissionsScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.groupId, params.membershipId, router]);
+
+  useFocusEffect(useCallback(() => {
+    void loadAdmin();
+  }, [loadAdmin]));
 
   function togglePermission(permission: GroupAdminPermission, enabled: boolean) {
     setMessage(null);

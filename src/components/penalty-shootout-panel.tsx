@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Input, Text, XStack, YStack } from 'tamagui';
@@ -94,6 +94,9 @@ export function PenaltyShootoutPanel({
 }: Props) {
   const insets = useSafeAreaInsets();
   const shootout = state.penaltyShootout;
+  const setupStatus = shootout?.status;
+  const savedTakers = shootout?.takers;
+  const restoredTakersKey = useRef<string | null>(null);
   const [lineups, setLineups] = useState<Record<number, SelectedTaker[]>>({
     1: emptyLineup(),
     2: emptyLineup(),
@@ -102,9 +105,15 @@ export function PenaltyShootoutPanel({
   const [suddenTaker, setSuddenTaker] = useState<SelectedTaker>({ displayName: '' });
 
   useEffect(() => {
-    if (!shootout || shootout.status !== 'SETUP') return;
+    if (setupStatus !== 'SETUP' || !savedTakers) {
+      restoredTakersKey.current = null;
+      return;
+    }
+    const key = JSON.stringify([state.matchId, savedTakers]);
+    if (restoredTakersKey.current === key) return;
+    restoredTakersKey.current = key;
     const restored: Record<number, SelectedTaker[]> = { 1: emptyLineup(), 2: emptyLineup() };
-    shootout.takers.forEach((taker) => {
+    savedTakers.forEach((taker) => {
       if (taker.teamNumber < 1 || taker.teamNumber > 2
           || taker.kickOrder < 1 || taker.kickOrder > 5) return;
       restored[taker.teamNumber][taker.kickOrder - 1] = {
@@ -113,7 +122,7 @@ export function PenaltyShootoutPanel({
       };
     });
     setLineups(restored);
-  }, [shootout?.status]);
+  }, [savedTakers, setupStatus, state.matchId]);
 
   useEffect(() => {
     setSuddenTaker({ displayName: '' });

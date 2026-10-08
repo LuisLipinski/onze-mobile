@@ -1,10 +1,10 @@
 import type { MatchModality, MatchType } from './api';
 
-export const MATCH_MODALITY_OPTIONS: ReadonlyArray<{
+export const MATCH_MODALITY_OPTIONS: readonly {
   value: MatchModality;
   label: string;
   playersPerTeam: number;
-}> = [
+}[] = [
   { value: 'FIELD', label: 'Futebol de Campo', playersPerTeam: 11 },
   { value: 'FUT7', label: 'Fut7', playersPerTeam: 7 },
   { value: 'FUTSAL', label: 'Futsal', playersPerTeam: 5 },

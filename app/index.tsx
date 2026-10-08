@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -71,10 +71,6 @@ export default function LoginScreen() {
   );
 
   useEffect(() => {
-    void restoreSession();
-  }, []);
-
-  useEffect(() => {
     const credential = biometricCredential;
     if (!credential || credential.displayName) return;
 
@@ -94,9 +90,9 @@ export default function LoginScreen() {
     return () => {
       active = false;
     };
-  }, [biometricCredential?.accessToken, biometricCredential?.displayName]);
+  }, [biometricCredential]);
 
-  function goAfterAuthentication() {
+  const goAfterAuthentication = useCallback(() => {
     if (typeof params.joinCode === 'string' && params.joinCode.trim()) {
       router.replace({
         pathname: '/join-group',
@@ -112,9 +108,9 @@ export default function LoginScreen() {
       return;
     }
     router.replace('/home');
-  }
+  }, [params.joinCode, params.matchId, params.destination, router]);
 
-  async function restoreSession() {
+  const restoreSession = useCallback(async () => {
     try {
       const [token, lastLoginEmail, storedUser, credential, biometricAvailable] = await Promise.all([
         getAccessToken(),
@@ -156,7 +152,11 @@ export default function LoginScreen() {
     } finally {
       setRestoringSession(false);
     }
-  }
+  }, [goAfterAuthentication]);
+
+  useEffect(() => {
+    void restoreSession();
+  }, [restoreSession]);
 
   async function submit() {
     if (loading) return;

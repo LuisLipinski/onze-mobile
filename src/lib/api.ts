@@ -1195,7 +1195,7 @@ export function getMatch(accessToken: string, matchId: string) {
 export function startLiveMatch(
   accessToken: string,
   matchId: string,
-  teams: Array<{ teamNumber: number; name: string }>,
+  teams: { teamNumber: number; name: string }[],
 ) {
   return request<FootballMatch>(`/api/matches/${matchId}/live/start`, {
     method: 'PUT',

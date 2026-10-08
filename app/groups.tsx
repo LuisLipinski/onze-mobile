@@ -20,13 +20,7 @@ export default function GroupsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      void loadGroups();
-    }, []),
-  );
-
-  async function loadGroups() {
+  const loadGroups = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -46,7 +40,11 @@ export default function GroupsScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [router]);
+
+  useFocusEffect(useCallback(() => {
+    void loadGroups();
+  }, [loadGroups]));
 
   return (
     <SafeAreaView
@@ -67,7 +65,6 @@ export default function GroupsScreen() {
             <XStack gap="$2">
               <AppButton
                 variant="outline"
-
 
                 flex={1}
 

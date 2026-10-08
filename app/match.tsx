@@ -189,20 +189,14 @@ export default function MatchScreen() {
     }
   }
 
-  function goToLogin() {
+  const goToLogin = useCallback(() => {
     router.replace({
       pathname: '/',
       params: params.matchId ? { matchId: params.matchId } : {},
     });
-  }
+  }, [params.matchId, router]);
 
-  useFocusEffect(
-    useCallback(() => {
-      void loadMatch();
-    }, [params.matchId]),
-  );
-
-  async function loadMatch() {
+  const loadMatch = useCallback(async () => {
     if (!params.matchId) {
       setError('Não foi possível identificar o jogo.');
       setLoading(false);
@@ -247,7 +241,11 @@ export default function MatchScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.matchId, goToLogin, router]);
+
+  useFocusEffect(useCallback(() => {
+    void loadMatch();
+  }, [loadMatch]));
 
   async function confirmAttendance(status: AttendanceStatus) {
     if (!match || updatingAttendance) return;
@@ -776,7 +774,6 @@ export default function MatchScreen() {
                       <AppButton
                         variant="outline"
 
-
                         disabled={!volunteerCandidates.length || Boolean(updatingGoalkeeperId)}
                         flex={1}
                         minHeight={48}
@@ -811,7 +808,6 @@ export default function MatchScreen() {
                 {match.canManage && match.status === 'SCHEDULED' ? (
                   <AppButton
                     variant="outline"
-
 
                     onPress={() => router.push({
                       pathname: '/edit-match-player-config',
@@ -1088,7 +1084,6 @@ export default function MatchScreen() {
                     <AppButton
                       variant="outline"
 
-
                       disabled={match.goingCount >= match.maxPlayers}
                       onPress={() => router.push({
                         pathname: '/add-match-guest',
@@ -1111,7 +1106,6 @@ export default function MatchScreen() {
                   <YStack gap="$2">
                     <AppButton
                       variant="outline"
-
 
                       disabled={Boolean(managingRentalId) || match.goingCount >= match.maxPlayers}
                       onPress={openRentalGoalkeeperModal}
@@ -1159,7 +1153,6 @@ export default function MatchScreen() {
                   {match.status === 'CANCELLED' && openSettlements.length ? (
                     <AppButton
                       variant="secondary"
-
 
                       justifyContent="flex-start"
                       onPress={() => setSelectedSettlements(
@@ -1244,7 +1237,6 @@ export default function MatchScreen() {
                         <AppButton
                           variant="outline"
 
-
                           disabled={Boolean(updatingPayment)}
                           onPress={() => void confirmPlayerPayment(attendance.userId)}
                         >
@@ -1293,7 +1285,6 @@ export default function MatchScreen() {
                       <AppButton
                         variant="outline"
 
-
                         disabled={Boolean(updatingPayment)}
                         onPress={() => setBulkResolution('REFUNDED')}
                       >
@@ -1319,7 +1310,6 @@ export default function MatchScreen() {
                   </AppButton>
                   <AppButton
                     variant="destructiveOutline"
-
 
 
                     onPress={() => setManagementAction('cancel-occurrence')}
@@ -1695,7 +1685,6 @@ function ConfirmedAttendanceList({
             <AppButton
               variant="destructiveOutline"
 
-
               disabled={Boolean(updatingGoalkeeperId)}
               minHeight={36}
               onPress={() => onChangeGoalkeeper(attendance)}
@@ -1730,7 +1719,6 @@ function ConfirmedAttendanceList({
             <AppButton
               variant="destructiveOutline"
 
-
               disabled={Boolean(managingGuestId)}
               minHeight={36}
               onPress={() => onRemoveGuest(guest)}
@@ -1755,7 +1743,6 @@ function ConfirmedAttendanceList({
           {canManage ? (
             <AppButton
               variant="destructiveOutline"
-
 
               disabled={Boolean(managingRentalId)}
               minHeight={36}

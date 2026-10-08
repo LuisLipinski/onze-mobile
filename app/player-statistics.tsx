@@ -29,11 +29,7 @@ export default function PlayerStatisticsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useFocusEffect(useCallback(() => {
-    void loadStatistics();
-  }, [params.groupId, params.userId]));
-
-  async function loadStatistics() {
+  const loadStatistics = useCallback(async () => {
     if (!params.groupId || !params.userId) {
       setError('Não foi possível identificar o jogador.');
       setLoading(false);
@@ -58,7 +54,11 @@ export default function PlayerStatisticsScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.groupId, params.userId, router]);
+
+  useFocusEffect(useCallback(() => {
+    void loadStatistics();
+  }, [loadStatistics]));
 
   function goBack() {
     if (router.canGoBack()) router.back();

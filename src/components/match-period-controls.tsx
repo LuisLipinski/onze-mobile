@@ -70,15 +70,16 @@ export function MatchPeriodControls({
   const [addedTimeText, setAddedTimeText] = useState('0');
   const [validationError, setValidationError] = useState<string | null>(null);
   const current = activeMatchPeriod(state);
+  const hasActivePeriod = current != null;
   const upcoming = useMemo(() => nextPeriod(match, state), [match, state]);
   const clock = current ? periodClock(current, nowMs) : null;
 
   useEffect(() => {
     setNowMs(Date.now());
-    if (!current) return;
+    if (!hasActivePeriod) return;
     const interval = setInterval(() => setNowMs(Date.now()), 1_000);
     return () => clearInterval(interval);
-  }, [current?.id, current?.endedAt]);
+  }, [hasActivePeriod, current?.id, current?.endedAt]);
 
   if (!match.periodsEnabled || state.status !== 'IN_PROGRESS'
       || state.phase === 'PENALTY_SHOOTOUT') return null;
