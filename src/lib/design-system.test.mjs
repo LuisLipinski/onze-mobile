@@ -68,9 +68,9 @@ test('protege menus e ações da área reservada pelo sistema operacional', () =
   }
 });
 
-test('usa jogo como termo único nos textos do produto', () => {
+test('usa jogo nos textos do produto, exceto no nome da aba Partida', () => {
   for (const file of productCopyFiles) {
     const source = fs.readFileSync(file, 'utf8');
-    assert.doesNotMatch(source, /\bpartidas?\b/i, file);
+    assert.doesNotMatch(source.replaceAll("'Partida'", "'Jogo'"), /\bpartidas?\b/i, file);
   }
 });

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
-import type { FootballMatch, LiveMatchState, LiveScoreSide, MatchCardType } from '../lib/api';
+import type { FootballMatch, LiveMatchState, LiveScoreSide, MatchCardType, TeamStatisticType } from '../lib/api';
 import {
   activeMatchPeriod,
   formatMatchTimer,
@@ -20,6 +20,8 @@ type Props = {
   onChangeScore: (sideNumber: number, score: number) => void;
   onRegisterGoal: (sideNumber: number) => void;
   onRegisterCard: (sideNumber: number, cardType: MatchCardType) => void;
+  onRegisterStatistic: (sideNumber: number, type: TeamStatisticType) => void;
+  statisticSaving: boolean;
 };
 
 type TeamIdentityProps = {
@@ -52,7 +54,16 @@ type ScoreControlsProps = {
   onChangeScore: Props['onChangeScore'];
   onRegisterGoal: Props['onRegisterGoal'];
   onRegisterCard: Props['onRegisterCard'];
+  onRegisterStatistic: Props['onRegisterStatistic'];
+  statisticSaving: boolean;
 };
+
+const STATISTIC_BUTTONS: { type: TeamStatisticType; icon: string; label: string; accessibilityLabel: string }[] = [
+  { type: 'SHOTS_ON_TARGET', icon: '🎯', label: 'No gol', accessibilityLabel: 'chute no gol' },
+  { type: 'SHOTS', icon: '⚽', label: 'Chute', accessibilityLabel: 'chute' },
+  { type: 'CORNERS', icon: '🚩', label: 'Escant.', accessibilityLabel: 'escanteio' },
+  { type: 'FOULS', icon: '✋', label: 'Falta', accessibilityLabel: 'falta' },
+];
 
 function CardButton({ label, cardType, onPress }: {
   label: string;
@@ -89,7 +100,8 @@ function CardButton({ label, cardType, onPress }: {
   );
 }
 
-function ScoreControls({ label, side, onChangeScore, onRegisterGoal, onRegisterCard }: ScoreControlsProps) {
+function ScoreControls({ label, side, onChangeScore, onRegisterGoal, onRegisterCard,
+  onRegisterStatistic, statisticSaving }: ScoreControlsProps) {
   return (
     <YStack alignItems="center" gap="$2">
       <XStack gap="$2" justifyContent="center">
@@ -133,6 +145,36 @@ function ScoreControls({ label, side, onChangeScore, onRegisterGoal, onRegisterC
         <CardButton label={label} cardType="YELLOW" onPress={() => onRegisterCard(side.sideNumber, 'YELLOW')} />
         <CardButton label={label} cardType="RED" onPress={() => onRegisterCard(side.sideNumber, 'RED')} />
       </XStack>
+      <YStack gap="$2">
+        {[0, 2].map((start) => (
+          <XStack key={start} gap="$2" justifyContent="center">
+            {STATISTIC_BUTTONS.slice(start, start + 2).map((item) => (
+              <Pressable
+                key={item.type}
+                accessibilityRole="button"
+                accessibilityLabel={`Registrar ${item.accessibilityLabel} para ${label}`}
+                accessibilityState={{ disabled: statisticSaving }}
+                disabled={statisticSaving}
+                onPress={() => onRegisterStatistic(side.sideNumber, item.type)}
+                style={({ pressed }) => ({
+                  alignItems: 'center',
+                  backgroundColor: ONZE_COLORS.infoBg,
+                  borderColor: ONZE_COLORS.border,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  height: 48,
+                  justifyContent: 'center',
+                  opacity: statisticSaving ? 0.5 : pressed ? 0.7 : 1,
+                  width: 54,
+                })}
+              >
+                <Text fontSize={17} lineHeight={21}>{item.icon}</Text>
+                <Text color="$onzeInk" fontSize={9} fontWeight="800" numberOfLines={1}>{item.label}</Text>
+              </Pressable>
+            ))}
+          </XStack>
+        ))}
+      </YStack>
     </YStack>
   );
 }
@@ -143,6 +185,8 @@ export function LiveScoreboard({
   onChangeScore,
   onRegisterGoal,
   onRegisterCard,
+  onRegisterStatistic,
+  statisticSaving,
 }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(() => liveMatchElapsedSeconds(state));
   const activePeriod = activeMatchPeriod(state);
@@ -257,6 +301,8 @@ export function LiveScoreboard({
                   onChangeScore={onChangeScore}
                   onRegisterGoal={onRegisterGoal}
                   onRegisterCard={onRegisterCard}
+                  onRegisterStatistic={onRegisterStatistic}
+                  statisticSaving={statisticSaving}
                 />
               </YStack>
               <YStack flex={1}>
@@ -266,6 +312,8 @@ export function LiveScoreboard({
                   onChangeScore={onChangeScore}
                   onRegisterGoal={onRegisterGoal}
                   onRegisterCard={onRegisterCard}
+                  onRegisterStatistic={onRegisterStatistic}
+                  statisticSaving={statisticSaving}
                 />
               </YStack>
             </XStack>
@@ -300,6 +348,8 @@ export function LiveScoreboard({
                     onChangeScore={onChangeScore}
                     onRegisterGoal={onRegisterGoal}
                     onRegisterCard={onRegisterCard}
+                    onRegisterStatistic={onRegisterStatistic}
+                    statisticSaving={statisticSaving}
                   />
                 ) : null}
               </YStack>

@@ -240,6 +240,14 @@ export type LiveScoreSide = {
   name: string;
   imageUrl: string | null;
 };
+export type TeamStatisticType = 'SHOTS' | 'SHOTS_ON_TARGET' | 'CORNERS' | 'FOULS';
+export type TeamStatistics = {
+  sideNumber: number;
+  shots: number;
+  shotsOnTarget: number;
+  corners: number;
+  fouls: number;
+};
 export type LiveMatchState = {
   matchId: string;
   status: MatchStatus;
@@ -249,6 +257,7 @@ export type LiveMatchState = {
   scores: LiveScoreSide[];
   goalEvents: GoalEvent[];
   cardEvents: CardEvent[];
+  teamStatistics: TeamStatistics[];
   phase: LiveMatchPhase;
   periods: MatchPeriod[];
   penaltyShootout: PenaltyShootout | null;
@@ -275,6 +284,7 @@ export type LiveMatchSnapshot = Omit<LiveMatchState, 'canManage'>;
 export type LiveMatchChangeType =
   | 'MATCH_STARTED'
   | 'SCORE_UPDATED'
+  | 'TEAM_STATISTIC_UPDATED'
   | 'GOAL_ADDED'
   | 'CARD_ADDED'
   | 'GOAL_REMOVED'
@@ -1326,6 +1336,22 @@ export function updateLiveMatchScore(
     method: 'PUT',
     headers: authenticatedHeaders(accessToken),
     body: JSON.stringify({ sideNumber, score }),
+    loading: false,
+    timeoutMs: 10_000,
+  });
+}
+
+export function adjustTeamStatistic(
+  accessToken: string,
+  matchId: string,
+  sideNumber: number,
+  type: TeamStatisticType,
+  delta: 1 | -1,
+) {
+  return request<LiveMatchState>(`/api/matches/${matchId}/live/team-statistics`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ sideNumber, type, delta }),
     loading: false,
     timeoutMs: 10_000,
   });

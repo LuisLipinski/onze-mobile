@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, ScrollView } from 'react-native';
+import { AppState, Pressable, ScrollView } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { ONZE_COLORS } from '../src/theme/colors';
@@ -14,12 +14,14 @@ import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { CardEventModal } from '../src/components/card-event-modal';
 import { GoalEventModal } from '../src/components/goal-event-modal';
 import { LiveScoreboard } from '../src/components/live-scoreboard';
+import { LiveMatchDetails } from '../src/components/live-match-details';
 import { GoalTimeline } from '../src/components/goal-timeline';
 import { MatchPeriodControls } from '../src/components/match-period-controls';
 import { PenaltyShootoutPanel } from '../src/components/penalty-shootout-panel';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
+  adjustTeamStatistic,
   confirmPenaltyWinner,
   createCardEvent,
   createGoalEvent,
@@ -35,6 +37,7 @@ import {
   LiveMatchState,
   LiveMatchStreamEvent,
   MatchCardType,
+  TeamStatisticType,
   PenaltyLineupInput,
   recordPenaltyAttempt,
   resetLiveMatch,
@@ -72,6 +75,9 @@ export default function LiveMatchScreen() {
   const [managementAction, setManagementAction] = useState<LiveManagementAction>(null);
   const [managing, setManaging] = useState(false);
   const [scoreSaving, setScoreSaving] = useState(false);
+  const [statisticSaving, setStatisticSaving] = useState(false);
+  const statisticRequestRunningRef = useRef(false);
+  const [selectedTab, setSelectedTab] = useState<'MATCH' | 'DETAILS'>('MATCH');
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [goalTeamNumber, setGoalTeamNumber] = useState<number | null>(null);
   const [scorerAssignmentId, setScorerAssignmentId] = useState<string | null>(null);
@@ -376,6 +382,28 @@ export default function LiveMatchScreen() {
     }
   }
 
+  async function updateStatistic(sideNumber: number, type: TeamStatisticType, delta: 1 | -1) {
+    if (!match || !liveState?.canManage || !canRegisterMatchEvents
+      || scoreSaving || statisticRequestRunningRef.current) return;
+    statisticRequestRunningRef.current = true;
+    setStatisticSaving(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      const updated = await adjustTeamStatistic(token, match.id, sideNumber, type, delta);
+      if (updated.version >= (liveStateRef.current?.version ?? 0)) {
+        liveStateRef.current = updated;
+        setLiveState(updated);
+      }
+    } catch (exception) {
+      setError(getErrorMessage(exception, 'Não foi possível atualizar a estatística do time.'));
+    } finally {
+      statisticRequestRunningRef.current = false;
+      setStatisticSaving(false);
+    }
+  }
+
   async function removeTimelineEvent(kind: TimelineEventKind, eventId: string) {
     if (!match || deletingEventKey || scoreSaving
       || !liveState?.canManage || liveState.status !== 'IN_PROGRESS') return;
@@ -412,7 +440,7 @@ export default function LiveMatchScreen() {
   }
 
   function changeScore(sideNumber: number, delta: number) {
-    if (!match || !liveState || !canRegisterMatchEvents) return;
+    if (!match || !liveState || !canRegisterMatchEvents || statisticSaving) return;
     const displayedScore = liveState.scores.find((side) => side.sideNumber === sideNumber)?.score ?? 0;
     const currentScore = desiredScoresRef.current.get(sideNumber) ?? displayedScore;
     const nextScore = Math.max(0, currentScore + delta);
@@ -584,12 +612,35 @@ export default function LiveMatchScreen() {
 
           {match && liveState ? (
             <>
+              <XStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$5" borderWidth={1} gap="$2" padding="$1">
+                {(['MATCH', 'DETAILS'] as const).map((tab) => (
+                  <Pressable
+                    key={tab}
+                    accessibilityRole="tab"
+                    accessibilityLabel={tab === 'MATCH' ? 'Partida' : 'Detalhes do jogo'}
+                    accessibilityState={{ selected: selectedTab === tab }}
+                    onPress={() => setSelectedTab(tab)}
+                    style={{ flex: 1 }}
+                  >
+                    <YStack alignItems="center" backgroundColor={selectedTab === tab ? '$onzeGreen' : '$onzeSurface'} borderRadius="$4" paddingVertical="$3">
+                      <Text color={selectedTab === tab ? '$onzeSurface' : '$onzeInk'} fontWeight="900">
+                        {tab === 'MATCH' ? 'Partida' : 'Detalhes do jogo'}
+                      </Text>
+                    </YStack>
+                  </Pressable>
+                ))}
+              </XStack>
+
+              {selectedTab === 'MATCH' ? (
+                <>
               <LiveScoreboard
                 match={match}
                 state={liveState}
                 onChangeScore={changeScore}
                 onRegisterGoal={openGoalModal}
                 onRegisterCard={openCardModal}
+                onRegisterStatistic={(sideNumber, type) => void updateStatistic(sideNumber, type, 1)}
+                statisticSaving={statisticSaving}
               />
 
               <MatchPeriodControls
@@ -660,6 +711,15 @@ export default function LiveMatchScreen() {
                   </AppButton>
                 </YStack>
               ) : null}
+                </>
+              ) : (
+                <LiveMatchDetails
+                  match={match}
+                  state={liveState}
+                  saving={statisticSaving}
+                  onCorrectStatistic={(sideNumber, type) => void updateStatistic(sideNumber, type, -1)}
+                />
+              )}
             </>
           ) : (
             <AppButton variant="primary" onPress={() => void loadLiveMatch()}>
