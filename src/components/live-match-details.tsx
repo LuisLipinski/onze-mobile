@@ -60,8 +60,10 @@ function StatisticValue({ value, sideNumber, label, type, canCorrect, saving, on
   );
 }
 
-export function LiveMatchDetails({ match, state, saving, onCorrectStatistic }: Props) {
-  const sides = [1, 2] as const;
+function TeamComparison({ match, state, saving, onCorrectStatistic, teamNumbers, title }:
+    Props & { teamNumbers: readonly [number, number | null]; title: string }) {
+  const sides = [teamNumbers[0], teamNumbers[1] ?? 0] as const;
+  const display = (number: number, value: string) => number === 0 ? '—' : value;
   const secondYellows = secondYellowCardEventIds(state.cardEvents ?? []);
   const stats = sides.map((number) => state.teamStatistics?.find((item) => item.sideNumber === number));
   const score = sides.map((number) => state.scores.find((side) => side.sideNumber === number));
@@ -74,40 +76,51 @@ export function LiveMatchDetails({ match, state, saving, onCorrectStatistic }: P
     const shootout = state.penaltyShootout;
     return number === 1
       ? `${shootout?.teamOneScore ?? 0}/${shootout?.teamOneAttempts ?? 0}`
-      : `${shootout?.teamTwoScore ?? 0}/${shootout?.teamTwoAttempts ?? 0}`;
+      : number === 2
+        ? `${shootout?.teamTwoScore ?? 0}/${shootout?.teamTwoAttempts ?? 0}`
+        : '—';
   };
   const canManage = state.canManage && state.status === 'IN_PROGRESS'
     && (state.phase === 'LEGACY' || state.periods?.some((period) => period.endedAt == null));
   const rows: Row[] = [
-    { label: 'Gols', values: [String(score[0]?.score ?? 0), String(score[1]?.score ?? 0)] },
+    { label: 'Gols', values: sides.map((number, index) => display(number,
+      String(score[index]?.score ?? 0))) as [string, string] },
     { label: 'Chutes no gol', type: 'SHOTS_ON_TARGET',
-      values: stats.map((item) => String(item?.shotsOnTarget ?? 0)) as [string, string],
+      values: stats.map((item, index) => display(sides[index],
+        String(item?.shotsOnTarget ?? 0))) as [string, string],
       canCorrect: stats.map((item) => canManage && (item?.shotsOnTarget ?? 0) > 0) as [boolean, boolean] },
     { label: 'Chutes', type: 'SHOTS',
-      values: stats.map((item) => String(item?.shots ?? 0)) as [string, string],
+      values: stats.map((item, index) => display(sides[index],
+        String(item?.shots ?? 0))) as [string, string],
       canCorrect: stats.map((item) => canManage && (item?.shots ?? 0) > (item?.shotsOnTarget ?? 0)) as [boolean, boolean] },
     { label: 'Escanteios', type: 'CORNERS',
-      values: stats.map((item) => String(item?.corners ?? 0)) as [string, string],
+      values: stats.map((item, index) => display(sides[index],
+        String(item?.corners ?? 0))) as [string, string],
       canCorrect: stats.map((item) => canManage && (item?.corners ?? 0) > 0) as [boolean, boolean] },
     { label: 'Faltas', type: 'FOULS',
-      values: stats.map((item) => String(item?.fouls ?? 0)) as [string, string],
+      values: stats.map((item, index) => display(sides[index],
+        String(item?.fouls ?? 0))) as [string, string],
       canCorrect: stats.map((item) => canManage && (item?.fouls ?? 0) > 0) as [boolean, boolean] },
-    { label: 'Cartões amarelos', values: sides.map((number) => String(cardCount(number, 'YELLOW'))) as [string, string] },
-    { label: 'Cartões vermelhos', values: sides.map((number) => String(cardCount(number, 'RED'))) as [string, string] },
-    { label: 'Gols de pênalti', values: sides.map((number) => String(penaltyGoals(number))) as [string, string] },
-    { label: 'Disputa (gols/tent.)', values: sides.map(penaltyResult) as [string, string] },
+    { label: 'Cartões amarelos', values: sides.map((number) => display(number,
+      String(cardCount(number, 'YELLOW')))) as [string, string] },
+    { label: 'Cartões vermelhos', values: sides.map((number) => display(number,
+      String(cardCount(number, 'RED')))) as [string, string] },
+    { label: 'Gols de pênalti', values: sides.map((number) => display(number,
+      String(penaltyGoals(number)))) as [string, string] },
+    { label: 'Disputa (gols/tent.)', values: sides.map((number) => display(number,
+      penaltyResult(number))) as [string, string] },
   ];
 
   return (
     <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} overflow="hidden">
-      <Text color="$onzeInk" fontSize={20} fontWeight="900" padding="$4">Detalhes do jogo</Text>
+      <Text color="$onzeInk" fontSize={20} fontWeight="900" padding="$4">{title}</Text>
       <XStack alignItems="center" backgroundColor="$onzeSuccessBg" paddingHorizontal="$3" paddingVertical="$3">
         <Text color="$onzeGreen" flex={1} fontWeight="900" numberOfLines={2} textAlign="center">
-          {liveScoreSideLabel(match, 1, score[0]?.name)}
+          {liveScoreSideLabel(match, sides[0], score[0]?.name)}
         </Text>
         <Text color="$onzeMuted" fontSize={11} fontWeight="800" textAlign="center" width={110}>ESTATÍSTICA</Text>
         <Text color="$onzeGreen" flex={1} fontWeight="900" numberOfLines={2} textAlign="center">
-          {liveScoreSideLabel(match, 2, score[1]?.name)}
+          {sides[1] ? liveScoreSideLabel(match, sides[1], score[1]?.name) : '—'}
         </Text>
       </XStack>
       {rows.map((row, index) => (
@@ -119,18 +132,35 @@ export function LiveMatchDetails({ match, state, saving, onCorrectStatistic }: P
           paddingHorizontal="$2"
           paddingVertical="$2"
         >
-          <StatisticValue value={row.values[0]} sideNumber={1} label={row.label} type={row.type}
+          <StatisticValue value={row.values[0]} sideNumber={sides[0]} label={row.label} type={row.type}
             canCorrect={row.canCorrect?.[0]} saving={saving} onCorrect={onCorrectStatistic} />
           <Text color="$onzeMuted" flex={1} fontSize={13} fontWeight="800" textAlign="center">
             {row.label}
           </Text>
-          <StatisticValue value={row.values[1]} sideNumber={2} label={row.label} type={row.type}
+          <StatisticValue value={row.values[1]} sideNumber={sides[1]} label={row.label} type={row.type}
             canCorrect={row.canCorrect?.[1]} saving={saving} onCorrect={onCorrectStatistic} />
         </XStack>
       ))}
       <Text color="$onzeMuted" fontSize={11} padding="$3" textAlign="center">
         Chutes no gol já estão incluídos no total de chutes. Dois amarelos contam como expulsão.
       </Text>
+    </YStack>
+  );
+}
+
+export function LiveMatchDetails(props: Props) {
+  const teams = props.state.scores;
+  if (teams.length === 0) return null;
+  return (
+    <YStack gap="$4">
+      {Array.from({ length: Math.ceil(teams.length / 2) }, (_, index) => (
+        <TeamComparison
+          key={teams[index * 2].sideNumber}
+          {...props}
+          teamNumbers={[teams[index * 2].sideNumber, teams[index * 2 + 1]?.sideNumber ?? null]}
+          title={index === 0 ? 'Detalhes do jogo' : 'Mais times'}
+        />
+      ))}
     </YStack>
   );
 }
