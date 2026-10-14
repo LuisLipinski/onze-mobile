@@ -112,6 +112,9 @@ export function GoalEventModal(props: Props) {
                 <Text color="$onzeMuted" lineHeight={20}>
                   O tempo do jogo será salvo automaticamente ao confirmar.
                 </Text>
+                <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                  O gol comum já soma um chute no gol. No gol contra, nenhum chute é somado.
+                </Text>
               </YStack>
 
               <YStack gap="$2">
