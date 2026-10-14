@@ -11,6 +11,8 @@ type Props = {
   state: LiveMatchState;
   saving: boolean;
   onCorrectStatistic: (sideNumber: number, type: TeamStatisticType) => void;
+  onRemoveFoul: (eventId: string) => void;
+  removingFoul: boolean;
 };
 
 type Row = {
@@ -61,7 +63,8 @@ function StatisticValue({ value, sideNumber, label, type, canCorrect, saving, on
   );
 }
 
-function TeamComparison({ match, state, saving, onCorrectStatistic, teamNumbers, title }:
+function TeamComparison({ match, state, saving, onCorrectStatistic, onRemoveFoul, removingFoul,
+  teamNumbers, title }:
     Props & { teamNumbers: readonly [number, number | null]; title: string }) {
   const sides = [teamNumbers[0], teamNumbers[1] ?? 0] as const;
   const display = (number: number, value: string) => number === 0 ? '—' : value;
@@ -105,9 +108,11 @@ function TeamComparison({ match, state, saving, onCorrectStatistic, teamNumbers,
       values: stats.map((item, index) => display(sides[index],
         String(item?.corners ?? 0))) as [string, string],
       canCorrect: stats.map((item) => canManage && (item?.corners ?? 0) > 0) as [boolean, boolean] },
-    { label: 'Faltas', type: 'FOULS',
+    { label: 'Faltas cometidas', type: 'FOULS',
       values: stats.map((item, index) => display(sides[index],
         String(item?.fouls ?? 0))) as [string, string] },
+    { label: 'Faltas sofridas', values: sides.map((number) => display(number,
+      String(fouls.filter((item) => item.victimSideNumber === number).length))) as [string, string] },
     { label: 'Pênaltis cometidos', values: sides.map((number) => display(number,
       String(foulCount(number, 'PENALTY_COMMITTED')))) as [string, string] },
     { label: 'Pênaltis a favor', values: sides.map((number) => display(number,
@@ -196,6 +201,16 @@ function TeamComparison({ match, state, saving, onCorrectStatistic, teamNumbers,
             <Text color="$onzeInk" flex={1} numberOfLines={1}>{item.name}</Text>
             <Text color="$onzeMuted">{item.fouls} faltas · {item.penalties} pênaltis</Text>
           </XStack>)}
+          {canManage ? teamFouls.filter((item) => !item.penalty).map((item) => <XStack key={item.id}
+            alignItems="center" gap="$2" justifyContent="space-between">
+            <Text color="$onzeMuted" flex={1} fontSize={11} numberOfLines={2}>
+              {item.offenderDisplayName} em {item.victimDisplayName ?? 'adversário'}
+            </Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Remover falta de ${item.offenderDisplayName}`}
+              disabled={removingFoul} onPress={() => onRemoveFoul(item.id)}>
+              <Text color="$onzeDanger" fontSize={11} fontWeight="800">Remover</Text>
+            </Pressable>
+          </XStack>) : null}
         </YStack>;
       })}
     </YStack>

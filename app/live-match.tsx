@@ -102,7 +102,6 @@ export default function LiveMatchScreen() {
   const [foulModalVisible, setFoulModalVisible] = useState(false);
   const [foulStage, setFoulStage] = useState<'AWARD' | 'TAKER' | 'RESULT'>('AWARD');
   const [foulPenalty, setFoulPenalty] = useState(false);
-  const [foulTeamNumber, setFoulTeamNumber] = useState<number | null>(null);
   const [foulVictimTeamNumber, setFoulVictimTeamNumber] = useState<number | null>(null);
   const [foulOffenderId, setFoulOffenderId] = useState<string | null>(null);
   const [foulVictimId, setFoulVictimId] = useState<string | null>(null);
@@ -411,15 +410,14 @@ export default function LiveMatchScreen() {
   function openFoulModal(sideNumber: number, penalty: boolean) {
     if (!canRegisterMatchEvents || savingFoul) return;
     const team = matchTeams?.teams.find((item) => item.teamNumber === sideNumber);
-    if (!team?.assignments.length || (penalty && !matchTeams?.teams.some(
+    if (!team?.assignments.length || !matchTeams?.teams.some(
       (item) => item.teamNumber !== sideNumber && item.assignments.length > 0,
-    ))) {
+    )) {
       setError('Adicione jogadores aos dois times antes de registrar a falta ou o pênalti.');
       return;
     }
     setFoulPenalty(penalty);
-    setFoulTeamNumber(sideNumber);
-    setFoulVictimTeamNumber(null);
+    setFoulVictimTeamNumber(sideNumber);
     setFoulOffenderId(null);
     setFoulVictimId(null);
     setFoulTakerId(null);
@@ -433,7 +431,6 @@ export default function LiveMatchScreen() {
     const event = liveState?.foulEvents?.find((item) => item.id === eventId);
     if (!event?.penalty || event.scored != null || !canRegisterMatchEvents) return;
     setFoulPenalty(true);
-    setFoulTeamNumber(event.offenderSideNumber);
     setFoulVictimTeamNumber(event.victimSideNumber);
     setFoulOffenderId(event.offenderAssignmentId);
     setFoulVictimId(event.victimAssignmentId);
@@ -445,7 +442,7 @@ export default function LiveMatchScreen() {
   }
 
   async function saveFoulAward() {
-    if (!match || !foulOffenderId || (foulPenalty && !foulVictimId)
+    if (!match || !foulOffenderId || !foulVictimId
       || foulRequestRunningRef.current || scoreSaving) return;
     foulRequestRunningRef.current = true;
     setSavingFoul(true);
@@ -865,6 +862,8 @@ export default function LiveMatchScreen() {
                   state={liveState}
                   saving={statisticSaving}
                   onCorrectStatistic={(sideNumber, type) => void updateStatistic(sideNumber, type, -1)}
+                  onRemoveFoul={(eventId) => confirmTimelineEventDeletion('FOUL', eventId)}
+                  removingFoul={deletingEventKey != null || scoreSaving}
                 />
               )}
             </>
@@ -971,7 +970,6 @@ export default function LiveMatchScreen() {
       <FoulEventModal
         visible={foulModalVisible}
         teams={matchTeams?.teams.filter((team) => team.assignments.length > 0) ?? []}
-        offenderTeamNumber={foulTeamNumber}
         victimTeamNumber={foulVictimTeamNumber}
         penalty={foulPenalty}
         stage={foulStage}
@@ -982,10 +980,7 @@ export default function LiveMatchScreen() {
         sentOffAssignmentIds={sentOffAssignmentIds}
         saving={savingFoul}
         onSelectOffender={setFoulOffenderId}
-        onSelectVictim={(teamNumber, playerId) => {
-          setFoulVictimTeamNumber(teamNumber);
-          setFoulVictimId(playerId);
-        }}
+        onSelectVictim={setFoulVictimId}
         onSelectTaker={setFoulTakerId}
         onSelectResult={setFoulScored}
         onAward={() => void saveFoulAward()}

@@ -9,7 +9,6 @@ import { AppButton } from './app-button';
 type Props = {
   visible: boolean;
   teams: GeneratedTeam[];
-  offenderTeamNumber: number | null;
   victimTeamNumber: number | null;
   penalty: boolean;
   stage: 'AWARD' | 'TAKER' | 'RESULT';
@@ -20,7 +19,7 @@ type Props = {
   sentOffAssignmentIds: ReadonlySet<string>;
   saving: boolean;
   onSelectOffender: (id: string) => void;
-  onSelectVictim: (teamNumber: number, id: string) => void;
+  onSelectVictim: (id: string) => void;
   onSelectTaker: (id: string) => void;
   onSelectResult: (scored: boolean) => void;
   onAward: () => void;
@@ -50,9 +49,8 @@ function PlayerChoice({ name, selected, disabled, onPress }: {
 
 export function FoulEventModal(props: Props) {
   const insets = useSafeAreaInsets();
-  const offenderTeam = props.teams.find((team) => team.teamNumber === props.offenderTeamNumber);
   const victimTeam = props.teams.find((team) => team.teamNumber === props.victimTeamNumber);
-  const opponents = props.teams.filter((team) => team.teamNumber !== props.offenderTeamNumber);
+  const opponents = props.teams.filter((team) => team.teamNumber !== props.victimTeamNumber);
   const title = props.stage === 'AWARD'
     ? props.penalty ? 'Marcar pênalti' : 'Registrar falta'
     : props.stage === 'TAKER' ? 'Quem vai cobrar?' : 'Foi gol?';
@@ -66,31 +64,33 @@ export function FoulEventModal(props: Props) {
               <Text color="$onzeInk" fontSize={22} fontWeight="900">{title}</Text>
               <Text color="$onzeMuted" fontSize={13}>
                 {props.stage === 'AWARD'
-                  ? `Falta cometida por ${offenderTeam?.name ?? 'este time'}.`
+                  ? `${victimTeam?.name ?? 'Este time'} sofreu ${props.penalty ? 'o pênalti' : 'a falta'}.`
                   : `Cobrança para ${victimTeam?.name ?? 'o time que sofreu a falta'}.`}
               </Text>
             </YStack>
             {props.stage === 'AWARD' ? <>
               <YStack gap="$2">
-                <Text color="$onzeInk" fontWeight="900">Quem fez a falta?</Text>
+                <Text color="$onzeInk" fontWeight="900">
+                  {props.penalty ? 'Quem sofreu o pênalti?' : 'Quem sofreu a falta?'}
+                </Text>
                 <XStack flexWrap="wrap" gap="$2">
-                  {offenderTeam?.assignments.map((player) => <PlayerChoice key={player.id}
-                    name={player.displayName} selected={props.offenderId === player.id}
+                  {victimTeam?.assignments.map((player) => <PlayerChoice key={player.id}
+                    name={player.displayName} selected={props.victimId === player.id}
                     disabled={props.sentOffAssignmentIds.has(player.id)}
-                    onPress={() => props.onSelectOffender(player.id)} />)}
+                    onPress={() => props.onSelectVictim(player.id)} />)}
                 </XStack>
               </YStack>
               <YStack gap="$2">
                 <Text color="$onzeInk" fontWeight="900">
-                  {props.penalty ? 'Quem sofreu o pênalti?' : 'Quem sofreu a falta? (opcional)'}
+                  {props.penalty ? 'Quem cometeu o pênalti?' : 'Quem fez a falta?'}
                 </Text>
                 {opponents.map((team) => <YStack key={team.teamNumber} gap="$2">
                   {opponents.length > 1 ? <Text color="$onzeGreen" fontWeight="800">{team.name}</Text> : null}
                   <XStack flexWrap="wrap" gap="$2">
                     {team.assignments.map((player) => <PlayerChoice key={player.id}
-                      name={player.displayName} selected={props.victimId === player.id}
+                      name={player.displayName} selected={props.offenderId === player.id}
                       disabled={props.sentOffAssignmentIds.has(player.id)}
-                      onPress={() => props.onSelectVictim(team.teamNumber, player.id)} />)}
+                      onPress={() => props.onSelectOffender(player.id)} />)}
                   </XStack>
                 </YStack>)}
               </YStack>
@@ -126,7 +126,7 @@ export function FoulEventModal(props: Props) {
                 {props.stage === 'AWARD' ? 'Cancelar' : 'Depois'}
               </AppButton>
               <AppButton variant="primary" flex={1} disabled={props.saving || (
-                props.stage === 'AWARD' ? !props.offenderId || (props.penalty && !props.victimId)
+                props.stage === 'AWARD' ? !props.offenderId || !props.victimId
                   : props.stage === 'TAKER' ? !props.takerId : props.scored == null
               )} onPress={props.stage === 'AWARD' ? props.onAward
                 : props.stage === 'TAKER' ? props.onContinue : props.onResolve}>

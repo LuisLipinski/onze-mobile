@@ -284,7 +284,7 @@ export default function GroupStatisticsScreen() {
                         venue={match.venue}
                         teams={match.teams}
                         detail={`${match.registeredGoals} gols · ${match.teams.map((team) =>
-                          `${team.name}: ${team.foulsCommitted ?? 0} faltas, ${team.penaltiesWon ?? 0} pênaltis a favor, ${team.penaltiesMissed ?? 0} perdidos`).join(' · ')}`}
+                          `${team.name}: ${team.foulsCommitted ?? 0} faltas feitas, ${team.foulsSuffered ?? 0} sofridas, ${team.penaltiesWon ?? 0} pênaltis a favor, ${team.penaltiesMissed ?? 0} perdidos`).join(' · ')}`}
                         onPress={() => router.push({
                           pathname: '/live-match',
                           params: { matchId: match.matchId },
