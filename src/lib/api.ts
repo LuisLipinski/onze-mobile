@@ -247,6 +247,15 @@ export type TeamStatistics = {
   shotsOnTarget: number;
   corners: number;
   fouls: number;
+  goalShots?: number;
+};
+export type ShotEvent = {
+  id: string;
+  sideNumber: number;
+  playerAssignmentId: string;
+  playerDisplayName: string;
+  onTarget: boolean;
+  createdAt: string;
 };
 export type LiveMatchState = {
   matchId: string;
@@ -258,6 +267,7 @@ export type LiveMatchState = {
   goalEvents: GoalEvent[];
   cardEvents: CardEvent[];
   teamStatistics: TeamStatistics[];
+  shotEvents?: ShotEvent[];
   phase: LiveMatchPhase;
   periods: MatchPeriod[];
   penaltyShootout: PenaltyShootout | null;
@@ -320,6 +330,8 @@ export type GoalEvent = {
   assistParticipantId: string | null;
   assistDisplayName: string | null;
   penalty: boolean;
+  ownGoal?: boolean;
+  shotRecorded?: boolean;
   elapsedSeconds: number;
   periodType: MatchPeriodType | null;
   periodNumber: number | null;
@@ -1347,11 +1359,12 @@ export function adjustTeamStatistic(
   sideNumber: number,
   type: TeamStatisticType,
   delta: 1 | -1,
+  playerAssignmentId?: string,
 ) {
   return request<LiveMatchState>(`/api/matches/${matchId}/live/team-statistics`, {
     method: 'POST',
     headers: authenticatedHeaders(accessToken),
-    body: JSON.stringify({ sideNumber, type, delta }),
+    body: JSON.stringify({ sideNumber, type, delta, playerAssignmentId }),
     loading: false,
     timeoutMs: 10_000,
   });
@@ -1363,11 +1376,13 @@ export function createGoalEvent(
   scorerAssignmentId: string,
   assistAssignmentId: string | null,
   penalty: boolean,
+  sideNumber: number,
+  ownGoal: boolean,
 ) {
   return request<CreateGoalEventResponse>(`/api/matches/${matchId}/live/goals`, {
     method: 'POST',
     headers: authenticatedHeaders(accessToken),
-    body: JSON.stringify({ scorerAssignmentId, assistAssignmentId, penalty }),
+    body: JSON.stringify({ scorerAssignmentId, assistAssignmentId, penalty, sideNumber, ownGoal }),
     loading: false,
     timeoutMs: 10_000,
   });

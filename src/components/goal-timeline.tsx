@@ -61,6 +61,9 @@ function GoalDetails({ event, align, deletionDisabled, onDelete }: {
       {event.penalty ? (
         <Text color="$onzeGreen" fontSize={11} fontWeight="800">PÊNALTI</Text>
       ) : null}
+      {event.ownGoal ? (
+        <Text color="$onzeDanger" fontSize={11} fontWeight="800">GOL CONTRA</Text>
+      ) : null}
       <DeleteEventButton align={align} disabled={deletionDisabled} onPress={onDelete} />
     </YStack>
   );

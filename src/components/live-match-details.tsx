@@ -2,6 +2,7 @@ import { Pressable } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import type { FootballMatch, LiveMatchState, TeamStatisticType } from '../lib/api';
+import { playerShotTotals } from '../lib/player-shots';
 import { liveScoreSideLabel, secondYellowCardEventIds } from '../lib/live-match';
 import { ONZE_COLORS } from '../theme/colors';
 
@@ -88,7 +89,8 @@ function TeamComparison({ match, state, saving, onCorrectStatistic, teamNumbers,
     { label: 'Chutes no gol', type: 'SHOTS_ON_TARGET',
       values: stats.map((item, index) => display(sides[index],
         String(item?.shotsOnTarget ?? 0))) as [string, string],
-      canCorrect: stats.map((item) => canManage && (item?.shotsOnTarget ?? 0) > 0) as [boolean, boolean] },
+      canCorrect: stats.map((item) => canManage
+        && (item?.shotsOnTarget ?? 0) > (item?.goalShots ?? 0)) as [boolean, boolean] },
     { label: 'Chutes', type: 'SHOTS',
       values: stats.map((item, index) => display(sides[index],
         String(item?.shots ?? 0))) as [string, string],
@@ -107,6 +109,9 @@ function TeamComparison({ match, state, saving, onCorrectStatistic, teamNumbers,
       String(cardCount(number, 'RED')))) as [string, string] },
     { label: 'Gols de pênalti', values: sides.map((number) => display(number,
       String(penaltyGoals(number)))) as [string, string] },
+    { label: 'Gols contra a favor', values: sides.map((number) => display(number,
+      String((state.goalEvents ?? []).filter((goal) => goal.sideNumber === number && goal.ownGoal).length)
+    )) as [string, string] },
     { label: 'Disputa (gols/tent.)', values: sides.map((number) => display(number,
       penaltyResult(number))) as [string, string] },
   ];
@@ -144,6 +149,24 @@ function TeamComparison({ match, state, saving, onCorrectStatistic, teamNumbers,
       <Text color="$onzeMuted" fontSize={11} padding="$3" textAlign="center">
         Chutes no gol já estão incluídos no total de chutes. Dois amarelos contam como expulsão.
       </Text>
+      {sides.filter((number) => number > 0).map((number) => {
+        const players = playerShotTotals(state.shotEvents ?? [], state.goalEvents ?? [], number);
+        if (players.length === 0) return null;
+        const team = state.scores.find((side) => side.sideNumber === number);
+        return (
+          <YStack key={number} borderTopColor="$onzeBorder" borderTopWidth={1} gap="$2" padding="$3">
+            <Text color="$onzeInk" fontWeight="900">
+              Chutes por jogador · {liveScoreSideLabel(match, number, team?.name)}
+            </Text>
+            {players.map((player) => (
+              <XStack key={player.assignmentId} justifyContent="space-between" gap="$2">
+                <Text color="$onzeInk" flex={1} numberOfLines={1}>{player.name}</Text>
+                <Text color="$onzeMuted">{player.onTarget} no gol / {player.shots} chutes</Text>
+              </XStack>
+            ))}
+          </YStack>
+        );
+      })}
     </YStack>
   );
 }
