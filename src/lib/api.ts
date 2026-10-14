@@ -81,6 +81,13 @@ export type StatisticsTotals = {
   losses: number;
   goals: number;
   assists: number;
+  foulsCommitted: number;
+  foulsSuffered: number;
+  penaltiesCommitted: number;
+  penaltiesWon: number;
+  penaltiesTaken: number;
+  penaltiesScored: number;
+  penaltiesMissed: number;
 };
 
 export type StatisticsPlayer = {
@@ -104,6 +111,13 @@ export type StatisticsRankings = {
   assists: StatisticsRankingEntry[];
   gamesPlayed: StatisticsRankingEntry[];
   wins: StatisticsRankingEntry[];
+  foulsCommitted: StatisticsRankingEntry[];
+  foulsSuffered: StatisticsRankingEntry[];
+  penaltiesCommitted: StatisticsRankingEntry[];
+  penaltiesWon: StatisticsRankingEntry[];
+  penaltiesTaken: StatisticsRankingEntry[];
+  penaltiesScored: StatisticsRankingEntry[];
+  penaltiesMissed: StatisticsRankingEntry[];
 };
 
 export type StatisticsTeam = {
@@ -111,6 +125,11 @@ export type StatisticsTeam = {
   name: string;
   imageUrl: string | null;
   score: number;
+  foulsCommitted: number;
+  penaltiesCommitted: number;
+  penaltiesWon: number;
+  penaltiesScored: number;
+  penaltiesMissed: number;
 };
 
 export type GroupMatchHistory = {
@@ -137,6 +156,13 @@ export type PlayerMatchHistory = {
   result: PlayerMatchResult;
   goals: number;
   assists: number;
+  foulsCommitted: number;
+  foulsSuffered: number;
+  penaltiesCommitted: number;
+  penaltiesWon: number;
+  penaltiesTaken: number;
+  penaltiesScored: number;
+  penaltiesMissed: number;
   teams: StatisticsTeam[];
 };
 
@@ -257,6 +283,25 @@ export type ShotEvent = {
   onTarget: boolean;
   createdAt: string;
 };
+export type FoulEvent = {
+  id: string;
+  offenderSideNumber: number;
+  offenderAssignmentId: string;
+  offenderDisplayName: string;
+  victimSideNumber: number | null;
+  victimAssignmentId: string | null;
+  victimDisplayName: string | null;
+  penalty: boolean;
+  takerAssignmentId: string | null;
+  takerDisplayName: string | null;
+  scored: boolean | null;
+  goalEventId: string | null;
+  elapsedSeconds: number;
+  periodType: MatchPeriodType | null;
+  periodNumber: number | null;
+  periodElapsedSeconds: number | null;
+  createdAt: string;
+};
 export type LiveMatchState = {
   matchId: string;
   status: MatchStatus;
@@ -268,6 +313,7 @@ export type LiveMatchState = {
   cardEvents: CardEvent[];
   teamStatistics: TeamStatistics[];
   shotEvents?: ShotEvent[];
+  foulEvents?: FoulEvent[];
   phase: LiveMatchPhase;
   periods: MatchPeriod[];
   penaltyShootout: PenaltyShootout | null;
@@ -295,6 +341,9 @@ export type LiveMatchChangeType =
   | 'MATCH_STARTED'
   | 'SCORE_UPDATED'
   | 'TEAM_STATISTIC_UPDATED'
+  | 'FOUL_ADDED'
+  | 'FOUL_REMOVED'
+  | 'PENALTY_RESOLVED'
   | 'GOAL_ADDED'
   | 'CARD_ADDED'
   | 'GOAL_REMOVED'
@@ -1367,6 +1416,31 @@ export function adjustTeamStatistic(
     body: JSON.stringify({ sideNumber, type, delta, playerAssignmentId }),
     loading: false,
     timeoutMs: 10_000,
+  });
+}
+
+export function createFoulEvent(accessToken: string, matchId: string,
+  offenderAssignmentId: string, victimAssignmentId: string | null, penalty: boolean) {
+  return request<LiveMatchState>(`/api/matches/${matchId}/live/fouls`, {
+    method: 'POST', headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ offenderAssignmentId, victimAssignmentId, penalty }),
+    loading: false, timeoutMs: 10_000,
+  });
+}
+
+export function resolveMatchPenalty(accessToken: string, matchId: string, eventId: string,
+  takerAssignmentId: string, scored: boolean) {
+  return request<LiveMatchState>(`/api/matches/${matchId}/live/fouls/${eventId}/resolve`, {
+    method: 'POST', headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ takerAssignmentId, scored }),
+    loading: false, timeoutMs: 10_000,
+  });
+}
+
+export function deleteFoulEvent(accessToken: string, matchId: string, eventId: string) {
+  return request<LiveMatchState>(`/api/matches/${matchId}/live/fouls/${eventId}`, {
+    method: 'DELETE', headers: authenticatedHeaders(accessToken),
+    loading: false, timeoutMs: 10_000,
   });
 }
 

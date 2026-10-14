@@ -21,6 +21,7 @@ type Props = {
   onRegisterGoal: (sideNumber: number) => void;
   onRegisterCard: (sideNumber: number, cardType: MatchCardType) => void;
   onRegisterStatistic: (sideNumber: number, type: TeamStatisticType) => void;
+  onRegisterPenalty: (sideNumber: number) => void;
   statisticSaving: boolean;
 };
 
@@ -55,6 +56,7 @@ type ScoreControlsProps = {
   onRegisterGoal: Props['onRegisterGoal'];
   onRegisterCard: Props['onRegisterCard'];
   onRegisterStatistic: Props['onRegisterStatistic'];
+  onRegisterPenalty: Props['onRegisterPenalty'];
   statisticSaving: boolean;
 };
 
@@ -64,6 +66,8 @@ const STATISTIC_BUTTONS: { type: TeamStatisticType; icon: string; label: string;
   { type: 'CORNERS', icon: '🚩', label: 'Escant.', accessibilityLabel: 'escanteio' },
   { type: 'FOULS', icon: '✋', label: 'Falta', accessibilityLabel: 'falta' },
 ];
+const STATISTIC_ROWS = [STATISTIC_BUTTONS.slice(0, 2), STATISTIC_BUTTONS.slice(2, 3),
+  [...STATISTIC_BUTTONS.slice(3), { type: 'PENALTY' as const, icon: '🥅', label: 'Pênalti', accessibilityLabel: 'pênalti' }]];
 
 function CardButton({ label, cardType, onPress }: {
   label: string;
@@ -101,7 +105,7 @@ function CardButton({ label, cardType, onPress }: {
 }
 
 function ScoreControls({ label, side, onChangeScore, onRegisterGoal, onRegisterCard,
-  onRegisterStatistic, statisticSaving }: ScoreControlsProps) {
+  onRegisterStatistic, onRegisterPenalty, statisticSaving }: ScoreControlsProps) {
   return (
     <YStack alignItems="center" gap="$2">
       <XStack gap="$2" justifyContent="center">
@@ -146,16 +150,18 @@ function ScoreControls({ label, side, onChangeScore, onRegisterGoal, onRegisterC
         <CardButton label={label} cardType="RED" onPress={() => onRegisterCard(side.sideNumber, 'RED')} />
       </XStack>
       <YStack gap="$2">
-        {[0, 2].map((start) => (
-          <XStack key={start} gap="$2" justifyContent="center">
-            {STATISTIC_BUTTONS.slice(start, start + 2).map((item) => (
+        {STATISTIC_ROWS.map((row, rowIndex) => (
+          <XStack key={rowIndex} gap="$2" justifyContent="center">
+            {row.map((item) => (
               <Pressable
                 key={item.type}
                 accessibilityRole="button"
                 accessibilityLabel={`Registrar ${item.accessibilityLabel} para ${label}`}
                 accessibilityState={{ disabled: statisticSaving }}
                 disabled={statisticSaving}
-                onPress={() => onRegisterStatistic(side.sideNumber, item.type)}
+                onPress={() => item.type === 'PENALTY'
+                  ? onRegisterPenalty(side.sideNumber)
+                  : onRegisterStatistic(side.sideNumber, item.type)}
                 style={({ pressed }) => ({
                   alignItems: 'center',
                   backgroundColor: ONZE_COLORS.infoBg,
@@ -186,6 +192,7 @@ export function LiveScoreboard({
   onRegisterGoal,
   onRegisterCard,
   onRegisterStatistic,
+  onRegisterPenalty,
   statisticSaving,
 }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(() => liveMatchElapsedSeconds(state));
@@ -302,6 +309,7 @@ export function LiveScoreboard({
                   onRegisterGoal={onRegisterGoal}
                   onRegisterCard={onRegisterCard}
                   onRegisterStatistic={onRegisterStatistic}
+                  onRegisterPenalty={onRegisterPenalty}
                   statisticSaving={statisticSaving}
                 />
               </YStack>
@@ -313,6 +321,7 @@ export function LiveScoreboard({
                   onRegisterGoal={onRegisterGoal}
                   onRegisterCard={onRegisterCard}
                   onRegisterStatistic={onRegisterStatistic}
+                  onRegisterPenalty={onRegisterPenalty}
                   statisticSaving={statisticSaving}
                 />
               </YStack>
@@ -349,6 +358,7 @@ export function LiveScoreboard({
                     onRegisterGoal={onRegisterGoal}
                     onRegisterCard={onRegisterCard}
                     onRegisterStatistic={onRegisterStatistic}
+                    onRegisterPenalty={onRegisterPenalty}
                     statisticSaving={statisticSaving}
                   />
                 ) : null}

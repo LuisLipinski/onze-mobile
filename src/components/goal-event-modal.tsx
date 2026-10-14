@@ -14,13 +14,11 @@ type Props = {
   sentOffAssignmentIds: ReadonlySet<string>;
   scorerAssignmentId: string | null;
   assistAssignmentId: string | null;
-  penalty: boolean;
   ownGoal: boolean;
   ownGoalTeamNumber: number | null;
   saving: boolean;
   onSelectScorer: (assignmentId: string) => void;
   onSelectAssist: (assignmentId: string | null) => void;
-  onChangePenalty: (penalty: boolean) => void;
   onChangeOwnGoal: (ownGoal: boolean) => void;
   onChangeOwnGoalTeam: (teamNumber: number) => void;
   onCancel: () => void;
@@ -114,6 +112,7 @@ export function GoalEventModal(props: Props) {
                 </Text>
                 <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
                   O gol comum já soma um chute no gol. No gol contra, nenhum chute é somado.
+                  Para uma cobrança, use o botão Pênalti do time que fez a falta.
                 </Text>
               </YStack>
 
@@ -174,33 +173,7 @@ export function GoalEventModal(props: Props) {
                 </YStack>
               ) : null}
 
-              {!props.ownGoal ? <Pressable
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: props.penalty }}
-                hitSlop={8}
-                onPress={() => props.onChangePenalty(!props.penalty)}
-              >
-                <XStack alignItems="center" gap="$3">
-                  <YStack
-                    alignItems="center"
-                    backgroundColor={props.penalty ? '$onzeGreen' : '$onzeSurface'}
-                    borderColor={props.penalty ? '$onzeGreen' : '$onzeBorder'}
-                    borderRadius="$2"
-                    borderWidth={2}
-                    height={26}
-                    justifyContent="center"
-                    width={26}
-                  >
-                    {props.penalty ? <Text color="$onzeSurface" fontWeight="900">✓</Text> : null}
-                  </YStack>
-                  <YStack flex={1}>
-                    <Text color="$onzeInk" fontWeight="900">Gol de pênalti</Text>
-                    <Text color="$onzeMuted" fontSize={12}>Pênalti não registra assistência.</Text>
-                  </YStack>
-                </XStack>
-              </Pressable> : null}
-
-              {selectedTeam && props.scorerAssignmentId && !props.penalty && !props.ownGoal ? (
+              {selectedTeam && props.scorerAssignmentId && !props.ownGoal ? (
                 <YStack gap="$2">
                   <Text color="$onzeInk" fontWeight="900">Assistência (opcional)</Text>
                   <XStack flexWrap="wrap" gap="$2">

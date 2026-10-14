@@ -283,7 +283,8 @@ export default function GroupStatisticsScreen() {
                         timeZone={match.timeZone}
                         venue={match.venue}
                         teams={match.teams}
-                        detail={`${match.registeredGoals} ${match.registeredGoals === 1 ? 'gol registrado' : 'gols registrados'}`}
+                        detail={`${match.registeredGoals} gols · ${match.teams.map((team) =>
+                          `${team.name}: ${team.foulsCommitted ?? 0} faltas, ${team.penaltiesWon ?? 0} pênaltis a favor, ${team.penaltiesMissed ?? 0} perdidos`).join(' · ')}`}
                         onPress={() => router.push({
                           pathname: '/live-match',
                           params: { matchId: match.matchId },
@@ -328,6 +329,13 @@ function PlayerTotals({ player }: { player: StatisticsPlayer }) {
     ['Derrotas', player.totals.losses],
     ['Gols', player.totals.goals],
     ['Assistências', player.totals.assists],
+    ['Faltas feitas', player.totals.foulsCommitted ?? 0],
+    ['Faltas sofridas', player.totals.foulsSuffered ?? 0],
+    ['Pênaltis cometidos', player.totals.penaltiesCommitted ?? 0],
+    ['Pênaltis sofridos', player.totals.penaltiesWon ?? 0],
+    ['Pênaltis cobrados', player.totals.penaltiesTaken ?? 0],
+    ['Pênaltis convertidos', player.totals.penaltiesScored ?? 0],
+    ['Pênaltis perdidos', player.totals.penaltiesMissed ?? 0],
   ] as const;
   return (
     <XStack flexWrap="wrap" gap="$2">
