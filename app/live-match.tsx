@@ -13,6 +13,7 @@ import { AppButton } from '../src/components/app-button';
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { CardEventModal } from '../src/components/card-event-modal';
 import { GoalEventModal } from '../src/components/goal-event-modal';
+import { ShotEventModal } from '../src/components/shot-event-modal';
 import { LiveScoreboard } from '../src/components/live-scoreboard';
 import { LiveMatchDetails } from '../src/components/live-match-details';
 import { GoalTimeline } from '../src/components/goal-timeline';
@@ -83,7 +84,13 @@ export default function LiveMatchScreen() {
   const [scorerAssignmentId, setScorerAssignmentId] = useState<string | null>(null);
   const [assistAssignmentId, setAssistAssignmentId] = useState<string | null>(null);
   const [penaltyGoal, setPenaltyGoal] = useState(false);
+  const [ownGoal, setOwnGoal] = useState(false);
+  const [ownGoalTeamNumber, setOwnGoalTeamNumber] = useState<number | null>(null);
   const [savingGoal, setSavingGoal] = useState(false);
+  const [shotModalVisible, setShotModalVisible] = useState(false);
+  const [shotTeamNumber, setShotTeamNumber] = useState<number | null>(null);
+  const [shotType, setShotType] = useState<'SHOTS' | 'SHOTS_ON_TARGET'>('SHOTS');
+  const [shotPlayerAssignmentId, setShotPlayerAssignmentId] = useState<string | null>(null);
   const [cardModalVisible, setCardModalVisible] = useState(false);
   const [cardTeamNumber, setCardTeamNumber] = useState<number | null>(null);
   const [cardPlayerAssignmentId, setCardPlayerAssignmentId] = useState<string | null>(null);
@@ -320,11 +327,14 @@ export default function LiveMatchScreen() {
     setScorerAssignmentId(null);
     setAssistAssignmentId(null);
     setPenaltyGoal(false);
+    setOwnGoal(false);
+    setOwnGoalTeamNumber(matchTeams?.teams.find((team) =>
+      team.teamNumber !== sideNumber && team.assignments.length > 0)?.teamNumber ?? null);
     setGoalModalVisible(true);
   }
 
   async function saveGoal() {
-    if (!match || !scorerAssignmentId || savingGoal || scoreSaving) return;
+    if (!match || !scorerAssignmentId || goalTeamNumber == null || savingGoal || scoreSaving) return;
     setSavingGoal(true);
     setError(null);
     try {
@@ -335,7 +345,9 @@ export default function LiveMatchScreen() {
         match.id,
         scorerAssignmentId,
         penaltyGoal ? null : assistAssignmentId,
-        penaltyGoal,
+        ownGoal ? false : penaltyGoal,
+        goalTeamNumber,
+        ownGoal,
       );
       desiredScoresRef.current = new Map(result.liveMatch.scores.map((side) => [side.sideNumber, side.score]));
       confirmedScoresRef.current = new Map(result.liveMatch.scores.map((side) => [side.sideNumber, side.score]));
@@ -382,7 +394,24 @@ export default function LiveMatchScreen() {
     }
   }
 
-  async function updateStatistic(sideNumber: number, type: TeamStatisticType, delta: 1 | -1) {
+  function registerStatistic(sideNumber: number, type: TeamStatisticType) {
+    if (type !== 'SHOTS' && type !== 'SHOTS_ON_TARGET') {
+      void updateStatistic(sideNumber, type, 1);
+      return;
+    }
+    const team = matchTeams?.teams.find((item) => item.teamNumber === sideNumber);
+    if (!team?.assignments.length) {
+      setError('Gere os times e adicione os jogadores antes de registrar um chute.');
+      return;
+    }
+    setShotTeamNumber(sideNumber);
+    setShotType(type);
+    setShotPlayerAssignmentId(null);
+    setShotModalVisible(true);
+  }
+
+  async function updateStatistic(sideNumber: number, type: TeamStatisticType, delta: 1 | -1,
+    playerAssignmentId?: string) {
     if (!match || !liveState?.canManage || !canRegisterMatchEvents
       || scoreSaving || statisticRequestRunningRef.current) return;
     statisticRequestRunningRef.current = true;
@@ -391,11 +420,12 @@ export default function LiveMatchScreen() {
     try {
       const token = await getAccessToken();
       if (!token) { goToLogin(); return; }
-      const updated = await adjustTeamStatistic(token, match.id, sideNumber, type, delta);
+      const updated = await adjustTeamStatistic(token, match.id, sideNumber, type, delta, playerAssignmentId);
       if (updated.version >= (liveStateRef.current?.version ?? 0)) {
         liveStateRef.current = updated;
         setLiveState(updated);
       }
+      if (playerAssignmentId) setShotModalVisible(false);
     } catch (exception) {
       setError(getErrorMessage(exception, 'Não foi possível atualizar a estatística do time.'));
     } finally {
@@ -639,7 +669,7 @@ export default function LiveMatchScreen() {
                 onChangeScore={changeScore}
                 onRegisterGoal={openGoalModal}
                 onRegisterCard={openCardModal}
-                onRegisterStatistic={(sideNumber, type) => void updateStatistic(sideNumber, type, 1)}
+                onRegisterStatistic={registerStatistic}
                 statisticSaving={statisticSaving}
               />
 
@@ -784,6 +814,8 @@ export default function LiveMatchScreen() {
         scorerAssignmentId={scorerAssignmentId}
         assistAssignmentId={assistAssignmentId}
         penalty={penaltyGoal}
+        ownGoal={ownGoal}
+        ownGoalTeamNumber={ownGoalTeamNumber}
         saving={savingGoal}
         onSelectScorer={(assignmentId) => {
           setScorerAssignmentId(assignmentId);
@@ -794,8 +826,33 @@ export default function LiveMatchScreen() {
           setPenaltyGoal(penalty);
           if (penalty) setAssistAssignmentId(null);
         }}
+        onChangeOwnGoal={(enabled) => {
+          setOwnGoal(enabled);
+          setScorerAssignmentId(null);
+          setAssistAssignmentId(null);
+          if (enabled) setPenaltyGoal(false);
+        }}
+        onChangeOwnGoalTeam={(teamNumber) => {
+          setOwnGoalTeamNumber(teamNumber);
+          setScorerAssignmentId(null);
+        }}
         onCancel={() => { if (!savingGoal) setGoalModalVisible(false); }}
         onSave={() => void saveGoal()}
+      />
+      <ShotEventModal
+        visible={shotModalVisible}
+        team={matchTeams?.teams.find((team) => team.teamNumber === shotTeamNumber) ?? null}
+        type={shotType}
+        playerAssignmentId={shotPlayerAssignmentId}
+        sentOffAssignmentIds={sentOffAssignmentIds}
+        saving={statisticSaving}
+        onSelectPlayer={setShotPlayerAssignmentId}
+        onCancel={() => { if (!statisticSaving) setShotModalVisible(false); }}
+        onSave={() => {
+          if (shotTeamNumber != null && shotPlayerAssignmentId) {
+            void updateStatistic(shotTeamNumber, shotType, 1, shotPlayerAssignmentId);
+          }
+        }}
       />
       <CardEventModal
         visible={cardModalVisible}

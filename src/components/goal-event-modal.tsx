@@ -1,4 +1,4 @@
-import { Modal, Pressable, ScrollView } from 'react-native';
+import { Modal, Pressable, ScrollView, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, XStack, YStack } from 'tamagui';
 
@@ -15,10 +15,14 @@ type Props = {
   scorerAssignmentId: string | null;
   assistAssignmentId: string | null;
   penalty: boolean;
+  ownGoal: boolean;
+  ownGoalTeamNumber: number | null;
   saving: boolean;
   onSelectScorer: (assignmentId: string) => void;
   onSelectAssist: (assignmentId: string | null) => void;
   onChangePenalty: (penalty: boolean) => void;
+  onChangeOwnGoal: (ownGoal: boolean) => void;
+  onChangeOwnGoalTeam: (teamNumber: number) => void;
   onCancel: () => void;
   onSave: () => void;
 };
@@ -82,6 +86,10 @@ function PlayerChoices({ assignments, sentOffAssignmentIds, selectedId, onSelect
 export function GoalEventModal(props: Props) {
   const insets = useSafeAreaInsets();
   const selectedTeam = props.teams.find((team) => team.teamNumber === props.selectedTeamNumber);
+  const opponents = props.teams.filter((team) => team.teamNumber !== props.selectedTeamNumber);
+  const scorerTeam = props.ownGoal
+    ? opponents.find((team) => team.teamNumber === props.ownGoalTeamNumber)
+    : selectedTeam;
   const assistCandidates = selectedTeam?.assignments.filter(
     (assignment) => assignment.id !== props.scorerAssignmentId,
   ) ?? [];
@@ -118,11 +126,44 @@ export function GoalEventModal(props: Props) {
                 </YStack>
               </YStack>
 
-              {selectedTeam ? (
+              <XStack alignItems="center" gap="$3">
+                <YStack flex={1} gap="$1">
+                  <Text color="$onzeInk" fontWeight="900">Gol contra</Text>
+                  <Text color="$onzeMuted" fontSize={12}>
+                    O gol vai para {selectedTeam?.name ?? 'este time'}; não conta como chute no gol nem gol do jogador.
+                  </Text>
+                </YStack>
+                <Switch accessibilityLabel="Gol contra" value={props.ownGoal}
+                  onValueChange={props.onChangeOwnGoal} disabled={props.saving}
+                  trackColor={{ true: ONZE_COLORS.green }} />
+              </XStack>
+
+              {props.ownGoal && opponents.length > 1 ? (
                 <YStack gap="$2">
-                  <Text color="$onzeInk" fontWeight="900">Quem fez o gol?</Text>
+                  <Text color="$onzeInk" fontWeight="900">Time de quem marcou contra</Text>
+                  <XStack flexWrap="wrap" gap="$2">
+                    {opponents.map((team) => (
+                      <Choice key={team.teamNumber} label={team.name}
+                        selected={team.teamNumber === props.ownGoalTeamNumber}
+                        onPress={() => props.onChangeOwnGoalTeam(team.teamNumber)} />
+                    ))}
+                  </XStack>
+                </YStack>
+              ) : null}
+
+              {props.ownGoal && opponents.length === 0 ? (
+                <Text color="$onzeDanger" fontSize={12}>
+                  Adicione jogadores ao time adversário para registrar o gol contra.
+                </Text>
+              ) : null}
+
+              {scorerTeam ? (
+                <YStack gap="$2">
+                  <Text color="$onzeInk" fontWeight="900">
+                    {props.ownGoal ? 'Quem marcou contra?' : 'Quem fez o gol?'}
+                  </Text>
                   <PlayerChoices
-                    assignments={selectedTeam.assignments}
+                    assignments={scorerTeam.assignments}
                     sentOffAssignmentIds={props.sentOffAssignmentIds}
                     selectedId={props.scorerAssignmentId}
                     onSelect={props.onSelectScorer}
@@ -130,7 +171,7 @@ export function GoalEventModal(props: Props) {
                 </YStack>
               ) : null}
 
-              <Pressable
+              {!props.ownGoal ? <Pressable
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: props.penalty }}
                 hitSlop={8}
@@ -154,9 +195,9 @@ export function GoalEventModal(props: Props) {
                     <Text color="$onzeMuted" fontSize={12}>Pênalti não registra assistência.</Text>
                   </YStack>
                 </XStack>
-              </Pressable>
+              </Pressable> : null}
 
-              {selectedTeam && props.scorerAssignmentId && !props.penalty ? (
+              {selectedTeam && props.scorerAssignmentId && !props.penalty && !props.ownGoal ? (
                 <YStack gap="$2">
                   <Text color="$onzeInk" fontWeight="900">Assistência (opcional)</Text>
                   <XStack flexWrap="wrap" gap="$2">
@@ -192,10 +233,10 @@ export function GoalEventModal(props: Props) {
                 </AppButton>
                 <AppButton
                   variant="primary"
-                  disabled={!props.scorerAssignmentId || props.saving}
+                  disabled={!scorerTeam || !props.scorerAssignmentId || props.saving}
                   flex={1}
 
-                  opacity={!props.scorerAssignmentId || props.saving ? 0.55 : 1}
+                  opacity={!scorerTeam || !props.scorerAssignmentId || props.saving ? 0.55 : 1}
                   onPress={props.onSave}
                 >
                   <Text color="$onzeSurface" fontWeight="900">
