@@ -156,7 +156,11 @@ function ScoreControls({ label, side, onChangeScore, onRegisterGoal, onRegisterC
               <Pressable
                 key={item.type}
                 accessibilityRole="button"
-                accessibilityLabel={`Registrar ${item.accessibilityLabel} para ${label}`}
+                accessibilityLabel={item.type === 'FOULS'
+                  ? `Registrar falta sofrida por ${label}`
+                  : item.type === 'PENALTY'
+                    ? `Registrar pênalti sofrido por ${label}`
+                    : `Registrar ${item.accessibilityLabel} para ${label}`}
                 accessibilityState={{ disabled: statisticSaving }}
                 disabled={statisticSaving}
                 onPress={() => item.type === 'PENALTY'

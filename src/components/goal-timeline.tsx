@@ -4,6 +4,8 @@ import { Text, XStack, YStack } from 'tamagui';
 
 import type { CardEvent, FootballMatch, FoulEvent, GoalEvent, LiveScoreSide } from '../lib/api';
 import { formatMatchTimer, liveScoreSideLabel, periodLabel, secondYellowCardEventIds } from '../lib/live-match';
+import { buildLiveTimelineEvents, penaltyAwardDescription, penaltyMissDescription } from '../lib/penalty-timeline';
+import type { LiveTimelineEvent } from '../lib/penalty-timeline';
 import { ONZE_COLORS } from '../theme/colors';
 
 type EventKind = 'GOAL' | 'CARD' | 'FOUL';
@@ -59,7 +61,7 @@ function GoalDetails({ event, align, deletionDisabled, onDelete }: {
         </XStack>
       ) : null}
       {event.penalty ? (
-        <Text color="$onzeGreen" fontSize={11} fontWeight="800">PÊNALTI</Text>
+        <Text color="$onzeGreen" fontSize={11} fontWeight="800">GOL DE PÊNALTI</Text>
       ) : null}
       {event.ownGoal ? (
         <Text color="$onzeDanger" fontSize={11} fontWeight="800">GOL CONTRA</Text>
@@ -69,39 +71,35 @@ function GoalDetails({ event, align, deletionDisabled, onDelete }: {
   );
 }
 
-type TimelineEvent = (GoalEvent & { kind: 'GOAL' }) | (CardEvent & { kind: 'CARD' })
-  | (FoulEvent & { kind: 'FOUL'; sideNumber: number });
-
-function FoulDetails({ event, align, deletionDisabled, onDelete, onResolve }: {
+function PenaltyAwardDetails({ event, align, deletionDisabled, onDelete, onResolve }: {
   event: FoulEvent;
   align: 'left' | 'right';
   deletionDisabled: boolean;
   onDelete?: () => void;
   onResolve?: () => void;
 }) {
-  const label = event.penalty
-    ? event.scored == null ? 'PÊNALTI MARCADO'
-      : event.scored ? 'PÊNALTI CONVERTIDO' : 'PÊNALTI PERDIDO'
-    : 'FALTA';
   return <YStack alignItems={align === 'left' ? 'flex-end' : 'flex-start'} flex={1} gap="$1" minWidth={0}>
-    <Text color={event.penalty ? '$onzeGreen' : '$onzeInk'} fontSize={12} fontWeight="900">
-      {event.penalty ? '🥅' : '✋'} {label}
+    <Text color="$onzeGreen" fontSize={12} fontWeight="900">
+      🥅 PÊNALTI MARCADO
     </Text>
     <Text color="$onzeInk" fontSize={12} numberOfLines={2} textAlign={align === 'left' ? 'right' : 'left'}>
-      {event.offenderDisplayName} fez a falta
+      {penaltyAwardDescription(event)}
     </Text>
-    {event.victimDisplayName ? <Text color="$onzeMuted" fontSize={11} numberOfLines={2}>
-      {event.victimDisplayName} sofreu
-    </Text> : null}
-    {event.takerDisplayName ? <Text color="$onzeMuted" fontSize={11} numberOfLines={2}>
-      {event.takerDisplayName} cobrou
-    </Text> : null}
-    {onResolve && event.penalty && event.scored == null ? <Pressable
+    {onResolve && event.scored == null ? <Pressable
       accessibilityRole="button" accessibilityLabel="Registrar cobrança de pênalti"
       onPress={onResolve} disabled={deletionDisabled}>
       <Text color="$onzeGreen" fontSize={12} fontWeight="900">Registrar cobrança ›</Text>
     </Pressable> : null}
     <DeleteEventButton align={align} disabled={deletionDisabled} onPress={onDelete} />
+  </YStack>;
+}
+
+function PenaltyMissDetails({ event, align }: { event: FoulEvent; align: 'left' | 'right' }) {
+  return <YStack alignItems={align === 'left' ? 'flex-end' : 'flex-start'} flex={1} gap="$1" minWidth={0}>
+    <Text color="$onzeDanger" fontSize={12} fontWeight="900">🥅 PÊNALTI PERDIDO</Text>
+    <Text color="$onzeInk" fontSize={12} numberOfLines={2} textAlign={align === 'left' ? 'right' : 'left'}>
+      {penaltyMissDescription(event)}
+    </Text>
   </YStack>;
 }
 
@@ -168,16 +166,10 @@ export function GoalTimeline({
   onResolvePenalty?: (eventId: string) => void;
 }) {
   const secondYellowIds = secondYellowCardEventIds(cardEvents);
-  const timeline: TimelineEvent[] = [
-    ...events.map((event) => ({ ...event, kind: 'GOAL' as const })),
-    ...cardEvents.map((event) => ({ ...event, kind: 'CARD' as const })),
-    ...foulEvents.map((event) => ({ ...event, kind: 'FOUL' as const,
-      sideNumber: event.penalty ? event.victimSideNumber ?? event.offenderSideNumber
-        : event.offenderSideNumber })),
-  ].sort((a, b) => b.elapsedSeconds - a.elapsedSeconds || b.createdAt.localeCompare(a.createdAt));
+  const timeline = buildLiveTimelineEvents(events, cardEvents, foulEvents);
   if (timeline.length === 0) return null;
 
-  function eventPeriodKey(event: TimelineEvent) {
+  function eventPeriodKey(event: LiveTimelineEvent) {
     return event.periodType && event.periodNumber
       ? `${event.periodType}:${event.periodNumber}`
       : 'LEGACY';
@@ -193,20 +185,20 @@ export function GoalTimeline({
     >
       <YStack backgroundColor="$onzeSuccessBg" gap="$1" padding="$4">
         <Text color="$onzeInk" fontSize={18} fontWeight="900">Linha do tempo</Text>
-        <Text color="$onzeMuted" fontSize={12}>Gols, faltas, pênaltis e cartões mais recentes aparecem primeiro.</Text>
+        <Text color="$onzeMuted" fontSize={12}>Gols, pênaltis e cartões mais recentes aparecem primeiro.</Text>
       </YStack>
 
       <YStack paddingHorizontal="$3" paddingVertical="$4">
         {timeline.map((event, index) => {
           const left = event.sideNumber === 1;
-          const deleteEvent = canDelete && onDelete
+          const deleteEvent = canDelete && onDelete && event.kind !== 'PENALTY_MISS'
             ? () => onDelete(event.kind, event.id)
             : undefined;
           const deletionDisabled = deletingEventKey != null;
           const periodKey = eventPeriodKey(event);
           const previousPeriodKey = index > 0 ? eventPeriodKey(timeline[index - 1]) : null;
           return (
-            <Fragment key={event.id}>
+            <Fragment key={`${event.kind}:${event.id}`}>
               {periodKey !== previousPeriodKey ? (
                 <YStack
                   alignItems="center"
@@ -229,9 +221,11 @@ export function GoalTimeline({
                   ? <GoalDetails event={event} align="left" deletionDisabled={deletionDisabled}
                     onDelete={event.penalty && foulEvents.some((foul) => foul.goalEventId === event.id) ? undefined : deleteEvent} />
                   : event.kind === 'FOUL'
-                    ? <FoulDetails event={event} align="left" deletionDisabled={deletionDisabled}
+                    ? <PenaltyAwardDetails event={event} align="left" deletionDisabled={deletionDisabled}
                       onDelete={deleteEvent} onResolve={canDelete && onResolvePenalty
                         ? () => onResolvePenalty(event.id) : undefined} />
+                    : event.kind === 'PENALTY_MISS'
+                      ? <PenaltyMissDetails event={event} align="left" />
                     : <CardDetails event={event} align="left" secondYellow={secondYellowIds.has(event.id)} deletionDisabled={deletionDisabled} onDelete={deleteEvent} />) : null}
               </YStack>
 
@@ -258,9 +252,11 @@ export function GoalTimeline({
                   ? <GoalDetails event={event} align="right" deletionDisabled={deletionDisabled}
                     onDelete={event.penalty && foulEvents.some((foul) => foul.goalEventId === event.id) ? undefined : deleteEvent} />
                   : event.kind === 'FOUL'
-                    ? <FoulDetails event={event} align="right" deletionDisabled={deletionDisabled}
+                    ? <PenaltyAwardDetails event={event} align="right" deletionDisabled={deletionDisabled}
                       onDelete={deleteEvent} onResolve={canDelete && onResolvePenalty
                         ? () => onResolvePenalty(event.id) : undefined} />
+                    : event.kind === 'PENALTY_MISS'
+                      ? <PenaltyMissDetails event={event} align="right" />
                     : <CardDetails event={event} align="right" secondYellow={secondYellowIds.has(event.id)} deletionDisabled={deletionDisabled} onDelete={deleteEvent} />) : null}
               </YStack>
               </XStack>

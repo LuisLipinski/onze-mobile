@@ -126,6 +126,7 @@ export type StatisticsTeam = {
   imageUrl: string | null;
   score: number;
   foulsCommitted: number;
+  foulsSuffered: number;
   penaltiesCommitted: number;
   penaltiesWon: number;
   penaltiesScored: number;
@@ -301,6 +302,11 @@ export type FoulEvent = {
   periodNumber: number | null;
   periodElapsedSeconds: number | null;
   createdAt: string;
+  resolvedAt: string | null;
+  resolutionElapsedSeconds: number | null;
+  resolutionPeriodType: MatchPeriodType | null;
+  resolutionPeriodNumber: number | null;
+  resolutionPeriodElapsedSeconds: number | null;
 };
 export type LiveMatchState = {
   matchId: string;
