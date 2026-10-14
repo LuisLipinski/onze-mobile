@@ -165,7 +165,12 @@ export default function PlayerStatisticsScreen() {
                     const eventDetails = [
                       match.goals ? `${match.goals} ${match.goals === 1 ? 'gol' : 'gols'}` : null,
                       match.assists ? `${match.assists} ${match.assists === 1 ? 'assistência' : 'assistências'}` : null,
-                    ].filter(Boolean).join(' • ') || 'Sem gol ou assistência registrada';
+                      match.foulsCommitted ? `${match.foulsCommitted} faltas feitas` : null,
+                      match.foulsSuffered ? `${match.foulsSuffered} faltas sofridas` : null,
+                      match.penaltiesWon ? `${match.penaltiesWon} pênaltis sofridos` : null,
+                      match.penaltiesScored ? `${match.penaltiesScored} pênaltis convertidos` : null,
+                      match.penaltiesMissed ? `${match.penaltiesMissed} pênaltis perdidos` : null,
+                    ].filter(Boolean).join(' • ') || 'Sem evento individual registrado';
                     return (
                       <StatisticsMatchCard
                         key={match.matchId}
@@ -201,6 +206,13 @@ function TotalsGrid({ totals }: { totals: StatisticsTotals }) {
     { label: 'Derrotas', value: totals.losses, accent: false },
     { label: 'Gols', value: totals.goals, accent: true },
     { label: 'Assistências', value: totals.assists, accent: true },
+    { label: 'Faltas feitas', value: totals.foulsCommitted ?? 0, accent: false },
+    { label: 'Faltas sofridas', value: totals.foulsSuffered ?? 0, accent: false },
+    { label: 'Pênaltis cometidos', value: totals.penaltiesCommitted ?? 0, accent: false },
+    { label: 'Pênaltis sofridos', value: totals.penaltiesWon ?? 0, accent: true },
+    { label: 'Pênaltis cobrados', value: totals.penaltiesTaken ?? 0, accent: false },
+    { label: 'Pênaltis convertidos', value: totals.penaltiesScored ?? 0, accent: true },
+    { label: 'Pênaltis perdidos', value: totals.penaltiesMissed ?? 0, accent: false },
   ];
   return (
     <XStack flexWrap="wrap" gap="$3">

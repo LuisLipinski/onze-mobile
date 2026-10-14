@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable } from 'react-native';
+import { Image, Pressable } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import type { LiveMatchSummary } from '../lib/api';
@@ -20,6 +20,8 @@ function summaryElapsedSeconds(match: LiveMatchSummary, nowMs = Date.now()) {
   if (match.currentPeriod) return matchPeriodElapsedSeconds(match.currentPeriod, nowMs);
   return elapsedSeconds(match.startedAt, nowMs);
 }
+
+const DEFAULT_TEAM_IMAGE = require('../../assets/icon.png');
 
 export function LiveMatchCard({
   match,
@@ -85,10 +87,31 @@ export function LiveMatchCard({
             <Text color="$onzeGreen" fontSize={12} fontWeight="900" numberOfLines={1}>
               {match.groupName.toUpperCase()}
             </Text>
-            <Text color="$onzeInk" fontSize={34} fontVariant={['tabular-nums']} fontWeight="900">
-              {liveSummaryScoreLabel(match) || '0 × 0'}
-            </Text>
-            <Text color="$onzeMuted" fontSize={12} fontWeight="700">{matchup}</Text>
+            {match.scores.length === 2 ? (
+              <XStack alignItems="center" alignSelf="stretch" gap="$2" justifyContent="space-between">
+                <YStack alignItems="center" flex={1} gap="$1">
+                    <Image accessibilityLabel={`Escudo de ${match.scores[0].name}`} resizeMode="cover"
+                      source={match.scores[0].imageUrl ? { uri: match.scores[0].imageUrl } : DEFAULT_TEAM_IMAGE}
+                      style={{ width: 50, height: 50, borderRadius: 12 }} />
+                    <Text color="$onzeMuted" fontSize={11} fontWeight="800" numberOfLines={2}
+                      textAlign="center">{match.scores[0].name}</Text>
+                </YStack>
+                <Text color="$onzeInk" fontSize={32} fontVariant={['tabular-nums']} fontWeight="900"
+                  >{liveSummaryScoreLabel(match)}</Text>
+                <YStack alignItems="center" flex={1} gap="$1">
+                  <Image accessibilityLabel={`Escudo de ${match.scores[1].name}`} resizeMode="cover"
+                    source={match.scores[1].imageUrl ? { uri: match.scores[1].imageUrl } : DEFAULT_TEAM_IMAGE}
+                    style={{ width: 50, height: 50, borderRadius: 12 }} />
+                  <Text color="$onzeMuted" fontSize={11} fontWeight="800" numberOfLines={2}
+                    textAlign="center">{match.scores[1].name}</Text>
+                </YStack>
+              </XStack>
+            ) : <>
+              <Text color="$onzeInk" fontSize={34} fontVariant={['tabular-nums']} fontWeight="900">
+                {liveSummaryScoreLabel(match) || '0 × 0'}
+              </Text>
+              <Text color="$onzeMuted" fontSize={12} fontWeight="700">{matchup}</Text>
+            </>}
           </YStack>
 
           <XStack alignItems="center" justifyContent="space-between">

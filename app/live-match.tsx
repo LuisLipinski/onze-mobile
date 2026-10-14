@@ -14,6 +14,7 @@ import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { CardEventModal } from '../src/components/card-event-modal';
 import { GoalEventModal } from '../src/components/goal-event-modal';
 import { ShotEventModal } from '../src/components/shot-event-modal';
+import { FoulEventModal } from '../src/components/foul-event-modal';
 import { LiveScoreboard } from '../src/components/live-scoreboard';
 import { LiveMatchDetails } from '../src/components/live-match-details';
 import { GoalTimeline } from '../src/components/goal-timeline';
@@ -25,8 +26,10 @@ import {
   adjustTeamStatistic,
   confirmPenaltyWinner,
   createCardEvent,
+  createFoulEvent,
   createGoalEvent,
   deleteCardEvent,
+  deleteFoulEvent,
   deleteGoalEvent,
   finishCurrentPeriod,
   finishLiveMatch,
@@ -41,6 +44,7 @@ import {
   TeamStatisticType,
   PenaltyLineupInput,
   recordPenaltyAttempt,
+  resolveMatchPenalty,
   resetLiveMatch,
   setPenaltyLineup,
   startNextPeriod,
@@ -59,7 +63,7 @@ import {
 } from '../src/lib/live-match-stream';
 
 type LiveManagementAction = 'finish' | 'reset' | null;
-type TimelineEventKind = 'GOAL' | 'CARD';
+type TimelineEventKind = 'GOAL' | 'CARD' | 'FOUL';
 type PendingTimelineDeletion = { kind: TimelineEventKind; eventId: string } | null;
 
 export default function LiveMatchScreen() {
@@ -83,7 +87,6 @@ export default function LiveMatchScreen() {
   const [goalTeamNumber, setGoalTeamNumber] = useState<number | null>(null);
   const [scorerAssignmentId, setScorerAssignmentId] = useState<string | null>(null);
   const [assistAssignmentId, setAssistAssignmentId] = useState<string | null>(null);
-  const [penaltyGoal, setPenaltyGoal] = useState(false);
   const [ownGoal, setOwnGoal] = useState(false);
   const [ownGoalTeamNumber, setOwnGoalTeamNumber] = useState<number | null>(null);
   const [savingGoal, setSavingGoal] = useState(false);
@@ -96,6 +99,18 @@ export default function LiveMatchScreen() {
   const [cardPlayerAssignmentId, setCardPlayerAssignmentId] = useState<string | null>(null);
   const [cardType, setCardType] = useState<MatchCardType>('YELLOW');
   const [savingCard, setSavingCard] = useState(false);
+  const [foulModalVisible, setFoulModalVisible] = useState(false);
+  const [foulStage, setFoulStage] = useState<'AWARD' | 'TAKER' | 'RESULT'>('AWARD');
+  const [foulPenalty, setFoulPenalty] = useState(false);
+  const [foulTeamNumber, setFoulTeamNumber] = useState<number | null>(null);
+  const [foulVictimTeamNumber, setFoulVictimTeamNumber] = useState<number | null>(null);
+  const [foulOffenderId, setFoulOffenderId] = useState<string | null>(null);
+  const [foulVictimId, setFoulVictimId] = useState<string | null>(null);
+  const [foulTakerId, setFoulTakerId] = useState<string | null>(null);
+  const [foulScored, setFoulScored] = useState<boolean | null>(null);
+  const [pendingFoulId, setPendingFoulId] = useState<string | null>(null);
+  const [savingFoul, setSavingFoul] = useState(false);
+  const foulRequestRunningRef = useRef(false);
   const [deletingEventKey, setDeletingEventKey] = useState<string | null>(null);
   const [pendingTimelineDeletion, setPendingTimelineDeletion] = useState<PendingTimelineDeletion>(null);
   const [periodManaging, setPeriodManaging] = useState(false);
@@ -326,7 +341,6 @@ export default function LiveMatchScreen() {
     setGoalTeamNumber(selectedTeam.teamNumber);
     setScorerAssignmentId(null);
     setAssistAssignmentId(null);
-    setPenaltyGoal(false);
     setOwnGoal(false);
     setOwnGoalTeamNumber(matchTeams?.teams.find((team) =>
       team.teamNumber !== sideNumber && team.assignments.length > 0)?.teamNumber ?? null);
@@ -344,8 +358,8 @@ export default function LiveMatchScreen() {
         token,
         match.id,
         scorerAssignmentId,
-        penaltyGoal ? null : assistAssignmentId,
-        ownGoal ? false : penaltyGoal,
+        assistAssignmentId,
+        false,
         goalTeamNumber,
         ownGoal,
       );
@@ -394,7 +408,105 @@ export default function LiveMatchScreen() {
     }
   }
 
+  function openFoulModal(sideNumber: number, penalty: boolean) {
+    if (!canRegisterMatchEvents || savingFoul) return;
+    const team = matchTeams?.teams.find((item) => item.teamNumber === sideNumber);
+    if (!team?.assignments.length || (penalty && !matchTeams?.teams.some(
+      (item) => item.teamNumber !== sideNumber && item.assignments.length > 0,
+    ))) {
+      setError('Adicione jogadores aos dois times antes de registrar a falta ou o pênalti.');
+      return;
+    }
+    setFoulPenalty(penalty);
+    setFoulTeamNumber(sideNumber);
+    setFoulVictimTeamNumber(null);
+    setFoulOffenderId(null);
+    setFoulVictimId(null);
+    setFoulTakerId(null);
+    setFoulScored(null);
+    setPendingFoulId(null);
+    setFoulStage('AWARD');
+    setFoulModalVisible(true);
+  }
+
+  function resumePenalty(eventId: string) {
+    const event = liveState?.foulEvents?.find((item) => item.id === eventId);
+    if (!event?.penalty || event.scored != null || !canRegisterMatchEvents) return;
+    setFoulPenalty(true);
+    setFoulTeamNumber(event.offenderSideNumber);
+    setFoulVictimTeamNumber(event.victimSideNumber);
+    setFoulOffenderId(event.offenderAssignmentId);
+    setFoulVictimId(event.victimAssignmentId);
+    setFoulTakerId(null);
+    setFoulScored(null);
+    setPendingFoulId(event.id);
+    setFoulStage('TAKER');
+    setFoulModalVisible(true);
+  }
+
+  async function saveFoulAward() {
+    if (!match || !foulOffenderId || (foulPenalty && !foulVictimId)
+      || foulRequestRunningRef.current || scoreSaving) return;
+    foulRequestRunningRef.current = true;
+    setSavingFoul(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      const previousIds = new Set((liveStateRef.current?.foulEvents ?? []).map((item) => item.id));
+      const state = await createFoulEvent(token, match.id, foulOffenderId,
+        foulVictimId, foulPenalty);
+      storeLiveState(state);
+      if (foulPenalty) {
+        const event = state.foulEvents?.find((item) => item.penalty
+          && item.scored == null && item.offenderAssignmentId === foulOffenderId
+          && item.victimAssignmentId === foulVictimId
+          && !previousIds.has(item.id));
+        // A resposta já contém o evento registrado, mesmo se a transmissão ao vivo chegar antes.
+        const latest = event ?? state.foulEvents?.find((item) => item.penalty
+          && item.scored == null && item.offenderAssignmentId === foulOffenderId
+          && item.victimAssignmentId === foulVictimId);
+        if (latest) {
+          setPendingFoulId(latest.id);
+          setFoulStage('TAKER');
+        } else {
+          setFoulModalVisible(false);
+          setError('O pênalti foi registrado. Toque nele na linha do tempo para informar a cobrança.');
+        }
+      } else setFoulModalVisible(false);
+    } catch (exception) {
+      setError(getErrorMessage(exception, 'Não foi possível registrar a falta.'));
+    } finally {
+      foulRequestRunningRef.current = false;
+      setSavingFoul(false);
+    }
+  }
+
+  async function saveFoulResult() {
+    if (!match || !pendingFoulId || !foulTakerId || foulScored == null
+      || foulRequestRunningRef.current || scoreSaving) return;
+    foulRequestRunningRef.current = true;
+    setSavingFoul(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      storeLiveState(await resolveMatchPenalty(token, match.id, pendingFoulId, foulTakerId, foulScored));
+      setFoulModalVisible(false);
+      setPendingFoulId(null);
+    } catch (exception) {
+      setError(getErrorMessage(exception, 'Não foi possível salvar a cobrança.'));
+    } finally {
+      foulRequestRunningRef.current = false;
+      setSavingFoul(false);
+    }
+  }
+
   function registerStatistic(sideNumber: number, type: TeamStatisticType) {
+    if (type === 'FOULS') {
+      openFoulModal(sideNumber, false);
+      return;
+    }
     if (type !== 'SHOTS' && type !== 'SHOTS_ON_TARGET') {
       void updateStatistic(sideNumber, type, 1);
       return;
@@ -445,7 +557,9 @@ export default function LiveMatchScreen() {
       if (!token) { goToLogin(); return; }
       const updatedState = kind === 'GOAL'
         ? await deleteGoalEvent(token, match.id, eventId)
-        : await deleteCardEvent(token, match.id, eventId);
+        : kind === 'FOUL'
+          ? await deleteFoulEvent(token, match.id, eventId)
+          : await deleteCardEvent(token, match.id, eventId);
       desiredScoresRef.current = new Map(
         updatedState.scores.map((side) => [side.sideNumber, side.score]),
       );
@@ -670,6 +784,7 @@ export default function LiveMatchScreen() {
                 onRegisterGoal={openGoalModal}
                 onRegisterCard={openCardModal}
                 onRegisterStatistic={registerStatistic}
+                onRegisterPenalty={(sideNumber) => openFoulModal(sideNumber, true)}
                 statisticSaving={statisticSaving}
               />
 
@@ -693,6 +808,7 @@ export default function LiveMatchScreen() {
               <GoalTimeline
                 events={liveState.goalEvents ?? []}
                 cardEvents={liveState.cardEvents ?? []}
+                foulEvents={liveState.foulEvents ?? []}
                 match={match}
                 sides={liveState.scores}
                 canDelete={liveState.canManage
@@ -700,6 +816,7 @@ export default function LiveMatchScreen() {
                   && (liveState.phase === 'LEGACY' || activeMatchPeriod(liveState) != null)}
                 deletingEventKey={deletingEventKey ?? (scoreSaving ? 'SCORE' : null)}
                 onDelete={confirmTimelineEventDeletion}
+                onResolvePenalty={resumePenalty}
               />
 
               {!liveState.canManage && liveState.status === 'IN_PROGRESS' ? (
@@ -788,9 +905,12 @@ export default function LiveMatchScreen() {
       />
       <ConfirmActionModal
         visible={pendingTimelineDeletion != null}
-        title={`Remover ${pendingTimelineDeletion?.kind === 'GOAL' ? 'gol' : 'cartão'}?`}
+        title={`Remover ${pendingTimelineDeletion?.kind === 'GOAL' ? 'gol'
+          : pendingTimelineDeletion?.kind === 'FOUL' ? 'falta ou pênalti' : 'cartão'}?`}
         message={pendingTimelineDeletion?.kind === 'GOAL'
           ? 'O gol será removido e o placar do time diminuirá em um ponto.'
+          : pendingTimelineDeletion?.kind === 'FOUL'
+            ? 'A falta e, se houver, a cobrança e o gol serão removidos juntos.'
           : 'O cartão será removido e a situação do jogador será recalculada.'}
         confirmLabel="Remover"
         destructive
@@ -813,7 +933,6 @@ export default function LiveMatchScreen() {
         selectedTeamNumber={goalTeamNumber}
         scorerAssignmentId={scorerAssignmentId}
         assistAssignmentId={assistAssignmentId}
-        penalty={penaltyGoal}
         ownGoal={ownGoal}
         ownGoalTeamNumber={ownGoalTeamNumber}
         saving={savingGoal}
@@ -822,15 +941,10 @@ export default function LiveMatchScreen() {
           if (assistAssignmentId === assignmentId) setAssistAssignmentId(null);
         }}
         onSelectAssist={setAssistAssignmentId}
-        onChangePenalty={(penalty) => {
-          setPenaltyGoal(penalty);
-          if (penalty) setAssistAssignmentId(null);
-        }}
         onChangeOwnGoal={(enabled) => {
           setOwnGoal(enabled);
           setScorerAssignmentId(null);
           setAssistAssignmentId(null);
-          if (enabled) setPenaltyGoal(false);
         }}
         onChangeOwnGoalTeam={(teamNumber) => {
           setOwnGoalTeamNumber(teamNumber);
@@ -853,6 +967,31 @@ export default function LiveMatchScreen() {
             void updateStatistic(shotTeamNumber, shotType, 1, shotPlayerAssignmentId);
           }
         }}
+      />
+      <FoulEventModal
+        visible={foulModalVisible}
+        teams={matchTeams?.teams.filter((team) => team.assignments.length > 0) ?? []}
+        offenderTeamNumber={foulTeamNumber}
+        victimTeamNumber={foulVictimTeamNumber}
+        penalty={foulPenalty}
+        stage={foulStage}
+        offenderId={foulOffenderId}
+        victimId={foulVictimId}
+        takerId={foulTakerId}
+        scored={foulScored}
+        sentOffAssignmentIds={sentOffAssignmentIds}
+        saving={savingFoul}
+        onSelectOffender={setFoulOffenderId}
+        onSelectVictim={(teamNumber, playerId) => {
+          setFoulVictimTeamNumber(teamNumber);
+          setFoulVictimId(playerId);
+        }}
+        onSelectTaker={setFoulTakerId}
+        onSelectResult={setFoulScored}
+        onAward={() => void saveFoulAward()}
+        onContinue={() => setFoulStage('RESULT')}
+        onResolve={() => void saveFoulResult()}
+        onClose={() => { if (!savingFoul) setFoulModalVisible(false); }}
       />
       <CardEventModal
         visible={cardModalVisible}

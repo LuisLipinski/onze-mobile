@@ -5,7 +5,7 @@ import type {
   StatisticsTeam,
 } from './api';
 
-export type StatisticsRankingMetric = 'goals' | 'assists' | 'gamesPlayed' | 'wins';
+export type StatisticsRankingMetric = keyof StatisticsRankings;
 
 export const STATISTICS_RANKING_OPTIONS: readonly {
   key: StatisticsRankingMetric;
@@ -16,6 +16,13 @@ export const STATISTICS_RANKING_OPTIONS: readonly {
   { key: 'assists', label: 'Assistências', valueLabel: 'assist.' },
   { key: 'gamesPlayed', label: 'Jogos', valueLabel: 'jogos' },
   { key: 'wins', label: 'Vitórias', valueLabel: 'vitórias' },
+  { key: 'foulsCommitted', label: 'Faltas feitas', valueLabel: 'faltas' },
+  { key: 'foulsSuffered', label: 'Faltas sofridas', valueLabel: 'faltas' },
+  { key: 'penaltiesCommitted', label: 'Pênaltis cometidos', valueLabel: 'pênaltis' },
+  { key: 'penaltiesWon', label: 'Pênaltis sofridos', valueLabel: 'pênaltis' },
+  { key: 'penaltiesTaken', label: 'Pênaltis cobrados', valueLabel: 'pênaltis' },
+  { key: 'penaltiesScored', label: 'Pênaltis convertidos', valueLabel: 'gols' },
+  { key: 'penaltiesMissed', label: 'Pênaltis perdidos', valueLabel: 'pênaltis' },
 ];
 
 export function rankingForMetric(

@@ -73,6 +73,12 @@ function TeamComparison({ match, state, saving, onCorrectStatistic, teamNumbers,
       && (card.cardType === type || (type === 'RED' && secondYellows.has(card.id)))).length;
   const penaltyGoals = (number: number) => (state.goalEvents ?? [])
     .filter((goal) => goal.sideNumber === number && goal.penalty).length;
+  const fouls = state.foulEvents ?? [];
+  const foulCount = (number: number, kind: 'COMMITTED' | 'PENALTY_COMMITTED' | 'PENALTY_WON' | 'PENALTY_MISSED') => fouls
+    .filter((item) => kind === 'COMMITTED' ? item.offenderSideNumber === number
+      : kind === 'PENALTY_COMMITTED' ? item.penalty && item.offenderSideNumber === number
+        : kind === 'PENALTY_WON' ? item.penalty && item.victimSideNumber === number
+          : item.penalty && item.victimSideNumber === number && item.scored === false).length;
   const penaltyResult = (number: number) => {
     const shootout = state.penaltyShootout;
     return number === 1
@@ -101,8 +107,13 @@ function TeamComparison({ match, state, saving, onCorrectStatistic, teamNumbers,
       canCorrect: stats.map((item) => canManage && (item?.corners ?? 0) > 0) as [boolean, boolean] },
     { label: 'Faltas', type: 'FOULS',
       values: stats.map((item, index) => display(sides[index],
-        String(item?.fouls ?? 0))) as [string, string],
-      canCorrect: stats.map((item) => canManage && (item?.fouls ?? 0) > 0) as [boolean, boolean] },
+        String(item?.fouls ?? 0))) as [string, string] },
+    { label: 'Pênaltis cometidos', values: sides.map((number) => display(number,
+      String(foulCount(number, 'PENALTY_COMMITTED')))) as [string, string] },
+    { label: 'Pênaltis a favor', values: sides.map((number) => display(number,
+      String(foulCount(number, 'PENALTY_WON')))) as [string, string] },
+    { label: 'Pênaltis perdidos', values: sides.map((number) => display(number,
+      String(foulCount(number, 'PENALTY_MISSED')))) as [string, string] },
     { label: 'Cartões amarelos', values: sides.map((number) => display(number,
       String(cardCount(number, 'YELLOW')))) as [string, string] },
     { label: 'Cartões vermelhos', values: sides.map((number) => display(number,
@@ -166,6 +177,26 @@ function TeamComparison({ match, state, saving, onCorrectStatistic, teamNumbers,
             ))}
           </YStack>
         );
+      })}
+      {sides.filter((number) => number > 0).map((number) => {
+        const teamFouls = fouls.filter((item) => item.offenderSideNumber === number);
+        if (!teamFouls.length) return null;
+        const counts = new Map<string, { name: string; fouls: number; penalties: number }>();
+        teamFouls.forEach((item) => {
+          const entry = counts.get(item.offenderAssignmentId)
+            ?? { name: item.offenderDisplayName, fouls: 0, penalties: 0 };
+          entry.fouls += 1;
+          if (item.penalty) entry.penalties += 1;
+          counts.set(item.offenderAssignmentId, entry);
+        });
+        return <YStack key={`fouls-${number}`} borderTopColor="$onzeBorder" borderTopWidth={1}
+          gap="$2" padding="$3">
+          <Text color="$onzeInk" fontWeight="900">Faltas por jogador · {score[sides.indexOf(number)]?.name}</Text>
+          {[...counts.entries()].map(([id, item]) => <XStack key={id} gap="$2" justifyContent="space-between">
+            <Text color="$onzeInk" flex={1} numberOfLines={1}>{item.name}</Text>
+            <Text color="$onzeMuted">{item.fouls} faltas · {item.penalties} pênaltis</Text>
+          </XStack>)}
+        </YStack>;
       })}
     </YStack>
   );
