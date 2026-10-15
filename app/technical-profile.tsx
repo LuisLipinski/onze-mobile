@@ -16,6 +16,7 @@ import { TechnicalRatingEditor } from '../src/components/technical-rating-editor
 import {
   ApiRequestError,
   getMemberTechnicalProfile,
+  getOwnTechnicalProfile,
   PlayerSkill,
   TechnicalProfile,
   updateMemberTechnicalProfile,
@@ -36,9 +37,13 @@ export default function TechnicalProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const selfView = !params.membershipId;
 
   const load = useCallback(async () => {
-    if (!params.groupId || !params.membershipId) {
+    setProfile(null);
+    setRatings({});
+    setMessage(null);
+    if (!params.groupId) {
       setError('Não foi possível identificar o jogador.');
       setLoading(false);
       return;
@@ -51,7 +56,9 @@ export default function TechnicalProfileScreen() {
         router.replace('/');
         return;
       }
-      const loaded = await getMemberTechnicalProfile(token, params.groupId, params.membershipId);
+      const loaded = params.membershipId
+        ? await getMemberTechnicalProfile(token, params.groupId, params.membershipId)
+        : await getOwnTechnicalProfile(token, params.groupId);
       setProfile(loaded);
       setRatings(loaded.ratings ?? {});
     } catch (exception) {
@@ -71,7 +78,7 @@ export default function TechnicalProfileScreen() {
   }, [load]));
 
   async function save() {
-    if (!params.groupId || !params.membershipId || saving) return;
+    if (selfView || !profile || !params.groupId || !params.membershipId || saving) return;
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -116,12 +123,16 @@ export default function TechnicalProfileScreen() {
           <BackButton alignSelf="flex-start" onPress={() => router.back()} />
 
           <YStack gap="$1">
-            <Text color="$onzeGreen" fontSize={13} fontWeight="900">AVALIAÇÃO TÉCNICA PRIVADA</Text>
+            <Text color="$onzeGreen" fontSize={13} fontWeight="900">
+              {selfView ? 'MINHA AVALIAÇÃO TÉCNICA' : 'AVALIAÇÃO TÉCNICA'}
+            </Text>
             <Text color="$onzeInk" fontSize={28} fontWeight="900">
               {profile?.displayName || params.memberName || 'Jogador'}
             </Text>
             <Text color="$onzeMuted" fontSize={13} lineHeight={20}>
-              Somente o Administrador Principal e admins com permissão para editar perfis visualizam estas notas.
+              {selfView
+                ? 'Estas são as notas atribuídas a você neste grupo. Você pode consultar a avaliação; a edição é feita pela administração.'
+                : 'Avalie as habilidades deste jogador. Cada membro também pode consultar a própria avaliação, sem editar.'}
             </Text>
           </YStack>
 
@@ -169,14 +180,19 @@ export default function TechnicalProfileScreen() {
             <YStack gap="$1">
               <Text color="$onzeInk" fontSize={18} fontWeight="900">Habilidades</Text>
               <Text color="$onzeMuted" fontSize={13} lineHeight={19}>
-                Use os botões de meia estrela. Você pode salvar parcialmente ou marcar qualquer item como “Não avaliado”.
+                {selfView
+                  ? Object.keys(ratings).length === 0
+                    ? 'Suas habilidades ainda não foram avaliadas neste grupo.'
+                    : 'Confira suas notas e as habilidades importantes para suas posições.'
+                  : 'Use os botões de meia estrela. Você pode salvar parcialmente ou marcar qualquer item como “Não avaliado”.'}
               </Text>
             </YStack>
             <TechnicalRatingEditor
               ratings={ratings}
               importantSkills={importantSkills}
               disabled={saving}
-              onChange={(skill, value) => setRatings((current) => {
+              readOnly={selfView}
+              onChange={selfView || !profile ? undefined : (skill, value) => setRatings((current) => {
                 const next = { ...current };
                 if (value == null) delete next[skill];
                 else next[skill] = value;
@@ -185,11 +201,13 @@ export default function TechnicalProfileScreen() {
             />
           </YStack>
 
-          <AppButton variant="primary" disabled={saving || !profile}  onPress={() => void save()}>
-            <Text color="$onzeSurface" fontSize={16} fontWeight="900">
-              {saving ? 'Salvando...' : 'Salvar avaliação'}
-            </Text>
-          </AppButton>
+          {!selfView ? (
+            <AppButton variant="primary" disabled={saving || !profile} onPress={() => void save()}>
+              <Text color="$onzeSurface" fontSize={16} fontWeight="900">
+                {saving ? 'Salvando...' : 'Salvar avaliação'}
+              </Text>
+            </AppButton>
+          ) : null}
         </YStack>
       </ScrollView>
     </SafeAreaView>

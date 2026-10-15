@@ -986,6 +986,16 @@ export function updateMemberSportsProfile(
   });
 }
 
+export function getOwnTechnicalProfile(accessToken: string, groupId: string) {
+  return request<TechnicalProfile>(`/api/groups/${groupId}/members/me/technical-profile`, {
+    headers: authenticatedHeaders(accessToken),
+    loading: {
+      title: 'Carregando sua avaliação...',
+      message: 'Estamos buscando suas habilidades e overalls neste grupo.',
+    },
+  });
+}
+
 export function getMemberTechnicalProfile(
   accessToken: string,
   groupId: string,

@@ -309,27 +309,30 @@ export default function SportsProfileScreen() {
             </XStack>
           </ProfileSection>
 
-          {adminMode && params.membershipId ? (
-            <ProfileSection
-              title="Avaliação técnica privada"
-              description="Avalie 17 habilidades em intervalos de meia estrela. O backend calcula overall, cobertura e aptidão por posição."
+          <ProfileSection
+            title={adminMode ? 'Avaliação técnica' : 'Minha avaliação técnica'}
+            description={adminMode
+              ? 'Avalie as habilidades do jogador e consulte os overalls e a cobertura da avaliação.'
+              : 'Consulte as estrelas e os overalls atribuídos a você neste grupo.'}
+          >
+            <AppButton
+              variant="outline"
+              onPress={() => router.push({
+                pathname: '/technical-profile',
+                params: {
+                  groupId: params.groupId,
+                  memberName: displayName,
+                  ...(adminMode && params.membershipId
+                    ? { membershipId: params.membershipId }
+                    : {}),
+                },
+              })}
             >
-              <AppButton
-                variant="outline"
-
-                onPress={() => router.push({
-                  pathname: '/technical-profile',
-                  params: {
-                    groupId: params.groupId,
-                    membershipId: params.membershipId,
-                    memberName: displayName,
-                  },
-                })}
-              >
-                <Text color="$onzeGreen" fontWeight="900">Avaliar habilidades e ver overalls</Text>
-              </AppButton>
-            </ProfileSection>
-          ) : null}
+              <Text color="$onzeGreen" fontWeight="900">
+                {adminMode ? 'Avaliar habilidades e ver overalls' : 'Ver meus níveis'}
+              </Text>
+            </AppButton>
+          </ProfileSection>
 
           <AppButton variant="primary" disabled={saving}  onPress={() => void saveProfile()}>
             <Text color="$onzeSurface" fontSize={16} fontWeight="800">

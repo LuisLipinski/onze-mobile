@@ -13,13 +13,15 @@ type TechnicalRatingEditorProps = {
   ratings: Partial<Record<PlayerSkill, number>>;
   importantSkills?: ReadonlySet<PlayerSkill>;
   disabled?: boolean;
-  onChange: (skill: PlayerSkill, rating: number | undefined) => void;
+  readOnly?: boolean;
+  onChange?: (skill: PlayerSkill, rating: number | undefined) => void;
 };
 
 export function TechnicalRatingEditor({
   ratings,
   importantSkills = new Set<PlayerSkill>(),
   disabled = false,
+  readOnly = false,
   onChange,
 }: TechnicalRatingEditorProps) {
   return (
@@ -54,36 +56,38 @@ export function TechnicalRatingEditor({
                   </Text>
                 </XStack>
 
-                <XStack gap="$2">
-                  <AppButton
-                    accessibilityLabel={`Diminuir ${skill.label} em meia estrela`}
-                    variant="secondary"
-
-
-                    disabled={disabled || rating == null || rating <= 1}
-                    flex={1}
-                    onPress={() => onChange(skill.value, nextHalfStar(rating, -1))}
-                  >
-                    <Text color="$onzeInk" fontWeight="900">− 0,5</Text>
-                  </AppButton>
-                  <AppButton
-                    accessibilityLabel={`Aumentar ${skill.label} em meia estrela`}
-                    variant="primary"
-                    disabled={disabled || rating === 10}
-                    flex={1}
-                    onPress={() => onChange(skill.value, nextHalfStar(rating, 1))}
-                  >
-                    <Text color="$onzeSurface" fontWeight="900">+ 0,5</Text>
-                  </AppButton>
-                </XStack>
-                <AppButton
-                  accessibilityLabel={`Marcar ${skill.label} como não avaliado`}
-                  variant="ghost"
-                  disabled={disabled || rating == null}
-                  onPress={() => onChange(skill.value, undefined)}
-                >
-                  <Text color="$onzeMuted" fontSize={12} fontWeight="800">Não avaliado</Text>
-                </AppButton>
+                {!readOnly && onChange ? (
+                  <>
+                    <XStack gap="$2">
+                      <AppButton
+                        accessibilityLabel={`Diminuir ${skill.label} em meia estrela`}
+                        variant="secondary"
+                        disabled={disabled || rating == null || rating <= 1}
+                        flex={1}
+                        onPress={() => onChange(skill.value, nextHalfStar(rating, -1))}
+                      >
+                        <Text color="$onzeInk" fontWeight="900">− 0,5</Text>
+                      </AppButton>
+                      <AppButton
+                        accessibilityLabel={`Aumentar ${skill.label} em meia estrela`}
+                        variant="primary"
+                        disabled={disabled || rating === 10}
+                        flex={1}
+                        onPress={() => onChange(skill.value, nextHalfStar(rating, 1))}
+                      >
+                        <Text color="$onzeSurface" fontWeight="900">+ 0,5</Text>
+                      </AppButton>
+                    </XStack>
+                    <AppButton
+                      accessibilityLabel={`Marcar ${skill.label} como não avaliado`}
+                      variant="ghost"
+                      disabled={disabled || rating == null}
+                      onPress={() => onChange(skill.value, undefined)}
+                    >
+                      <Text color="$onzeMuted" fontSize={12} fontWeight="800">Não avaliado</Text>
+                    </AppButton>
+                  </>
+                ) : null}
               </YStack>
             );
           })}
