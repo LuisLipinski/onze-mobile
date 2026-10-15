@@ -129,12 +129,7 @@ export function StartLiveMatchModal({
                 </Text>
               </YStack>
 
-              {loading ? (
-                <YStack alignItems="center" gap="$3" paddingVertical="$7">
-                  <Spinner color="$onzeGreen" size="large" />
-                  <Text color="$onzeMuted">Carregando os times...</Text>
-                </YStack>
-              ) : (
+              {loading ? null : (
                 <ScrollView
                   contentContainerStyle={{ alignItems: 'flex-start', paddingHorizontal: 2 }}
                   horizontal

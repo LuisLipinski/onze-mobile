@@ -1293,6 +1293,13 @@ export function getMatch(accessToken: string, matchId: string) {
   });
 }
 
+export function getMatchShare(accessToken: string, matchId: string) {
+  return request<{ shareUrl: string }>(`/api/matches/${matchId}/share`, {
+    headers: authenticatedHeaders(accessToken),
+    loading: { title: 'Preparando convite...', message: 'Estamos criando o link deste jogo.' },
+  });
+}
+
 export function startLiveMatch(
   accessToken: string,
   matchId: string,
@@ -1566,6 +1573,18 @@ export function confirmMatchPayment(
       title: 'Confirmando o pagamento...',
       message: 'Estamos atualizando a situação financeira do jogador.',
     },
+  });
+}
+
+export function requestMatchPaymentReminder(
+  accessToken: string,
+  matchId: string,
+  playerUserId: string,
+) {
+  return request<FootballMatch>(`/api/matches/${matchId}/payments/${playerUserId}/reminder`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    loading: { title: 'Enviando cobrança...', message: 'Estamos avisando o jogador sobre o pagamento.' },
   });
 }
 

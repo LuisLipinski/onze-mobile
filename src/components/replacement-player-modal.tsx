@@ -62,9 +62,7 @@ export function ReplacementPlayerModal({
 
             <ScrollView style={{ maxHeight: 320 }}>
               <YStack gap="$2">
-                {loading ? (
-                  <Text color="$onzeMuted" fontSize={13}>Carregando membros...</Text>
-                ) : candidates.length ? candidates.map((candidate) => {
+                {loading ? null : candidates.length ? candidates.map((candidate) => {
                   const selected = candidate.userId === selectedUserId;
                   const samePlayer = candidate.userId === departedUserId;
                   return (

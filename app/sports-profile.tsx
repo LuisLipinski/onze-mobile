@@ -38,6 +38,8 @@ export default function SportsProfileScreen() {
     membershipId?: string;
     memberName?: string;
     required?: string;
+    matchId?: string;
+    sharePrompt?: string;
   }>();
   const adminMode = Boolean(params.membershipId);
   const requiredMode = !adminMode && params.required === 'true';
@@ -141,7 +143,9 @@ export default function SportsProfileScreen() {
         });
       }
       if (requiredMode) {
-        router.replace({ pathname: '/group', params: { groupId: params.groupId } });
+        router.replace(params.matchId
+          ? { pathname: '/match', params: { matchId: params.matchId, ...(params.sharePrompt ? { sharePrompt: params.sharePrompt } : {}) } }
+          : { pathname: '/group', params: { groupId: params.groupId } });
         return;
       }
       setMessage(adminMode

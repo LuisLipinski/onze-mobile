@@ -305,7 +305,7 @@ export default function CreateMatchScreen() {
         notes,
         recurrence: weekly ? 'WEEKLY' : 'NONE',
       });
-      router.replace({ pathname: '/match', params: { matchId: match.id } });
+      router.replace({ pathname: '/match', params: { matchId: match.id, sharePrompt: '1' } });
     } catch (exception) {
       setError(getErrorMessage(exception, 'Não foi possível marcar o jogo.'));
     } finally {
