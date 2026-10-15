@@ -16,9 +16,8 @@ export const GROUP_ADMIN_PERMISSIONS: {
   { value: 'MANAGE_TEAMS', label: 'Gerenciar escalações', description: 'Formar e equilibrar times, trocar jogadores e posições e organizar titulares e reservas. As notas técnicas exigem a permissão de perfis esportivos.' },
   { value: 'MANAGE_LIVE_MATCH', label: 'Controlar jogo ao vivo', description: 'Definir nomes e escudos dos times; iniciar, encerrar e reiniciar o jogo; controlar tempos, acréscimos e disputa de pênaltis; registrar e corrigir gols, cartões, faltas, pênaltis e estatísticas.' },
   { value: 'EDIT_PLAYER_PROFILES', label: 'Editar perfis e avaliações', description: 'Consultar e editar posições, opção de goleiro, pé dominante e avaliações técnicas de membros e convidados, com estrelas e overalls.' },
-  { value: 'MANAGE_TEST_DATA', label: 'Usar ferramentas de teste', description: 'Gerar jogadores artificiais, aplicar cenários e adicionar ou remover jogadores de teste. Disponível somente no ambiente de desenvolvimento.' },
 ];
 
 export const GROUP_ADMIN_PERMISSION_LABELS = Object.fromEntries(
   GROUP_ADMIN_PERMISSIONS.map(({ value, label }) => [value, label]),
-) as Record<GroupAdminPermission, string>;
+) as Partial<Record<GroupAdminPermission, string>>;
