@@ -8,7 +8,6 @@ import { ONZE_COLORS } from '../src/theme/colors';
 
 import { AppButton } from '../src/components/app-button';
 
-import { BottomNavigation } from '../src/components/bottom-navigation';
 import {
   clearSession,
   disableBiometricLogin,
@@ -217,7 +216,6 @@ export default function SettingsScreen() {
             </YStack>
           </YStack>
         </ScrollView>
-        <BottomNavigation active="settings" />
       </YStack>
     </SafeAreaView>
   );
