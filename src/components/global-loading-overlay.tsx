@@ -11,7 +11,7 @@ import { ONZE_COLORS } from '../theme/colors';
 const SHOW_DELAY_MS = 180;
 const SLOW_OPERATION_THRESHOLD_MS = 8_000;
 
-export function GlobalLoadingOverlay() {
+export function GlobalLoadingOverlay({ suspended = false }: { suspended?: boolean }) {
   const loading = useSyncExternalStore(
     subscribeToGlobalLoading,
     getGlobalLoadingSnapshot,
@@ -48,7 +48,7 @@ export function GlobalLoadingOverlay() {
       onRequestClose={() => undefined}
       statusBarTranslucent
       transparent
-      visible={loading.visible && shouldShow}
+      visible={!suspended && loading.visible && shouldShow}
     >
       <View
         accessibilityLabel={loading.title}
