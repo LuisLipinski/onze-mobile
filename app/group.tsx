@@ -152,6 +152,7 @@ export default function GroupScreen() {
   const canAddMembers = group ? hasGroupPermission(group, 'ADD_MEMBERS') : false;
   const canEditGroup = group ? hasGroupPermission(group, 'EDIT_GROUP') : false;
   const canScheduleGames = group ? hasGroupPermission(group, 'SCHEDULE_GAMES') : false;
+  const canManagePayments = group ? hasGroupPermission(group, 'MANAGE_PAYMENTS') : false;
   const cancelledWithSettlements = matches.filter((match) => match.status === 'CANCELLED');
   const upcomingMatches = matches.filter((match) => match.status === 'SCHEDULED');
 
@@ -357,14 +358,14 @@ export default function GroupScreen() {
                   }} />
                 ) : null}
 
-                <MenuButton label={canScheduleGames ? 'Créditos dos jogadores' : 'Meu crédito'} onPress={() => {
+                <MenuButton label={canManagePayments ? 'Créditos dos jogadores' : 'Meu crédito'} onPress={() => {
                   setMenuVisible(false);
                   router.push({
                     pathname: '/group-credits',
                     params: {
                       groupId: group.id,
                       groupName: group.name,
-                      canManage: canScheduleGames ? 'true' : 'false',
+                      canManage: canManagePayments ? 'true' : 'false',
                     },
                   });
                 }} />

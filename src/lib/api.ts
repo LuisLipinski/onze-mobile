@@ -27,7 +27,13 @@ export type GroupAdminPermission =
   | 'PROMOTE_MEMBERS'
   | 'EDIT_GROUP'
   | 'SCHEDULE_GAMES'
-  | 'EDIT_PLAYER_PROFILES';
+  | 'EDIT_PLAYER_PROFILES'
+  | 'CANCEL_GAMES'
+  | 'MANAGE_MATCH_PLAYERS'
+  | 'MANAGE_PAYMENTS'
+  | 'MANAGE_TEAMS'
+  | 'MANAGE_LIVE_MATCH'
+  | 'MANAGE_TEST_DATA';
 export type GroupDayOfWeek =
   | 'MONDAY'
   | 'TUESDAY'
@@ -564,6 +570,8 @@ export type MatchTeams = {
   idealPlayers: number;
   reducedTeams: boolean;
   technicalDetailsVisible: boolean;
+  canManageTeams: boolean;
+  canManageTestData: boolean;
   teams: GeneratedTeam[];
 };
 
@@ -644,6 +652,12 @@ export type FootballMatch = {
   guests: MatchGuest[];
   teamsGenerated: boolean;
   canViewTechnical: boolean;
+  canManagePlayers: boolean;
+  canManagePayments: boolean;
+  canManageTeams: boolean;
+  canManageLive: boolean;
+  canCancel: boolean;
+  canManageTestData: boolean;
   canManage: boolean;
 };
 

@@ -1,3 +1,4 @@
+import { GROUP_ADMIN_PERMISSION_LABELS } from '../src/lib/group-admin-permissions';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -16,7 +17,6 @@ import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
   demoteGroupAdmin,
-  GroupAdminPermission,
   GroupMember,
   GroupRole,
   hasGroupPermission,
@@ -38,14 +38,6 @@ const ROLE_LABELS: Record<GroupRole, string> = {
   MEMBER: 'Membro',
 };
 
-const PERMISSION_LABELS: Record<GroupAdminPermission, string> = {
-  ADD_MEMBERS: 'Adicionar membros',
-  REMOVE_MEMBERS: 'Remover membros',
-  PROMOTE_MEMBERS: 'Promover membros',
-  EDIT_GROUP: 'Editar grupo',
-  SCHEDULE_GAMES: 'Marcar jogos',
-  EDIT_PLAYER_PROFILES: 'Editar perfis esportivos',
-};
 
 type PendingAction = {
   type: 'promote' | 'remove' | 'demote' | 'transfer';
@@ -372,7 +364,7 @@ function MemberCard({
           <Text color="$onzeMuted" fontSize={10} fontWeight="900">FUNÇÕES LIBERADAS</Text>
           <Text color={permissions.length ? '$onzeInk' : '$onzeMuted'} fontSize={12} lineHeight={18}>
             {permissions.length
-              ? permissions.map((permission) => PERMISSION_LABELS[permission]).join(' • ')
+              ? permissions.map((permission) => GROUP_ADMIN_PERMISSION_LABELS[permission]).join(' • ')
               : 'Nenhuma função liberada'}
           </Text>
         </YStack>

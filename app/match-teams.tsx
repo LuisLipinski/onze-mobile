@@ -472,26 +472,24 @@ export default function MatchTeamsScreen() {
             </YStack>
           ) : null}
 
-          {data?.technicalDetailsVisible ? (
-            <YStack gap="$2">
-              <AppButton variant="primary" disabled={generating}  onPress={() => void generate()}>
-                <Text color="$onzeSurface" fontWeight="900">
-                  {generating ? 'Formando...' : hasTeams ? 'Gerar novamente' : 'Formar times automaticamente'}
-                </Text>
-              </AppButton>
-              {DEVELOPMENT_TOOLS_ENABLED ? (
-                <AppButton
-                  backgroundColor="$onzeCanvas"
-                  buttonSize="sm"
-                  onPress={() => {
-                    if (!params.matchId) return;
-                    router.push({ pathname: '/dev-test-data', params: { matchId: params.matchId } });
-                  }}
-                >
-                  <Text color="$onzeGreen" fontWeight="900">🧪 Ferramentas de teste</Text>
-                </AppButton>
-              ) : null}
-            </YStack>
+          {data?.canManageTeams ? (
+            <AppButton variant="primary" disabled={generating} onPress={() => void generate()}>
+              <Text color="$onzeSurface" fontWeight="900">
+                {generating ? 'Formando...' : hasTeams ? 'Gerar novamente' : 'Formar times automaticamente'}
+              </Text>
+            </AppButton>
+          ) : null}
+          {data?.canManageTestData && DEVELOPMENT_TOOLS_ENABLED ? (
+            <AppButton
+              backgroundColor="$onzeCanvas"
+              buttonSize="sm"
+              onPress={() => {
+                if (!params.matchId) return;
+                router.push({ pathname: '/dev-test-data', params: { matchId: params.matchId } });
+              }}
+            >
+              <Text color="$onzeGreen" fontWeight="900">🧪 Ferramentas de teste</Text>
+            </AppButton>
           ) : null}
 
           {hasTeams ? (
@@ -590,7 +588,7 @@ export default function MatchTeamsScreen() {
                             </XStack>
                             <Text color="$onzeGreen" fontSize={12} fontWeight="800">{roleLabel(assignment.assignedRole)}</Text>
                           </YStack>
-                          {data.technicalDetailsVisible ? (
+                          {data.canManageTeams ? (
                             <AppButton
                               backgroundColor={editing ? '$onzeSuccessSoft' : '$onzeCanvas'}
                               disabled={Boolean(savingId)}
@@ -605,7 +603,7 @@ export default function MatchTeamsScreen() {
                           ) : null}
                         </XStack>
 
-                        {editing && data.technicalDetailsVisible ? (
+                        {editing && data.canManageTeams ? (
                           <YStack backgroundColor="$onzeInfoBg" borderColor="$onzeBorder" borderRadius="$4" borderWidth={1} gap="$3" padding="$3">
                             <Text color="$onzeInk" fontSize={12} fontWeight="900">Posição neste jogo</Text>
                             <XStack flexWrap="wrap" gap="$2">

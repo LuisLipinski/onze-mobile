@@ -226,7 +226,7 @@ export default function MatchScreen() {
         return;
       }
       setMatch(loadedMatch);
-      if (loadedMatch.status === 'CANCELLED' && loadedMatch.canManage) {
+      if (loadedMatch.status === 'CANCELLED' && loadedMatch.canManagePayments) {
         setSelectedSettlements(loadedMatch.attendances
           .filter((attendance) => isSettlementOpen(attendance.paymentSettlementStatus))
           .map((attendance) => attendance.userId));
@@ -503,7 +503,7 @@ export default function MatchScreen() {
       const otherOpenDepartures = new Set(match.attendances
         .filter((attendance) => attendance.userId !== departure.userId
           && attendance.replacementRequiredAt != null
-          && isSettlementOpen(attendance.paymentSettlementStatus))
+          && attendance.replacementFilledAt == null)
         .map((attendance) => attendance.userId));
       setReplacementCandidates(members.filter((member) => (
         !confirmed.has(member.userId)
@@ -742,7 +742,7 @@ export default function MatchScreen() {
                   )}
                 </YStack>
 
-                {match.canManage
+                {match.canManagePlayers
                     && match.status === 'SCHEDULED'
                     && match.missingGoalkeepers > 0
                     && match.secondaryGoalkeeperDecisionRequired ? (
@@ -761,7 +761,7 @@ export default function MatchScreen() {
                   </YStack>
                 ) : null}
 
-                {match.canManage
+                {match.canManagePlayers
                     && match.status === 'SCHEDULED'
                     && match.missingGoalkeepers > 0
                     && !match.secondaryGoalkeeperDecisionRequired ? (
@@ -817,7 +817,7 @@ export default function MatchScreen() {
                   </AppButton>
                 ) : null}
 
-                {match.matchType === 'INTERNAL' && (match.canViewTechnical || match.teamsGenerated) ? (
+                {match.matchType === 'INTERNAL' && (match.canManageTeams || match.canManageTestData || match.teamsGenerated) ? (
                   <AppButton
                     backgroundColor={match.teamsGenerated ? '$onzeGreen' : '$onzeSurface'}
                     borderColor="$onzeGreen"
@@ -1070,7 +1070,7 @@ export default function MatchScreen() {
                   members={going}
                   rentalGoalkeepers={match.rentalGoalkeepers}
                   guests={match.guests}
-                  canManage={match.canManage && match.status === 'SCHEDULED'}
+                  canManage={match.canManagePlayers && match.status === 'SCHEDULED'}
                   updatingGoalkeeperId={updatingGoalkeeperId}
                   managingRentalId={managingRentalId}
                   managingGuestId={managingGuestId}
@@ -1078,7 +1078,7 @@ export default function MatchScreen() {
                   onRemoveRental={setRentalToRemove}
                   onRemoveGuest={(guest) => void removeGuest(guest)}
                 />
-                {match.canManage && match.status === 'SCHEDULED' ? (
+                {match.canManagePlayers && match.status === 'SCHEDULED' ? (
                   <YStack gap="$2">
                     <AppButton
                       variant="outline"
@@ -1101,7 +1101,7 @@ export default function MatchScreen() {
                     ) : null}
                   </YStack>
                 ) : null}
-                {match.canManage && match.status === 'SCHEDULED' && match.missingGoalkeepers <= 0 ? (
+                {match.canManagePlayers && match.status === 'SCHEDULED' && match.missingGoalkeepers <= 0 ? (
                   <YStack gap="$2">
                     <AppButton
                       variant="outline"
@@ -1139,7 +1139,28 @@ export default function MatchScreen() {
                 ) : null}
               </YStack>
 
-              {match.canManage && match.paymentRequired && payments.length ? (
+              {match.canManagePlayers && match.status === 'SCHEDULED'
+                  && match.attendances.some((attendance) => attendance.replacementRequiredAt && !attendance.replacementFilledAt) ? (
+                <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
+                  <Text color="$onzeInk" fontSize={18} fontWeight="900">Vagas aguardando reposição</Text>
+                  {match.attendances
+                    .filter((attendance) => attendance.replacementRequiredAt && !attendance.replacementFilledAt)
+                    .map((attendance) => (
+                      <XStack key={attendance.userId} alignItems="center" gap="$3" justifyContent="space-between">
+                        <Text color="$onzeInk" flex={1} fontWeight="800">{attendance.displayName}</Text>
+                        <AppButton
+                          variant="outline"
+                          disabled={replacingPlayer}
+                          onPress={() => void openReplacementPicker(attendance)}
+                        >
+                          <Text color="$onzeGreen" fontSize={12} fontWeight="900">Adicionar reposição</Text>
+                        </AppButton>
+                      </XStack>
+                    ))}
+                </YStack>
+              ) : null}
+
+              {match.canManagePayments && match.paymentRequired && payments.length ? (
                 <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
                   <YStack gap="$1">
                     <Text color="$onzeInk" fontSize={18} fontWeight="900">Pagamentos e acertos</Text>
@@ -1244,21 +1265,6 @@ export default function MatchScreen() {
                           </Text>
                         </AppButton>
                       ) : null}
-                      {match.status === 'SCHEDULED'
-                          && attendance.replacementRequiredAt != null
-                          && attendance.replacementFilledAt == null ? (
-                        <AppButton
-                          backgroundColor="$onzeSurface"
-                          borderColor="$onzeWarningText"
-                          borderWidth={1}
-                          disabled={replacingPlayer || Boolean(updatingPayment)}
-                          onPress={() => void openReplacementPicker(attendance)}
-                        >
-                          <Text color="$onzeWarningText" fontSize={12} fontWeight="900">
-                            Adicionar reposição
-                          </Text>
-                        </AppButton>
-                      ) : null}
                       {(attendance.status === 'NOT_GOING' || match.status === 'CANCELLED')
                           && isSettlementOpen(attendance.paymentSettlementStatus)
                           && match.status !== 'CANCELLED'
@@ -1301,30 +1307,27 @@ export default function MatchScreen() {
                 </YStack>
               ) : null}
 
-              {match.canManage && match.status === 'SCHEDULED' ? (
+              {(match.canManageLive || match.canCancel) && match.status === 'SCHEDULED' ? (
                 <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
                   <Text color="$onzeInk" fontSize={17} fontWeight="900">Gerenciar jogo</Text>
-                  <AppButton variant="primary"  onPress={() => void openStartModal()}>
-                    <Text color="$onzeSurface" fontWeight="900">Iniciar jogo</Text>
-                  </AppButton>
-                  <AppButton
-                    variant="destructiveOutline"
-
-
-                    onPress={() => setManagementAction('cancel-occurrence')}
-                  >
-                    <Text color="$onzeDanger" fontWeight="800">
-                      {match.recurrence === 'WEEKLY' ? 'Cancelar somente este jogo' : 'Cancelar jogo'}
-                    </Text>
-                  </AppButton>
-                  {match.recurrence === 'WEEKLY' && match.seriesActive ? (
-                    <AppButton
-                      variant="destructive"
-
-                      onPress={() => setManagementAction('end-series')}
-                    >
-                      <Text color="$onzeSurface" fontWeight="800">Encerrar jogos semanais</Text>
+                  {match.canManageLive ? (
+                    <AppButton variant="primary" onPress={() => void openStartModal()}>
+                      <Text color="$onzeSurface" fontWeight="900">Iniciar jogo</Text>
                     </AppButton>
+                  ) : null}
+                  {match.canCancel ? (
+                    <>
+                      <AppButton variant="destructiveOutline" onPress={() => setManagementAction('cancel-occurrence')}>
+                        <Text color="$onzeDanger" fontWeight="800">
+                          {match.recurrence === 'WEEKLY' ? 'Cancelar somente este jogo' : 'Cancelar jogo'}
+                        </Text>
+                      </AppButton>
+                      {match.recurrence === 'WEEKLY' && match.seriesActive ? (
+                        <AppButton variant="destructive" onPress={() => setManagementAction('end-series')}>
+                          <Text color="$onzeSurface" fontWeight="800">Encerrar jogos semanais</Text>
+                        </AppButton>
+                      ) : null}
+                    </>
                   ) : null}
                 </YStack>
               ) : null}
