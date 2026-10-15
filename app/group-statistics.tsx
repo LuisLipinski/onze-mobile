@@ -5,12 +5,15 @@ import { Pressable, ScrollView } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { AppButton } from '../src/components/app-button';
+import { ConfirmActionModal } from '../src/components/confirm-action-modal';
+import { StatisticsSeasonSelect } from '../src/components/statistics-season-select';
 import { BackButton } from '../src/components/back-button';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { StatisticsMatchCard } from '../src/components/statistics-match-card';
 import {
   ApiRequestError,
   getGroupStatistics,
+  startGroupStatisticsSeason,
   GroupStatistics,
   StatisticsPlayer,
 } from '../src/lib/api';
@@ -18,6 +21,8 @@ import { clearSession, getAccessToken } from '../src/lib/auth-storage';
 import { getErrorMessage } from '../src/lib/errors';
 import {
   rankingForMetric,
+  rankingTieBreakLabel,
+  rankingSecondaryLabel,
   rankingValueLabel,
   STATISTICS_RANKING_OPTIONS,
   StatisticsRankingMetric,
@@ -26,7 +31,11 @@ import { ONZE_COLORS } from '../src/theme/colors';
 
 export default function GroupStatisticsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ groupId?: string; groupName?: string }>();
+  const params = useLocalSearchParams<{ groupId?: string; groupName?: string; seasonId?: string }>();
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(params.seasonId || null);
+  const [seasonSelectVisible, setSeasonSelectVisible] = useState(false);
+  const [seasonConfirmationVisible, setSeasonConfirmationVisible] = useState(false);
+  const [startingSeason, setStartingSeason] = useState(false);
   const [statistics, setStatistics] = useState<GroupStatistics | null>(null);
   const [rankingMetric, setRankingMetric] = useState<StatisticsRankingMetric>('goals');
   const [loading, setLoading] = useState(true);
@@ -39,6 +48,7 @@ export default function GroupStatisticsScreen() {
       return;
     }
     setLoading(true);
+    setStatistics(null);
     setError(null);
     try {
       const token = await getAccessToken();
@@ -46,7 +56,7 @@ export default function GroupStatisticsScreen() {
         router.replace('/');
         return;
       }
-      setStatistics(await getGroupStatistics(token, params.groupId));
+      setStatistics(await getGroupStatistics(token, params.groupId, selectedSeasonId));
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
         await clearSession();
@@ -57,11 +67,30 @@ export default function GroupStatisticsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [params.groupId, router]);
+  }, [params.groupId, selectedSeasonId, router]);
 
   useFocusEffect(useCallback(() => {
     void loadStatistics();
   }, [loadStatistics]));
+
+  async function startSeason() {
+    const current = statistics?.seasons.find((season) => !season.endedAt);
+    if (!params.groupId || !current || startingSeason) return;
+    setStartingSeason(true);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { router.replace('/'); return; }
+      const next = await startGroupStatisticsSeason(token, params.groupId, current.id);
+      setSeasonConfirmationVisible(false);
+      setSelectedSeasonId(next.id);
+    } catch (exception) {
+      setSeasonConfirmationVisible(false);
+      setError(getErrorMessage(exception, 'Não foi possível iniciar a temporada.'));
+    } finally {
+      setStartingSeason(false);
+    }
+  }
 
   function goBack() {
     if (router.canGoBack()) router.back();
@@ -78,6 +107,7 @@ export default function GroupStatisticsScreen() {
         groupName: params.groupName ?? '',
         userId: player.userId,
         displayName: player.displayName,
+        seasonId: selectedSeasonId ?? '',
       },
     });
   }
@@ -132,6 +162,30 @@ export default function GroupStatisticsScreen() {
 
           {statistics ? (
             <>
+              <YStack gap="$3">
+                <Text color="$onzeInk" fontSize={16} fontWeight="900">Período do ranking</Text>
+                <StatisticsSeasonSelect
+                  seasons={statistics.seasons}
+                  selectedId={selectedSeasonId}
+                  visible={seasonSelectVisible}
+                  disabled={startingSeason}
+                  onOpen={() => setSeasonSelectVisible(true)}
+                  onClose={() => setSeasonSelectVisible(false)}
+                  onSelect={setSelectedSeasonId}
+                />
+                <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
+                  {selectedSeasonId
+                    ? statistics.seasons.find((season) => season.id === selectedSeasonId)?.endedAt
+                      ? 'Temporada encerrada: seus resultados estão preservados e não serão alterados.'
+                      : 'Esta temporada acumula os jogos encerrados desde seu início.'
+                    : 'O geral acumula todo o histórico do grupo e nunca é zerado ao iniciar uma temporada.'}
+                </Text>
+                {statistics.canManageSeasons ? (
+                  <AppButton variant="outline" disabled={startingSeason} onPress={() => setSeasonConfirmationVisible(true)}>
+                    <Text color="$onzeGreen" fontWeight="900">Iniciar nova temporada</Text>
+                  </AppButton>
+                ) : null}
+              </YStack>
               <XStack flexWrap="wrap" gap="$3">
                 <SummaryCard label="Jogos encerrados" value={statistics.finishedMatches} />
                 <SummaryCard label="Gols registrados" value={statistics.registeredGoals} />
@@ -188,7 +242,7 @@ export default function GroupStatisticsScreen() {
                     <YStack gap="$1">
                       <Text color="$onzeInk" fontSize={21} fontWeight="900">Ranking do grupo</Text>
                       <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
-                        Empates na mesma quantidade compartilham a colocação.
+                        {rankingTieBreakLabel(rankingMetric)} Empates em todos os critérios compartilham a colocação.
                       </Text>
                     </YStack>
                     <XStack flexWrap="wrap" gap="$2">
@@ -258,6 +312,11 @@ export default function GroupStatisticsScreen() {
                                       ? 'EX-MEMBRO'
                                       : 'JOGADOR'}
                                 </Text>
+                                {player && rankingSecondaryLabel(player.totals, rankingMetric) ? (
+                                  <Text color="$onzeMuted" fontSize={11}>
+                                    {rankingSecondaryLabel(player.totals, rankingMetric)}
+                                  </Text>
+                                ) : null}
                               </YStack>
                               <YStack alignItems="flex-end" gap={1}>
                                 <Text color="$onzeInk" fontSize={20} fontWeight="900">{entry.value}</Text>
@@ -297,6 +356,16 @@ export default function GroupStatisticsScreen() {
           ) : null}
         </YStack>
       </ScrollView>
+      <ConfirmActionModal
+        visible={seasonConfirmationVisible}
+        title="Iniciar nova temporada?"
+        message={`O ranking da temporada ${statistics?.seasons.find((season) => !season.endedAt)?.number ?? ''} será encerrado e não poderá mais ser alterado. A nova temporada começará com todos os valores zerados. O ranking geral continuará acumulando todo o histórico.`}
+        confirmLabel="Iniciar temporada"
+        loading={startingSeason}
+        loadingLabel="Iniciando..."
+        onCancel={() => { if (!startingSeason) setSeasonConfirmationVisible(false); }}
+        onConfirm={() => void startSeason()}
+      />
     </SafeAreaView>
   );
 }
