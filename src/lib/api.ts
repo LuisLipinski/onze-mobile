@@ -1779,7 +1779,7 @@ export function getMatchTeams(accessToken: string, matchId: string) {
 export function getMatchTeamIdentities(accessToken: string, matchId: string) {
   return request<MatchTeamIdentity[]>(`/api/matches/${matchId}/teams/images`, {
     headers: authenticatedHeaders(accessToken),
-    loading: false,
+    loading: { title: 'Carregando os times...', message: 'Estamos buscando os nomes e imagens dos times.' },
   });
 }
 
