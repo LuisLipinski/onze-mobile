@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
@@ -11,6 +11,8 @@ import { getErrorMessage } from '../src/lib/errors';
 import { AppButton } from '../src/components/app-button';
 import { BackButton } from '../src/components/back-button';
 
+import { ApiRequestError } from '../src/lib/api';
+import { DEVELOPMENT_TOOLS_ENABLED } from '../src/lib/environment';
 import { getAccessToken } from '../src/lib/auth-storage';
 import {
   addDevTestPlayersToMatch,
@@ -33,6 +35,7 @@ export default function DevTestDataScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!DEVELOPMENT_TOOLS_ENABLED) return;
     if (!params.matchId) {
       setError('Não foi possível identificar o jogo.');
       return;
@@ -46,6 +49,10 @@ export default function DevTestDataScreen() {
       setStatus(await getDevTestStatus(token, params.matchId));
       setError(null);
     } catch (exception) {
+      if (exception instanceof ApiRequestError && (exception.status === 403 || exception.status === 404)) {
+        router.replace(params.matchId ? { pathname: '/match', params: { matchId: params.matchId } } : '/home');
+        return;
+      }
       setError(getErrorMessage(exception, 'Não foi possível carregar as ferramentas de teste.'));
     }
   }, [params.matchId, router]);
@@ -55,7 +62,7 @@ export default function DevTestDataScreen() {
   }, [load]));
 
   async function runAction(key: string, operation: (token: string, matchId: string) => Promise<string>) {
-    if (!params.matchId || running) return;
+    if (!DEVELOPMENT_TOOLS_ENABLED || !status || !params.matchId || running) return;
     setRunning(key);
     setError(null);
     setMessage(null);
@@ -107,6 +114,21 @@ export default function DevTestDataScreen() {
     });
   }
 
+  if (!DEVELOPMENT_TOOLS_ENABLED) {
+    return <Redirect href={params.matchId ? { pathname: '/match', params: { matchId: params.matchId } } : '/home'} />;
+  }
+
+  if (!status) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
+        <YStack gap="$4" padding="$5">
+          <BackButton alignSelf="flex-start" onPress={() => router.back()} />
+          {error ? <Text color="$onzeDanger">{error}</Text> : null}
+        </YStack>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
@@ -124,7 +146,7 @@ export default function DevTestDataScreen() {
           <YStack backgroundColor="$onzeWarningBg" borderRadius="$5" gap="$2" padding="$4">
             <Text color="$onzeWarningText" fontSize={13} fontWeight="900">Somente development</Text>
             <Text color="$onzeWarningText" fontSize={12} lineHeight={18}>
-              Esta ferramenta só funciona no backend de desenvolvimento e apenas para o Administrador Principal. Os cenários sobrescrevem posições e habilidades somente dos jogadores Teste XX.
+              Esta ferramenta precisa estar habilitada no ambiente de desenvolvimento e liberada para a sua conta. Os cenários sobrescrevem posições e habilidades somente dos jogadores Teste XX.
             </Text>
           </YStack>
 

@@ -304,7 +304,7 @@ function MemberCard({
   onPromoteToPrimary: () => void;
   onDemote: () => void;
 }) {
-  const permissions = member.permissions ?? [];
+  const permissions = (member.permissions ?? []).filter((permission) => GROUP_ADMIN_PERMISSION_LABELS[permission]);
 
   return (
     <YStack
