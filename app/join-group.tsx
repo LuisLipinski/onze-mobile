@@ -13,6 +13,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 import { OnzeWordmark } from '../src/components/onze-wordmark';
 
 import { ApiRequestError, joinGroup, JoinGroupResponse } from '../src/lib/api';
@@ -182,16 +183,7 @@ export default function JoinGroupScreen() {
                 </Text>
               </AppButton>
 
-              <AppButton
-                variant="secondary"
-
-
-                onPress={() => router.replace('/groups')}
-              >
-                <Text color="$onzeInk" fontWeight="700">
-                  Voltar
-                </Text>
-              </AppButton>
+              <BackButton onPress={() => router.replace('/groups')} />
             </YStack>
           </YStack>
         </ScrollView>

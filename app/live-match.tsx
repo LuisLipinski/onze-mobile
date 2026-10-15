@@ -9,6 +9,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { CardEventModal } from '../src/components/card-event-modal';
@@ -738,7 +739,7 @@ export default function LiveMatchScreen() {
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5">
           <XStack alignItems="center" gap="$3">
-            <AppButton variant="secondary" onPress={() => router.back()}>Voltar</AppButton>
+            <BackButton onPress={() => router.back()} />
             <YStack flex={1}>
               <Text color="$onzeInk" fontSize={24} fontWeight="900">Jogo ao vivo</Text>
               <Text color="$onzeMuted">{match?.groupName ?? 'Onze'}</Text>

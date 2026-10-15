@@ -11,6 +11,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 import { OnzeWordmark } from '../src/components/onze-wordmark';
 
 import {
@@ -431,9 +432,7 @@ export default function MatchTeamsScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
-            <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-          </AppButton>
+          <BackButton alignSelf="flex-start" onPress={() => router.back()} />
           <YStack gap="$1">
             <Text color="$onzeGreen" fontSize={13} fontWeight="900">TIMES DO JOGO</Text>
             <Text color="$onzeInk" fontSize={28} fontWeight="900">Escalação</Text>

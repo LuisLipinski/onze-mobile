@@ -9,6 +9,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
@@ -76,9 +77,7 @@ export default function GroupCreditsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <AppButton alignSelf="flex-start" variant="ghost" onPress={goBack}>
-            <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-          </AppButton>
+          <BackButton alignSelf="flex-start" onPress={goBack} />
 
           <YStack gap="$2">
             <Text color="$onzeMuted" fontSize={12} fontWeight="900">

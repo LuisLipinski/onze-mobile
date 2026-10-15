@@ -9,6 +9,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 
 import { getAccessToken } from '../src/lib/auth-storage';
 import {
@@ -110,9 +111,7 @@ export default function DevTestDataScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
-            <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-          </AppButton>
+          <BackButton alignSelf="flex-start" onPress={() => router.back()} />
 
           <YStack gap="$1">
             <Text color="$onzeWarningText" fontSize={13} fontWeight="900">AMBIENTE DE TESTE</Text>
@@ -245,12 +244,7 @@ export default function DevTestDataScreen() {
             </AppButton>
           </YStack>
 
-          <AppButton
-            backgroundColor="$onzeCanvas"
-            onPress={() => router.back()}
-          >
-            <Text color="$onzeGreen" fontWeight="900">Voltar para a escalação</Text>
-          </AppButton>
+          <BackButton onPress={() => router.back()} />
         </YStack>
       </ScrollView>
     </SafeAreaView>

@@ -13,6 +13,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 import { OnzeWordmark } from '../src/components/onze-wordmark';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
@@ -389,11 +390,10 @@ export default function LoginScreen() {
               ) : (
                 <>
                   {biometricCredential && biometricHardwareAvailable ? (
-                    <AppButton variant="ghost" buttonSize="sm" onPress={useBiometricAccount}>
-                      <Text color="$onzeGreen" fontSize={13} fontWeight="700">
-                        Voltar para {biometricCredential.displayName || biometricCredential.email}
-                      </Text>
-                    </AppButton>
+                    <BackButton
+                      accessibilityLabel={`Voltar para ${biometricCredential.displayName || biometricCredential.email}`}
+                      onPress={useBiometricAccount}
+                    />
                   ) : null}
 
                   <Input

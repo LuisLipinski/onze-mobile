@@ -2,12 +2,14 @@ import { Modal, Pressable } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { AppButton } from './app-button';
+import { BackButton } from './back-button';
 
 type ConfirmActionModalProps = {
   visible: boolean;
   title: string;
   message: string;
   confirmLabel: string;
+  confirmAsBack?: boolean;
   cancelLabel?: string | null;
   destructive?: boolean;
   loading?: boolean;
@@ -21,6 +23,7 @@ export function ConfirmActionModal({
   title,
   message,
   confirmLabel,
+  confirmAsBack = false,
   cancelLabel = 'Cancelar',
   destructive = false,
   loading = false,
@@ -72,16 +75,20 @@ export function ConfirmActionModal({
                   </Text>
                 </AppButton>
               ) : null}
-              <AppButton
-                variant={destructive ? 'destructive' : 'primary'}
-                disabled={loading}
-                flex={1}
-                onPress={onConfirm}
-              >
-                <Text color="$onzeSurface" fontWeight="800">
-                  {loading ? loadingLabel : confirmLabel}
-                </Text>
-              </AppButton>
+              {confirmAsBack ? (
+                <BackButton disabled={loading} flex={1} onPress={onConfirm} />
+              ) : (
+                <AppButton
+                  variant={destructive ? 'destructive' : 'primary'}
+                  disabled={loading}
+                  flex={1}
+                  onPress={onConfirm}
+                >
+                  <Text color="$onzeSurface" fontWeight="800">
+                    {loading ? loadingLabel : confirmLabel}
+                  </Text>
+                </AppButton>
+              )}
             </XStack>
           </YStack>
         </Pressable>
