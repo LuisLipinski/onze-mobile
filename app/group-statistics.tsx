@@ -5,6 +5,7 @@ import { Pressable, ScrollView } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { StatisticsMatchCard } from '../src/components/statistics-match-card';
 import {
@@ -101,9 +102,7 @@ export default function GroupStatisticsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <AppButton alignSelf="flex-start" variant="ghost" onPress={goBack}>
-            <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-          </AppButton>
+          <BackButton alignSelf="flex-start" onPress={goBack} />
 
           <YStack gap="$2">
             <Text color="$onzeMuted" fontSize={12} fontWeight="900">

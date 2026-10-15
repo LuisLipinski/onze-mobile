@@ -9,6 +9,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
@@ -215,16 +216,7 @@ export default function GroupInviteScreen() {
             </Text>
           ) : null}
 
-          <AppButton
-            variant="secondary"
-
-
-            onPress={finish}
-          >
-            <Text color="$onzeInk" fontSize={15} fontWeight="700">
-              Voltar ao grupo
-            </Text>
-          </AppButton>
+          <BackButton onPress={finish} />
         </YStack>
       </YStack>
       <ConfirmActionModal

@@ -9,6 +9,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { MatchCard } from '../src/components/match-card';
@@ -159,9 +160,7 @@ export default function GroupScreen() {
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <YStack gap="$5" paddingVertical="$3">
           <XStack alignItems="center" justifyContent="space-between">
-            <AppButton variant="ghost" onPress={() => router.replace('/groups')}>
-              <Text color="$onzeGreen" fontWeight="700">← Grupos</Text>
-            </AppButton>
+            <BackButton onPress={() => router.replace('/groups')} />
             {group ? (
               <AppButton
                 circular

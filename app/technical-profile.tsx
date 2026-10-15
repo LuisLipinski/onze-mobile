@@ -9,6 +9,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { TechnicalRatingEditor } from '../src/components/technical-rating-editor';
@@ -112,9 +113,7 @@ export default function TechnicalProfileScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5" paddingVertical="$3">
-          <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
-            <Text color="$onzeGreen" fontWeight="800">← Voltar</Text>
-          </AppButton>
+          <BackButton alignSelf="flex-start" onPress={() => router.back()} />
 
           <YStack gap="$1">
             <Text color="$onzeGreen" fontSize={13} fontWeight="900">AVALIAÇÃO TÉCNICA PRIVADA</Text>

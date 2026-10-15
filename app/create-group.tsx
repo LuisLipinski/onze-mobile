@@ -15,6 +15,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { createGroup, Group, uploadGroupPhoto } from '../src/lib/api';
@@ -208,9 +209,7 @@ export default function CreateGroupScreen() {
               </AppButton>
             </YStack>
 
-            <AppButton variant="ghost" borderWidth={0} onPress={() => router.back()}>
-              <Text color="$onzeMuted" fontWeight="700">Voltar</Text>
-            </AppButton>
+            <BackButton onPress={() => router.back()} />
           </YStack>
         </ScrollView>
       </KeyboardAvoidingView>

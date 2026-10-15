@@ -15,6 +15,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
@@ -237,9 +238,7 @@ export default function GroupSettingsScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <YStack gap="$5" paddingVertical="$3">
-            <AppButton alignSelf="flex-start" variant="ghost" onPress={() => router.back()}>
-              <Text color="$onzeGreen" fontWeight="700">← Voltar</Text>
-            </AppButton>
+            <BackButton alignSelf="flex-start" onPress={() => router.back()} />
 
             <YStack gap="$1">
               <Text color="$onzeGreen" fontSize={14} fontWeight="800">CONFIGURAÇÕES</Text>
@@ -355,7 +354,8 @@ export default function GroupSettingsScreen() {
         visible={savedConfirmationVisible}
         title="Configurações salvas"
         message="As informações do grupo foram atualizadas."
-        confirmLabel="Voltar ao grupo"
+        confirmLabel="Voltar"
+        confirmAsBack
         cancelLabel={null}
         onCancel={() => setSavedConfirmationVisible(false)}
         onConfirm={() => router.back()}

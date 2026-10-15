@@ -13,6 +13,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { BackButton } from '../src/components/back-button';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { confirmPasswordReset, requestPasswordReset } from '../src/lib/api';
@@ -186,11 +187,9 @@ export default function ResetPasswordScreen() {
               </Text>
             </AppButton>
 
-            <Text color="$onzeMuted" fontSize={14} textAlign="center">
-              <Link href="/" style={{ color: ONZE_COLORS.green, fontWeight: '700' }}>
-                Voltar para o login
-              </Link>
-            </Text>
+            <Link href="/" asChild>
+              <BackButton alignSelf="center" accessibilityLabel="Voltar para o login" />
+            </Link>
           </YStack>
         </ScrollView>
       </KeyboardAvoidingView>
