@@ -11,7 +11,6 @@ import { getErrorMessage } from '../src/lib/errors';
 import { AppButton } from '../src/components/app-button';
 import { OnzeWordmark } from '../src/components/onze-wordmark';
 
-import { BottomNavigation } from '../src/components/bottom-navigation';
 import { MatchCard } from '../src/components/match-card';
 import { LiveMatchCard } from '../src/components/live-match-card';
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
@@ -267,7 +266,6 @@ export default function HomeScreen() {
             </YStack>
           </YStack>
         </ScrollView>
-        <BottomNavigation active="home" />
       </YStack>
     </SafeAreaView>
   );

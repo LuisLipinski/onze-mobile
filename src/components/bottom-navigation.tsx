@@ -1,29 +1,35 @@
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, XStack, YStack } from 'tamagui';
 
-export type MainTab = 'home' | 'groups' | 'settings';
+import { mainTabDestination, type MainTab } from '../lib/main-navigation';
 
-const ITEMS: { key: MainTab; label: string; icon: string; route: '/home' | '/groups' | '/settings' }[] = [
-  { key: 'home', label: 'Home', icon: '⌂', route: '/home' },
-  { key: 'groups', label: 'Grupos', icon: '⚽', route: '/groups' },
-  { key: 'settings', label: 'Configurações', icon: '⚙', route: '/settings' },
+export type { MainTab } from '../lib/main-navigation';
+
+const ITEMS: { key: MainTab; label: string; icon: string }[] = [
+  { key: 'home', label: 'Home', icon: '⌂' },
+  { key: 'groups', label: 'Grupos', icon: '⚽' },
+  { key: 'settings', label: 'Configurações', icon: '⚙' },
 ];
 
 export function BottomNavigation({ active }: { active: MainTab }) {
   const router = useRouter();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 8);
 
   return (
     <XStack
+      accessibilityRole="tablist"
       backgroundColor="$onzeSurface"
       borderColor="$onzeBorder"
       borderTopWidth={1}
+      flexShrink={0}
       minHeight={64 + bottomPadding}
       paddingBottom={bottomPadding}
-      paddingHorizontal="$2"
+      paddingLeft={insets.left + 8}
+      paddingRight={insets.right + 8}
       paddingTop="$2"
     >
       {ITEMS.map((item) => {
@@ -31,8 +37,12 @@ export function BottomNavigation({ active }: { active: MainTab }) {
         return (
           <Pressable
             key={item.key}
+            accessibilityLabel={item.label}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
             onPress={() => {
-              if (!selected) router.replace(item.route);
+              const destination = mainTabDestination(pathname, item.key);
+              if (destination) router.dismissTo(destination);
             }}
             style={{ flex: 1 }}
           >

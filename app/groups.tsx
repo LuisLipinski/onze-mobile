@@ -10,7 +10,6 @@ import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
 
-import { BottomNavigation } from '../src/components/bottom-navigation';
 import { ApiRequestError, Group, listGroups } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
 
@@ -134,7 +133,6 @@ export default function GroupsScreen() {
             )}
           </YStack>
         </ScrollView>
-        <BottomNavigation active="groups" />
       </YStack>
     </SafeAreaView>
   );
