@@ -20,43 +20,8 @@ import {
   updateGroupAdminPermissions,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
+import { GROUP_ADMIN_PERMISSIONS } from '../src/lib/group-admin-permissions';
 
-const PERMISSIONS: {
-  value: GroupAdminPermission;
-  label: string;
-  description: string;
-}[] = [
-  {
-    value: 'ADD_MEMBERS',
-    label: 'Adicionar membros',
-    description: 'Gerar, renovar e compartilhar o convite do grupo.',
-  },
-  {
-    value: 'REMOVE_MEMBERS',
-    label: 'Remover membros',
-    description: 'Retirar membros comuns. Administradores precisam ser rebaixados pelo Principal antes.',
-  },
-  {
-    value: 'PROMOTE_MEMBERS',
-    label: 'Promover membros',
-    description: 'Transformar um membro em administrador. O novo admin começa sem funções liberadas.',
-  },
-  {
-    value: 'EDIT_GROUP',
-    label: 'Editar grupo',
-    description: 'Alterar foto, cidade, local, mascote e horários habituais.',
-  },
-  {
-    value: 'SCHEDULE_GAMES',
-    label: 'Marcar jogos',
-    description: 'Marcar jogos e administrar presença, pagamentos, créditos e reposições.',
-  },
-  {
-    value: 'EDIT_PLAYER_PROFILES',
-    label: 'Editar perfis esportivos',
-    description: 'Atualizar posições, opção de goleiro, pé dominante e nível técnico dos jogadores.',
-  },
-];
 
 export default function GroupAdminPermissionsScreen() {
   const router = useRouter();
@@ -74,6 +39,9 @@ export default function GroupAdminPermissionsScreen() {
   const [message, setMessage] = useState<string | null>(null);
 
   const loadAdmin = useCallback(async () => {
+    setMember(null);
+    setSelected([]);
+    setMessage(null);
     if (!params.groupId || !params.membershipId) {
       setError('Não foi possível identificar o administrador.');
       setLoading(false);
@@ -206,12 +174,12 @@ export default function GroupAdminPermissionsScreen() {
               borderWidth={1}
               paddingHorizontal="$5"
             >
-              {PERMISSIONS.map((permission, index) => (
+              {GROUP_ADMIN_PERMISSIONS.map((permission, index) => (
                 <XStack
                   key={permission.value}
                   alignItems="center"
                   borderBottomColor="$onzeBorder"
-                  borderBottomWidth={index === PERMISSIONS.length - 1 ? 0 : 1}
+                  borderBottomWidth={index === GROUP_ADMIN_PERMISSIONS.length - 1 ? 0 : 1}
                   gap="$4"
                   justifyContent="space-between"
                   paddingVertical="$4"
