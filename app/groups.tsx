@@ -81,11 +81,7 @@ export default function GroupsScreen() {
               </AppButton>
             </XStack>
 
-            {loading ? (
-              <YStack alignItems="center" padding="$6">
-                <Text color="$onzeMuted">Carregando grupos...</Text>
-              </YStack>
-            ) : error ? (
+            {loading ? null : error ? (
               <YStack
                 backgroundColor="$onzeSurface"
                 borderColor="$onzeDanger"

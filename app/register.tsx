@@ -19,7 +19,7 @@ import { register } from '../src/lib/api';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ joinCode?: string }>();
+  const params = useLocalSearchParams<{ joinCode?: string; matchId?: string; destination?: string }>();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,6 +38,8 @@ export default function RegisterScreen() {
         params: {
           registered: '1',
           ...(params.joinCode ? { joinCode: params.joinCode } : {}),
+          ...(params.matchId ? { matchId: params.matchId } : {}),
+          ...(params.destination ? { destination: params.destination } : {}),
         },
       });
     } catch (exception) {
@@ -159,9 +161,11 @@ export default function RegisterScreen() {
                 Já tem conta?{' '}
                 <Link
                   href={
-                    params.joinCode
-                      ? { pathname: '/', params: { joinCode: params.joinCode } }
-                      : '/'
+                    { pathname: '/', params: {
+                      ...(params.joinCode ? { joinCode: params.joinCode } : {}),
+                      ...(params.matchId ? { matchId: params.matchId } : {}),
+                      ...(params.destination ? { destination: params.destination } : {}),
+                    } }
                   }
                   style={{ color: ONZE_COLORS.green, fontWeight: '700' }}
                 >

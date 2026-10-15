@@ -1,8 +1,8 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ScrollView } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ScrollView, Share } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { ONZE_COLORS } from '../src/theme/colors';
@@ -32,6 +32,7 @@ import {
   FootballMatch,
   GroupMember,
   getMatch,
+  getMatchShare,
   getMatchTeamIdentities,
   getOwnSportsProfile,
   listGroupMembers,
@@ -44,6 +45,7 @@ import {
   removeRentalGoalkeeper,
   removeMatchGuest,
   reportMatchPayment,
+  requestMatchPaymentReminder,
   RentalGoalkeeper,
   resolveMatchPaymentSettlement,
   resolveMatchPaymentSettlements,
@@ -70,6 +72,8 @@ import {
   shouldShowCurrentPlayerPayment,
 } from '../src/lib/match-payment';
 import { paymentDeadlineState, signupDeadlineState } from '../src/lib/match-deadlines';
+import { attendanceActions, adminPaymentAction } from '../src/lib/match-actions';
+import { matchShareMessage } from '../src/lib/match-share';
 import { modalityLabel } from '../src/lib/match-modality';
 import { positionLabel } from '../src/lib/sports-profile';
 
@@ -80,7 +84,14 @@ type PaymentBadgeColor = '$onzeGreen' | '$onzeDanger' | '$onzeMuted' | '$onzeWar
 
 export default function MatchScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ matchId?: string }>();
+  const params = useLocalSearchParams<{ matchId?: string; sharePrompt?: string }>();
+  const sharePromptRef = useRef(params.sharePrompt);
+  useEffect(() => { sharePromptRef.current = params.sharePrompt; }, [params.sharePrompt]);
+  const attendanceBusy = useRef(false);
+  const sharingBusy = useRef(false);
+  const [sharing, setSharing] = useState(false);
+  const [sharePromptVisible, setSharePromptVisible] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
   const [match, setMatch] = useState<FootballMatch | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingAttendance, setUpdatingAttendance] = useState<AttendanceStatus | null>(null);
@@ -221,6 +232,8 @@ export default function MatchScreen() {
             groupId: loadedMatch.groupId,
             groupName: loadedMatch.groupName,
             required: 'true',
+            matchId: loadedMatch.id,
+            ...(sharePromptRef.current === '1' ? { sharePrompt: '1' } : {}),
           },
         });
         return;
@@ -248,8 +261,37 @@ export default function MatchScreen() {
     void loadMatch();
   }, [loadMatch]));
 
+  useEffect(() => {
+    if (match?.id === params.matchId && params.sharePrompt === '1') {
+      setSharePromptVisible(true);
+      router.setParams({ sharePrompt: '0' });
+    }
+  }, [match?.id, params.matchId, params.sharePrompt, router]);
+
+  async function shareMatch() {
+    if (!match || sharingBusy.current) return;
+    sharingBusy.current = true;
+    setSharing(true);
+    setSharePromptVisible(false);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      const { shareUrl } = await getMatchShare(token, match.id);
+      await Share.share({ title: 'Convite para o jogo', message: matchShareMessage(match, shareUrl) });
+    } catch (exception) {
+      setError(getErrorMessage(exception, 'Não foi possível compartilhar o jogo.'));
+    } finally {
+      sharingBusy.current = false;
+      setSharing(false);
+    }
+  }
+
   async function confirmAttendance(status: AttendanceStatus) {
-    if (!match || updatingAttendance) return;
+    if (!match || attendanceBusy.current || updatingAttendance) return;
+    const actions = attendanceActions(match);
+    if (status === 'GOING' ? !actions.going : !actions.notGoing) return;
+    attendanceBusy.current = true;
     setUpdatingAttendance(status);
     setError(null);
     try {
@@ -265,12 +307,15 @@ export default function MatchScreen() {
     } catch (exception) {
       setError(getErrorMessage(exception, 'Não foi possível salvar sua presença.'));
     } finally {
+      attendanceBusy.current = false;
       setUpdatingAttendance(null);
     }
   }
 
   function requestAttendance(status: AttendanceStatus) {
-    if (!match || updatingAttendance) return;
+    if (!match || attendanceBusy.current || updatingAttendance) return;
+    const actions = attendanceActions(match);
+    if (status === 'GOING' ? !actions.going : !actions.notGoing) return;
     if (status === 'NOT_GOING'
         && match.myAttendance !== 'NOT_GOING'
         && match.paymentRequired
@@ -296,6 +341,23 @@ export default function MatchScreen() {
       syncNotifications(token, updatedMatch);
     } catch (exception) {
       setError(getErrorMessage(exception, 'Não foi possível informar o pagamento.'));
+    } finally {
+      setUpdatingPayment(null);
+    }
+  }
+
+  async function remindPlayerPayment(playerUserId: string) {
+    if (!match || updatingPayment) return;
+    setUpdatingPayment(playerUserId);
+    setPaymentMessage(null);
+    setError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      setMatch(await requestMatchPaymentReminder(token, match.id, playerUserId));
+      setPaymentMessage('Cobrança solicitada. O jogador receberá uma notificação se os avisos estiverem habilitados.');
+    } catch (exception) {
+      setError(getErrorMessage(exception, 'Não foi possível cobrar o jogador.'));
     } finally {
       setUpdatingPayment(null);
     }
@@ -592,6 +654,7 @@ export default function MatchScreen() {
     return <ServerLoadingScreen title="Carregando jogo..." message="Buscando a lista de presença." />;
   }
 
+  const presenceActions = match ? attendanceActions(match, Boolean(updatingAttendance)) : { going: false, notGoing: false };
   const going = match?.attendances.filter((attendance) => attendance.status === 'GOING') ?? [];
   const removedForPaymentDeadline = match?.attendances.filter(
     (attendance) => attendance.paymentDeadlineRemovedAt != null,
@@ -636,6 +699,18 @@ export default function MatchScreen() {
                 </Text>
                 <Text color="$onzeMuted" fontSize={15}>📍 {match.venue}</Text>
               </YStack>
+
+              <AppButton variant="outline" disabled={sharing} onPress={() => void shareMatch()}>
+                <Text color="$onzeGreen" fontWeight="900">
+                  {sharing ? 'Preparando convite...' : 'Compartilhar jogo'}
+                </Text>
+              </AppButton>
+
+              {paymentMessage ? (
+                <YStack backgroundColor="$onzeSuccessBg" borderRadius="$5" padding="$4">
+                  <Text color="$onzeInk" fontSize={13}>{paymentMessage}</Text>
+                </YStack>
+              ) : null}
 
               {error ? (
                 <YStack backgroundColor="$onzeSurface" borderColor="$onzeDanger" borderRadius="$5" borderWidth={1} padding="$4">
@@ -889,32 +964,30 @@ export default function MatchScreen() {
                   </YStack>
                   <XStack gap="$3">
                     <AppButton
-                      backgroundColor={match.myAttendance === 'GOING' ? '$onzeGreen' : '$onzeSurface'}
-                      borderColor="$onzeGreen"
+                      backgroundColor={presenceActions.going ? '$onzeGreen' : '$onzeBorder'}
+                      borderColor={presenceActions.going ? '$onzeGreen' : '$onzeBorder'}
+                      disabledStyle={{ backgroundColor: '$onzeBorder', borderColor: '$onzeBorder' }}
                       borderWidth={1}
-                      disabled={Boolean(updatingAttendance)
-                        || (match.myAttendance !== 'GOING' && !match.canJoin)}
+                      disabled={!presenceActions.going}
                       flex={1}
 
                       onPress={() => requestAttendance('GOING')}
                     >
-                      <Text color={match.myAttendance === 'GOING' ? '$onzeSurface' : '$onzeGreen'} fontWeight="900">
+                      <Text color={presenceActions.going ? '$onzeSurface' : '$onzeMuted'} fontWeight="900">
                         {updatingAttendance === 'GOING' ? 'Salvando...' : '✓ Vou jogar'}
                       </Text>
                     </AppButton>
                     <AppButton
-                      backgroundColor={match.myAttendance === 'NOT_GOING' ? '$onzeDanger' : '$onzeSurface'}
-                      borderColor="$onzeDanger"
+                      backgroundColor={presenceActions.notGoing ? '$onzeSurface' : '$onzeBorder'}
+                      borderColor={presenceActions.notGoing ? '$onzeDanger' : '$onzeBorder'}
+                      disabledStyle={{ backgroundColor: '$onzeBorder', borderColor: '$onzeBorder' }}
                       borderWidth={1}
-                      disabled={Boolean(updatingAttendance)
-                        || (match.myAttendance === 'GOING'
-                          ? !match.canWithdraw
-                          : !match.signupOpen)}
+                      disabled={!presenceActions.notGoing}
                       flex={1}
 
                       onPress={() => requestAttendance('NOT_GOING')}
                     >
-                      <Text color={match.myAttendance === 'NOT_GOING' ? '$onzeSurface' : '$onzeDanger'} fontWeight="900">
+                      <Text color={presenceActions.notGoing ? '$onzeDanger' : '$onzeMuted'} fontWeight="900">
                         {updatingAttendance === 'NOT_GOING' ? 'Salvando...' : 'Não vou'}
                       </Text>
                     </AppButton>
@@ -926,6 +999,14 @@ export default function MatchScreen() {
                   <Text color="$onzeMuted" fontSize={13} lineHeight={20} textTransform="capitalize">
                     Ela será liberada em {formatLongDateTime(match.attendanceOpensAt, match.timeZone, false)}. Você receberá um aviso.
                   </Text>
+                  <XStack gap="$3">
+                    {['✓ Vou jogar', 'Não vou'].map((label) => (
+                      <AppButton key={label} disabled flex={1} backgroundColor="$onzeBorder" borderColor="$onzeBorder"
+                        disabledStyle={{ backgroundColor: '$onzeBorder', borderColor: '$onzeBorder' }}>
+                        <Text color="$onzeMuted" fontWeight="900">{label}</Text>
+                      </AppButton>
+                    ))}
+                  </XStack>
                 </YStack>
               )}
 
@@ -1251,17 +1332,19 @@ export default function MatchScreen() {
                           ) : null}
                         </YStack>
                       </XStack>
-                      {attendance.status === 'GOING'
-                          && attendance.paymentStatus !== 'PAID'
-                          && attendance.paymentStatus !== 'CANCELLED' ? (
+                      {adminPaymentAction(match.status, attendance) ? (
                         <AppButton
                           variant="outline"
 
                           disabled={Boolean(updatingPayment)}
-                          onPress={() => void confirmPlayerPayment(attendance.userId)}
+                          onPress={() => void (adminPaymentAction(match.status, attendance) === 'REMIND'
+                            ? remindPlayerPayment(attendance.userId)
+                            : confirmPlayerPayment(attendance.userId))}
                         >
                           <Text color="$onzeGreen" fontSize={12} fontWeight="900">
-                            {updatingPayment === attendance.userId ? 'Validando...' : 'Confirmar'}
+                            {updatingPayment === attendance.userId ? 'Aguarde...'
+                              : adminPaymentAction(match.status, attendance) === 'REMIND'
+                                ? 'Cobrar jogador' : 'Confirmar recebimento'}
                           </Text>
                         </AppButton>
                       ) : null}
@@ -1359,6 +1442,16 @@ export default function MatchScreen() {
           onCancel={() => setGoalkeeperPicker(null)}
         />
       ) : null}
+
+      <ConfirmActionModal
+        visible={sharePromptVisible}
+        title="Compartilhar este jogo?"
+        message="Envie um convite pelo WhatsApp ou por outro aplicativo. Os membros poderão abrir o jogo e responder se vão jogar."
+        confirmLabel="Compartilhar"
+        cancelLabel="Agora não"
+        onCancel={() => setSharePromptVisible(false)}
+        onConfirm={() => void shareMatch()}
+      />
 
       {match ? (
         <StartLiveMatchModal

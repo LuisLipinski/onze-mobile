@@ -455,7 +455,6 @@ export default function MatchTeamsScreen() {
             </YStack>
           ) : null}
 
-          {loading ? <Text color="$onzeMuted">Carregando...</Text> : null}
 
           {data && data.confirmedPlayers < data.minimumPlayers ? (
             <YStack backgroundColor="$onzeWarningBg" borderColor="$onzeWarningBorder" borderRadius="$5" borderWidth={1} gap="$1" padding="$4">

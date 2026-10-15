@@ -460,9 +460,11 @@ export default function LoginScreen() {
                     Ainda não tem conta?{' '}
                     <Link
                       href={
-                        params.joinCode
-                          ? { pathname: '/register', params: { joinCode: params.joinCode } }
-                          : '/register'
+                        { pathname: '/register', params: {
+                          ...(params.joinCode ? { joinCode: params.joinCode } : {}),
+                          ...(params.matchId ? { matchId: params.matchId } : {}),
+                          ...(params.destination ? { destination: params.destination } : {}),
+                        } }
                       }
                       style={{ color: ONZE_COLORS.green, fontWeight: '700' }}
                     >

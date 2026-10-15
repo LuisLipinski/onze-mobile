@@ -31,7 +31,6 @@ export default function ExtendMatchSignupScreen() {
   const [signupTime, setSignupTime] = useState('');
   const [paymentDate, setPaymentDate] = useState('');
   const [paymentTime, setPaymentTime] = useState('');
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +38,6 @@ export default function ExtendMatchSignupScreen() {
     async function load() {
       if (!params.matchId) {
         setError('Não foi possível identificar o jogo.');
-        setLoading(false);
         return;
       }
       try {
@@ -52,8 +50,6 @@ export default function ExtendMatchSignupScreen() {
         setPaymentTime(payment.time);
       } catch (exception) {
         setError(getErrorMessage(exception, 'Não foi possível carregar o jogo.'));
-      } finally {
-        setLoading(false);
       }
     }
     void load();
@@ -117,8 +113,6 @@ export default function ExtendMatchSignupScreen() {
               <Text color="$onzeDanger" fontSize={13}>{error}</Text>
             </YStack>
           ) : null}
-
-          {loading ? <Text color="$onzeMuted">Carregando...</Text> : null}
 
           {match ? (
             <>

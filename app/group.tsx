@@ -336,7 +336,7 @@ export default function GroupScreen() {
                 ) : null}
 
                 {canAddMembers ? (
-                  <MenuButton label="Jogadores e convites" onPress={() => {
+                  <MenuButton label="Convidar novos membros" onPress={() => {
                     setMenuVisible(false);
                     router.push({ pathname: '/group-invite', params: { groupId: group.id, groupName: group.name } });
                   }} />
