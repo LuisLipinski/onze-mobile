@@ -1,10 +1,14 @@
 import * as Notifications from 'expo-notifications';
 import { Stack, usePathname, useRouter } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useColorScheme, View } from 'react-native';
 import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 import { TamaguiProvider } from 'tamagui';
 
+import { AppOpening } from '../src/components/app-opening';
+import { StartupReadinessContext } from '../src/lib/startup-readiness';
 import { GlobalLoadingOverlay } from '../src/components/global-loading-overlay';
 import { BottomNavigation } from '../src/components/bottom-navigation';
 import { mainTabForPath } from '../src/lib/main-navigation';
@@ -12,10 +16,22 @@ import { matchNotificationDestination } from '../src/lib/notification-navigation
 import { ONZE_COLORS } from '../src/theme/colors';
 import { tamaguiConfig } from '../tamagui.config';
 
+// Hold the native launch screen until the branded React view has laid out.
+void SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
-  const activeTab = mainTabForPath(usePathname());
+  const pathname = usePathname();
+  const activeTab = mainTabForPath(pathname);
+  const [openingVisible, setOpeningVisible] = useState(true);
+  const [sequenceComplete, setSequenceComplete] = useState(false);
+  const [loginReady, setLoginReady] = useState(false);
+  const markLoginReady = useCallback(() => setLoginReady(true), []);
+  const handleOpeningReady = useCallback(() => SplashScreen.hide(), []);
+  const handleSequenceComplete = useCallback(() => setSequenceComplete(true), []);
+  const handleOpeningFinished = useCallback(() => setOpeningVisible(false), []);
+  const contentReady = loginReady || !['', '/', '/index'].includes(pathname);
   const lastNotificationResponse = Notifications.useLastNotificationResponse();
   const handledNotificationId = useRef<string | null>(null);
 
@@ -38,13 +54,28 @@ export default function RootLayout() {
         config={tamaguiConfig}
         defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}
       >
-        <View style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
-          <View style={{ flex: 1 }}>
-            <Stack screenOptions={{ headerShown: false }} />
+        <StartupReadinessContext.Provider value={markLoginReady}>
+          <StatusBar style={openingVisible ? 'light' : 'dark'} />
+          <View style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
+            <View
+              accessibilityElementsHidden={openingVisible}
+              importantForAccessibility={openingVisible ? 'no-hide-descendants' : 'auto'}
+              style={{ flex: 1 }}
+            >
+              <Stack screenOptions={{ headerShown: false }} />
+            </View>
+            {!openingVisible && activeTab ? <BottomNavigation active={activeTab} /> : null}
+            {openingVisible ? (
+              <AppOpening
+                ready={contentReady}
+                onReady={handleOpeningReady}
+                onSequenceComplete={handleSequenceComplete}
+                onFinished={handleOpeningFinished}
+              />
+            ) : null}
           </View>
-          {activeTab ? <BottomNavigation active={activeTab} /> : null}
-        </View>
-        <GlobalLoadingOverlay />
+          <GlobalLoadingOverlay suspended={openingVisible && !sequenceComplete} />
+        </StartupReadinessContext.Provider>
       </TamaguiProvider>
     </SafeAreaProvider>
   );

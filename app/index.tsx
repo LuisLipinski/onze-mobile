@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Input, Text, XStack, YStack } from 'tamagui';
 
+import { useStartupReadiness } from '../src/lib/startup-readiness';
 import { ONZE_COLORS } from '../src/theme/colors';
 
 import { getErrorMessage } from '../src/lib/errors';
@@ -45,6 +46,7 @@ function getAccountInitials(displayName: string, email: string) {
 }
 
 export default function LoginScreen() {
+  const markStartupReady = useStartupReadiness();
   const router = useRouter();
   const params = useLocalSearchParams<{
     registered?: string;
@@ -152,8 +154,9 @@ export default function LoginScreen() {
       }
     } finally {
       setRestoringSession(false);
+      markStartupReady();
     }
-  }, [goAfterAuthentication]);
+  }, [goAfterAuthentication, markStartupReady]);
 
   useEffect(() => {
     void restoreSession();

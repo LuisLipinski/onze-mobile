@@ -18,3 +18,10 @@ mkdirSync('assets', { recursive: true });
 writeFileSync('assets/icon.png', icon);
 writeFileSync('assets/adaptive-icon.png', icon);
 console.log(`Approved Onze icon ready: ${icon.length} bytes, sha256=${sha256}`);
+
+const football = Buffer.from(readFileSync('assets/football.b64', 'utf8').trim(), 'base64');
+const footballHash = createHash('sha256').update(football).digest('hex');
+if (footballHash !== '264cadf1950754e3f4329d089c9d843513475a8d5549cebbb6c0e388047905e4') {
+  throw new Error('Opening football asset failed integrity check');
+}
+writeFileSync('assets/football.png', football);
