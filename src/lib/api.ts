@@ -117,6 +117,7 @@ export type StatisticsRankings = {
   assists: StatisticsRankingEntry[];
   gamesPlayed: StatisticsRankingEntry[];
   wins: StatisticsRankingEntry[];
+  losses: StatisticsRankingEntry[];
   foulsCommitted: StatisticsRankingEntry[];
   foulsSuffered: StatisticsRankingEntry[];
   penaltiesCommitted: StatisticsRankingEntry[];
@@ -173,8 +174,18 @@ export type PlayerMatchHistory = {
   teams: StatisticsTeam[];
 };
 
+export type StatisticsSeason = {
+  id: string;
+  number: number;
+  startedAt: string;
+  endedAt: string | null;
+};
+
 export type GroupStatistics = {
   groupId: string;
+  seasons: StatisticsSeason[];
+  selectedSeasonId: string | null;
+  canManageSeasons: boolean;
   finishedMatches: number;
   registeredGoals: number;
   playersWithMatches: number;
@@ -186,6 +197,7 @@ export type GroupStatistics = {
 
 export type PlayerStatistics = {
   groupId: string;
+  season: StatisticsSeason | null;
   player: StatisticsPlayer;
   matchHistory: PlayerMatchHistory[];
 };
@@ -911,10 +923,11 @@ export function listGroupMembers(accessToken: string, groupId: string) {
   });
 }
 
-export function getGroupStatistics(accessToken: string, groupId: string) {
-  return request<GroupStatistics>(`/api/groups/${groupId}/statistics`, {
+export function getGroupStatistics(accessToken: string, groupId: string, seasonId?: string | null) {
+  const query = seasonId ? `?seasonId=${encodeURIComponent(seasonId)}` : '';
+  return request<GroupStatistics>(`/api/groups/${groupId}/statistics${query}`, {
     headers: authenticatedHeaders(accessToken),
-    loading: false,
+    loading: { title: 'Carregando ranking...', message: 'Estamos buscando os resultados do período selecionado.' },
   });
 }
 
@@ -922,14 +935,27 @@ export function getGroupPlayerStatistics(
   accessToken: string,
   groupId: string,
   userId: string,
+  seasonId?: string | null,
 ) {
+  const query = seasonId ? `?seasonId=${encodeURIComponent(seasonId)}` : '';
   return request<PlayerStatistics>(
-    `/api/groups/${groupId}/statistics/players/${userId}`,
+    `/api/groups/${groupId}/statistics/players/${userId}${query}`,
     {
       headers: authenticatedHeaders(accessToken),
-      loading: false,
+      loading: { title: 'Carregando histórico...', message: 'Estamos buscando os jogos do período selecionado.' },
     },
   );
+}
+
+export function startGroupStatisticsSeason(
+  accessToken: string, groupId: string, expectedCurrentSeasonId: string,
+) {
+  return request<StatisticsSeason>(`/api/groups/${groupId}/statistics/seasons`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ expectedCurrentSeasonId }),
+    loading: { title: 'Iniciando temporada...', message: 'Estamos preservando o ranking da temporada anterior.' },
+  });
 }
 
 export function getOwnSportsProfile(accessToken: string, groupId: string) {
@@ -1573,6 +1599,14 @@ export function confirmMatchPayment(
       title: 'Confirmando o pagamento...',
       message: 'Estamos atualizando a situação financeira do jogador.',
     },
+  });
+}
+
+export function rejectMatchPayment(accessToken: string, matchId: string, playerUserId: string) {
+  return request<FootballMatch>(`/api/matches/${matchId}/payments/${playerUserId}/reject`, {
+    method: 'PUT',
+    headers: authenticatedHeaders(accessToken),
+    loading: { title: 'Atualizando pagamento...', message: 'Estamos devolvendo a cobrança ao estado pendente.' },
   });
 }
 

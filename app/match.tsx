@@ -45,6 +45,7 @@ import {
   removeRentalGoalkeeper,
   removeMatchGuest,
   reportMatchPayment,
+  rejectMatchPayment,
   requestMatchPaymentReminder,
   RentalGoalkeeper,
   resolveMatchPaymentSettlement,
@@ -96,6 +97,7 @@ export default function MatchScreen() {
   const [loading, setLoading] = useState(true);
   const [updatingAttendance, setUpdatingAttendance] = useState<AttendanceStatus | null>(null);
   const [updatingPayment, setUpdatingPayment] = useState<string | null>(null);
+  const [paymentToReject, setPaymentToReject] = useState<MatchAttendance | null>(null);
   const [pendingAttendanceStatus, setPendingAttendanceStatus] = useState<AttendanceStatus | null>(null);
   const [settlementPlayer, setSettlementPlayer] = useState<MatchAttendance | null>(null);
   const [selectedSettlements, setSelectedSettlements] = useState<string[]>([]);
@@ -378,6 +380,27 @@ export default function MatchScreen() {
       syncNotifications(token, updatedMatch);
     } catch (exception) {
       setError(getErrorMessage(exception, 'Não foi possível confirmar o pagamento.'));
+    } finally {
+      setUpdatingPayment(null);
+    }
+  }
+
+  async function rejectPlayerPayment() {
+    if (!match || !paymentToReject || updatingPayment) return;
+    setUpdatingPayment(paymentToReject.userId);
+    setError(null);
+    setPaymentMessage(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { goToLogin(); return; }
+      const updated = await rejectMatchPayment(token, match.id, paymentToReject.userId);
+      setMatch(updated);
+      syncNotifications(token, updated);
+      setPaymentToReject(null);
+      setPaymentMessage('Pagamento marcado como não recebido. A cobrança voltou para Pendente.');
+    } catch (exception) {
+      setPaymentToReject(null);
+      setError(getErrorMessage(exception, 'Não foi possível recusar o pagamento informado.'));
     } finally {
       setUpdatingPayment(null);
     }
@@ -1348,6 +1371,15 @@ export default function MatchScreen() {
                           </Text>
                         </AppButton>
                       ) : null}
+                      {adminPaymentAction(match.status, attendance) === 'CONFIRM' ? (
+                        <AppButton
+                          variant="outline"
+                          disabled={Boolean(updatingPayment)}
+                          onPress={() => setPaymentToReject(attendance)}
+                        >
+                          <Text color="$onzeDanger" fontSize={12} fontWeight="900">Não foi pago</Text>
+                        </AppButton>
+                      ) : null}
                       {(attendance.status === 'NOT_GOING' || match.status === 'CANCELLED')
                           && isSettlementOpen(attendance.paymentSettlementStatus)
                           && match.status !== 'CANCELLED'
@@ -1426,6 +1458,15 @@ export default function MatchScreen() {
           )}
         </YStack>
       </ScrollView>
+      <ConfirmActionModal
+        visible={paymentToReject != null}
+        title="Pagamento não recebido?"
+        message={`A cobrança de ${paymentToReject?.displayName ?? 'este jogador'} voltará para Pendente. Ele poderá informar o pagamento novamente dentro do prazo. Sua presença e seus créditos serão mantidos.`}
+        confirmLabel="Marcar como pendente"
+        loading={Boolean(updatingPayment)}
+        onCancel={() => { if (!updatingPayment) setPaymentToReject(null); }}
+        onConfirm={() => void rejectPlayerPayment()}
+      />
 
       {match ? (
         <GoalkeeperPlayerModal

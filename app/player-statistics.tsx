@@ -16,6 +16,7 @@ import {
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
 import { getErrorMessage } from '../src/lib/errors';
+import { statisticsSeasonLabel } from '../src/lib/statistics';
 import { ONZE_COLORS } from '../src/theme/colors';
 
 export default function PlayerStatisticsScreen() {
@@ -25,6 +26,7 @@ export default function PlayerStatisticsScreen() {
     groupName?: string;
     userId?: string;
     displayName?: string;
+    seasonId?: string;
   }>();
   const [statistics, setStatistics] = useState<PlayerStatistics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ export default function PlayerStatisticsScreen() {
         router.replace('/');
         return;
       }
-      setStatistics(await getGroupPlayerStatistics(token, params.groupId, params.userId));
+      setStatistics(await getGroupPlayerStatistics(token, params.groupId, params.userId, params.seasonId));
     } catch (exception) {
       if (exception instanceof ApiRequestError && exception.status === 401) {
         await clearSession();
@@ -55,7 +57,7 @@ export default function PlayerStatisticsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [params.groupId, params.userId, router]);
+  }, [params.groupId, params.userId, params.seasonId, router]);
 
   useFocusEffect(useCallback(() => {
     void loadStatistics();
@@ -66,7 +68,7 @@ export default function PlayerStatisticsScreen() {
     else if (params.groupId) {
       router.replace({
         pathname: '/group-statistics',
-        params: { groupId: params.groupId, groupName: params.groupName ?? '' },
+        params: { groupId: params.groupId, groupName: params.groupName ?? '', seasonId: params.seasonId ?? '' },
       });
     } else router.replace('/groups');
   }
@@ -93,6 +95,7 @@ export default function PlayerStatisticsScreen() {
               {(params.groupName ?? 'GRUPO').toUpperCase()}
             </Text>
             <Text color="$onzeInk" fontSize={30} fontWeight="900">{playerName}</Text>
+            <Text color="$onzeMuted" fontSize={13}>{statisticsSeasonLabel(statistics?.season)}</Text>
             {statistics ? (
               <Text
                 color={statistics.player.currentMember ? '$onzeGreen' : '$onzeMuted'}
