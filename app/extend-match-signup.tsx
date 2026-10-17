@@ -2,7 +2,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
-import { Input, Text, YStack } from 'tamagui';
+import { Text, YStack } from 'tamagui';
 
 import { ONZE_COLORS } from '../src/theme/colors';
 
@@ -10,14 +10,13 @@ import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
 import { BackButton } from '../src/components/back-button';
+import { NativeDateTimeField } from '../src/components/native-date-time-field';
 
 import { ApiRequestError, FootballMatch, getMatch } from '../src/lib/api';
 import { getAccessToken } from '../src/lib/auth-storage';
 import {
   dateTimeInputParts,
-  formatDateInput,
   formatDateTime,
-  formatTimeInput,
   parseBrazilianDate,
   parseTime,
 } from '../src/lib/date-format';
@@ -126,18 +125,8 @@ export default function ExtendMatchSignupScreen() {
 
               <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
                 <Text color="$onzeInk" fontSize={17} fontWeight="900">Novo prazo de inscrição</Text>
-                <Input
-                  keyboardType="number-pad"
-                  placeholder="DD/MM/AAAA"
-                  value={signupDate}
-                  onChangeText={(value) => setSignupDate(formatDateInput(value))}
-                />
-                <Input
-                  keyboardType="number-pad"
-                  placeholder="HH:MM"
-                  value={signupTime}
-                  onChangeText={(value) => setSignupTime(formatTimeInput(value))}
-                />
+                <NativeDateTimeField mode="date" label="Nova data limite de inscrição" value={signupDate} onChange={setSignupDate} />
+                <NativeDateTimeField mode="time" label="Novo horário limite de inscrição" value={signupTime} onChange={setSignupTime} />
               </YStack>
 
               {match.paymentRequired ? (
@@ -146,18 +135,8 @@ export default function ExtendMatchSignupScreen() {
                   <Text color="$onzeInk" fontSize={12} lineHeight={18}>
                     Como este jogo possui cobrança, o prazo de pagamento não pode ficar antes do novo prazo de inscrição. Confirme ou ajuste os campos abaixo.
                   </Text>
-                  <Input
-                    keyboardType="number-pad"
-                    placeholder="DD/MM/AAAA"
-                    value={paymentDate}
-                    onChangeText={(value) => setPaymentDate(formatDateInput(value))}
-                  />
-                  <Input
-                    keyboardType="number-pad"
-                    placeholder="HH:MM"
-                    value={paymentTime}
-                    onChangeText={(value) => setPaymentTime(formatTimeInput(value))}
-                  />
+                  <NativeDateTimeField mode="date" label="Nova data limite de pagamento" value={paymentDate} onChange={setPaymentDate} />
+                  <NativeDateTimeField mode="time" label="Novo horário limite de pagamento" value={paymentTime} onChange={setPaymentTime} />
                 </YStack>
               ) : null}
 

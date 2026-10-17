@@ -266,7 +266,6 @@ export default function DevTestDataScreen() {
             </AppButton>
           </YStack>
 
-          <BackButton onPress={() => router.back()} />
         </YStack>
       </ScrollView>
     </SafeAreaView>

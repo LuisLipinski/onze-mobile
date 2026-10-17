@@ -64,6 +64,13 @@ export type Group = {
   createdAt: string;
 };
 
+export type GroupDeletionNotice = {
+  id: string;
+  groupId: string;
+  groupName: string;
+  deletedAt: string;
+};
+
 export type GroupMember = {
   membershipId: string;
   userId: string;
@@ -910,6 +917,29 @@ export function listGroups(accessToken: string) {
       title: 'Carregando seus grupos...',
       message: 'Estamos buscando as peladas vinculadas à sua conta.',
     },
+  });
+}
+
+export function deleteGroup(accessToken: string, groupId: string) {
+  return request<void>(`/api/groups/${groupId}`, {
+    method: 'DELETE',
+    headers: authenticatedHeaders(accessToken),
+    loading: { title: 'Excluindo grupo...', message: 'Estamos removendo o grupo e preparando os avisos aos membros.' },
+  });
+}
+
+export function listGroupDeletionNotices(accessToken: string) {
+  return request<GroupDeletionNotice[]>('/api/groups/deletion-notices', {
+    headers: authenticatedHeaders(accessToken),
+    loading: false,
+  });
+}
+
+export function acknowledgeGroupDeletionNotice(accessToken: string, noticeId: string) {
+  return request<void>(`/api/groups/deletion-notices/${noticeId}/acknowledge`, {
+    method: 'POST',
+    headers: authenticatedHeaders(accessToken),
+    loading: false,
   });
 }
 

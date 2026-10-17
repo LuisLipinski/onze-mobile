@@ -112,6 +112,14 @@ export async function unregisterNotificationsForSession(accessToken: string) {
   }
 }
 
+export async function cancelGroupNotifications(groupId: string) {
+  if (Platform.OS === 'web') return;
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(scheduled
+    .filter((item) => item.content.data?.groupId === groupId)
+    .map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)));
+}
+
 export async function syncAttendanceOpeningNotifications(
   matches: FootballMatch[],
   registration: NotificationRegistration,

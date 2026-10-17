@@ -123,11 +123,12 @@ export default function JoinGroupScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
+          contentContainerStyle={{ flexGrow: 1, padding: 20 }}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
         >
           <YStack gap="$5">
+            <BackButton alignSelf="flex-start" onPress={() => router.replace('/groups')} />
             <YStack gap="$1">
               <OnzeWordmark />
               <Text color="$onzeInk" fontSize={30} fontWeight="800">
@@ -183,7 +184,6 @@ export default function JoinGroupScreen() {
                 </Text>
               </AppButton>
 
-              <BackButton onPress={() => router.replace('/groups')} />
             </YStack>
           </YStack>
         </ScrollView>

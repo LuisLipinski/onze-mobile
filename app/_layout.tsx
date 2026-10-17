@@ -11,6 +11,7 @@ import { AppOpening } from '../src/components/app-opening';
 import { StartupReadinessContext } from '../src/lib/startup-readiness';
 import { GlobalLoadingOverlay } from '../src/components/global-loading-overlay';
 import { BottomNavigation } from '../src/components/bottom-navigation';
+import { GroupDeletionNotices } from '../src/components/group-deletion-notices';
 import { mainTabForPath } from '../src/lib/main-navigation';
 import { matchNotificationDestination } from '../src/lib/notification-navigation';
 import { ONZE_COLORS } from '../src/theme/colors';
@@ -45,7 +46,11 @@ export default function RootLayout() {
     if (handledNotificationId.current === notificationId || !destination) return;
 
     handledNotificationId.current = notificationId;
-    router.push({ pathname: destination.pathname, params: { matchId: destination.matchId } });
+    if (destination.pathname === '/groups') {
+      router.push('/groups');
+    } else {
+      router.push({ pathname: destination.pathname, params: { matchId: destination.matchId } });
+    }
   }, [lastNotificationResponse, router]);
 
   return (
@@ -75,6 +80,7 @@ export default function RootLayout() {
             ) : null}
           </View>
           <GlobalLoadingOverlay suspended={openingVisible && !sequenceComplete} />
+          {!openingVisible && activeTab ? <GroupDeletionNotices /> : null}
         </StartupReadinessContext.Provider>
       </TamaguiProvider>
     </SafeAreaProvider>
