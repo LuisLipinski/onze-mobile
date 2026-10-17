@@ -436,7 +436,7 @@ export type CardEvent = {
   createdAt: string;
 };
 export type CreateCardEventResponse = { event: CardEvent; liveMatch: LiveMatchState };
-export type AttendanceStatus = 'PENDING' | 'GOING' | 'NOT_GOING';
+export type AttendanceStatus = 'PENDING' | 'GOING' | 'WAITLISTED' | 'NOT_GOING';
 export type PaymentStatus = 'PENDING' | 'REPORTED' | 'PAID' | 'CANCELLED';
 export type CreditAllocationStatus = 'RESERVED' | 'APPLIED';
 export type PaymentSettlementStatus =
@@ -470,6 +470,8 @@ export type MatchAttendance = {
   addedAsReplacementAt: string | null;
   replacementForUserId: string | null;
   settlementAvailable: boolean;
+  waitlistJoinedAt: string | null;
+  waitlistPosition: number | null;
   currentUser: boolean;
 };
 
@@ -656,6 +658,7 @@ export type FootballMatch = {
   paymentOpen: boolean;
   canReportPayment: boolean;
   canJoin: boolean;
+  willJoinWaitlist: boolean;
   canWithdraw: boolean;
   myAttendance: AttendanceStatus | null;
   myPaymentStatus: PaymentStatus | null;
@@ -666,6 +669,11 @@ export type FootballMatch = {
   myPaymentDeadlineRemovedAt: string | null;
   goingCount: number;
   notGoingCount: number;
+  waitlistCount: number;
+  myWaitlistPosition: number | null;
+  reservedGoalkeeperSlots: number;
+  guestPreferenceDecisionRequired: boolean;
+  replaceableGuestIds: string[];
   attendances: MatchAttendance[];
   rentalGoalkeepers: RentalGoalkeeper[];
   guests: MatchGuest[];
@@ -1600,9 +1608,28 @@ export function updateMatchAttendance(
     loading: {
       title: status === 'GOING' ? 'Confirmando sua presença...' : 'Atualizando sua presença...',
       message: status === 'GOING'
-        ? 'Estamos reservando sua vaga no jogo.'
+        ? 'Estamos atualizando sua participação e a lista de espera.'
         : 'Estamos aplicando as regras de saída e reposição.',
     },
+  });
+}
+
+export function decideMatchGuestPreference(
+  accessToken: string, matchId: string, expectedFirstUserId: string,
+  action: 'KEEP_GUESTS' | 'PROMOTE_MEMBER', guestId?: string,
+) {
+  return request<FootballMatch>(`/api/matches/${matchId}/waitlist/guest-preference`, {
+    method: 'POST', headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ expectedFirstUserId, action, guestId }),
+    loading: { title: 'Atualizando a preferência...', message: 'Estamos conferindo a ordem da lista de espera.' },
+  });
+}
+
+export function approveMatchWaitlistGoalkeeper(accessToken: string, matchId: string, expectedFirstUserId: string) {
+  return request<FootballMatch>(`/api/matches/${matchId}/waitlist/goalkeeper`, {
+    method: 'POST', headers: authenticatedHeaders(accessToken),
+    body: JSON.stringify({ expectedFirstUserId }),
+    loading: { title: 'Preenchendo a vaga de goleiro...', message: 'A decisão vale somente para este jogo.' },
   });
 }
 

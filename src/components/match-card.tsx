@@ -24,6 +24,9 @@ function attendanceMessage(match: FootballMatch) {
     if (match.myPaymentStatus === 'PAID') return 'Presença e pagamento confirmados';
     return 'Você confirmou presença';
   }
+  if (match.myAttendance === 'WAITLISTED') {
+    return `Lista de espera · ${match.myWaitlistPosition}º da fila`;
+  }
   if (!match.signupOpen) {
     return 'Lista encerrada';
   }

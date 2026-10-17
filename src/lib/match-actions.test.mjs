@@ -43,3 +43,13 @@ test('pagamento pendente permite cobrança e só o informado permite confirmar r
   assert.equal(adminPaymentAction('SCHEDULED', { ...player, status: 'NOT_GOING' }), null);
   assert.equal(adminPaymentAction('CANCELLED', player), null);
 });
+
+test('a fila bloqueia repetir a entrada e permite sair mesmo depois do prazo', () => {
+  for (const signupOpen of [true, false]) {
+    assert.deepEqual(attendanceActions({ ...match, signupOpen, myAttendance: 'WAITLISTED', canJoin: false, canWithdraw: true }),
+      { going: false, notGoing: true });
+  }
+  assert.deepEqual(attendanceActions({ ...match, myAttendance: 'WAITLISTED', canJoin: true, canWithdraw: false, signupOpen: false }),
+    { going: false, notGoing: false });
+  assert.equal(adminPaymentAction('SCHEDULED', { status: 'WAITLISTED', paymentStatus: null, paymentExempt: false }), null);
+});

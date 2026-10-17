@@ -1,8 +1,9 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import * as Notifications from 'expo-notifications';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, Share } from 'react-native';
+import { AppState, ScrollView, Share } from 'react-native';
 import { Text, XStack, YStack } from 'tamagui';
 
 import { ONZE_COLORS } from '../src/theme/colors';
@@ -15,6 +16,7 @@ import { BackButton } from '../src/components/back-button';
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 import { GoalkeeperPlayerModal } from '../src/components/goalkeeper-player-modal';
 import { MinimumPlayerDecisionCard } from '../src/components/minimum-player-decision-card';
+import { MatchWaitlistCard } from '../src/components/match-waitlist-card';
 import { PaymentSettlementModal } from '../src/components/payment-settlement-modal';
 import { RentalGoalkeeperModal } from '../src/components/rental-goalkeeper-modal';
 import { ReplacementPlayerModal } from '../src/components/replacement-player-modal';
@@ -75,6 +77,7 @@ import {
 import { paymentDeadlineState, signupDeadlineState } from '../src/lib/match-deadlines';
 import { attendanceActions, adminPaymentAction } from '../src/lib/match-actions';
 import { matchShareMessage } from '../src/lib/match-share';
+import { attendanceGoingLabel } from '../src/lib/match-waitlist';
 import { modalityLabel } from '../src/lib/match-modality';
 import { positionLabel } from '../src/lib/sports-profile';
 
@@ -210,14 +213,14 @@ export default function MatchScreen() {
     });
   }, [params.matchId, router]);
 
-  const loadMatch = useCallback(async () => {
+  const loadMatch = useCallback(async (silent = false) => {
     if (!params.matchId) {
       setError('Não foi possível identificar o jogo.');
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const token = await getAccessToken();
@@ -255,13 +258,22 @@ export default function MatchScreen() {
       }
       setError(getErrorMessage(exception, 'Não foi possível carregar o jogo.'));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [params.matchId, goToLogin, router]);
 
   useFocusEffect(useCallback(() => {
     void loadMatch();
-  }, [loadMatch]));
+    let previousState = AppState.currentState;
+    const foreground = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && previousState !== 'active') void loadMatch(true);
+      previousState = state;
+    });
+    const received = Notifications.addNotificationReceivedListener((notification) => {
+      if (notification.request.content.data?.matchId === params.matchId) void loadMatch(true);
+    });
+    return () => { foreground.remove(); received.remove(); };
+  }, [loadMatch, params.matchId]));
 
   useEffect(() => {
     if (match?.id === params.matchId && params.sharePrompt === '1') {
@@ -320,8 +332,8 @@ export default function MatchScreen() {
     if (status === 'GOING' ? !actions.going : !actions.notGoing) return;
     if (status === 'NOT_GOING'
         && match.myAttendance !== 'NOT_GOING'
-        && match.paymentRequired
-        && match.myPaymentStatus != null) {
+        && (match.myAttendance === 'WAITLISTED'
+          || (match.paymentRequired && match.myPaymentStatus != null))) {
       setPendingAttendanceStatus(status);
       return;
     }
@@ -796,6 +808,21 @@ export default function MatchScreen() {
                 onCancelMatch={() => setManagementAction('cancel-occurrence')}
               />
 
+              <MatchWaitlistCard
+                key={match.id}
+                match={match}
+                onUpdated={(updated) => {
+                  setMatch(updated);
+                  void getAccessToken().then((token) => { if (token) syncNotifications(token, updated); });
+                }}
+                onRefresh={() => void loadMatch(true)}
+                onAddRental={openRentalGoalkeeperModal}
+                onInviteGoalkeeper={() => router.push({
+                  pathname: '/add-match-guest',
+                  params: { matchId: match.id, canEvaluate: String(match.canViewTechnical), goalkeeper: 'true' },
+                })}
+              />
+
               <YStack
                 backgroundColor="$onzeSurface"
                 borderColor={match.missingGoalkeepers > 0 ? '$onzeDanger' : '$onzeBorder'}
@@ -973,6 +1000,8 @@ export default function MatchScreen() {
                     <Text color="$onzeInk" fontSize={19} fontWeight="900">
                       {currentAttendance?.replacementRequiredAt
                         ? 'Saída registrada'
+                        : match.myAttendance === 'WAITLISTED'
+                          ? 'Você está na lista de espera'
                         : !match.signupOpen && match.myAttendance !== 'GOING'
                           ? 'Lista encerrada'
                           : 'Você vai jogar?'}
@@ -980,6 +1009,8 @@ export default function MatchScreen() {
                     <Text color="$onzeMuted" fontSize={13}>
                       {currentAttendance?.replacementRequiredAt
                         ? 'Depois de sair com pagamento registrado, somente um administrador pode colocar você novamente na lista.'
+                        : match.myAttendance === 'WAITLISTED'
+                          ? `Sua posição é ${match.myWaitlistPosition}º. Você receberá um aviso quando entrar no jogo.`
                         : !match.signupOpen && match.myAttendance !== 'GOING'
                           ? `O prazo terminou com ${match.goingCount} de ${match.maxPlayers} vagas preenchidas.`
                           : `${match.goingCount} de ${match.maxPlayers} vagas preenchidas.`}
@@ -996,8 +1027,8 @@ export default function MatchScreen() {
 
                       onPress={() => requestAttendance('GOING')}
                     >
-                      <Text color={presenceActions.going ? '$onzeSurface' : '$onzeMuted'} fontWeight="900">
-                        {updatingAttendance === 'GOING' ? 'Salvando...' : '✓ Vou jogar'}
+                      <Text color={presenceActions.going ? '$onzeSurface' : '$onzeMuted'} flexShrink={1} fontSize={12} fontWeight="900" textAlign="center">
+                        {updatingAttendance === 'GOING' ? 'Salvando...' : attendanceGoingLabel(match)}
                       </Text>
                     </AppButton>
                     <AppButton
@@ -1011,7 +1042,7 @@ export default function MatchScreen() {
                       onPress={() => requestAttendance('NOT_GOING')}
                     >
                       <Text color={presenceActions.notGoing ? '$onzeDanger' : '$onzeMuted'} fontWeight="900">
-                        {updatingAttendance === 'NOT_GOING' ? 'Salvando...' : 'Não vou'}
+                        {updatingAttendance === 'NOT_GOING' ? 'Salvando...' : match.myAttendance === 'WAITLISTED' ? 'Sair da fila' : 'Não vou'}
                       </Text>
                     </AppButton>
                   </XStack>
@@ -1583,8 +1614,10 @@ export default function MatchScreen() {
       {match ? (
         <ConfirmActionModal
           visible={pendingAttendanceStatus === 'NOT_GOING'}
-          title="Confirmar que não vai?"
-          message={withdrawalConfirmationMessage(
+          title={match.myAttendance === 'WAITLISTED' ? 'Sair da lista de espera?' : 'Confirmar que não vai?'}
+          message={match.myAttendance === 'WAITLISTED'
+            ? 'Você perderá sua posição. Se entrar novamente, voltará para o fim da fila.'
+            : withdrawalConfirmationMessage(
             match.myPaymentStatus,
             match.myCreditAllocationStatus,
             match.myRemainingPaymentAmount,
@@ -1593,7 +1626,7 @@ export default function MatchScreen() {
             || match.myPaymentStatus === 'REPORTED'
             ? ''
             : ' Como o prazo de inscrição já terminou, você não poderá entrar novamente nesta lista.')}
-          confirmLabel="Liberar minha vaga"
+          confirmLabel={match.myAttendance === 'WAITLISTED' ? 'Sair da fila' : 'Liberar minha vaga'}
           destructive
           loading={updatingAttendance === 'NOT_GOING'}
           onCancel={() => setPendingAttendanceStatus(null)}

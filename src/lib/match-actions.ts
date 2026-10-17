@@ -6,9 +6,10 @@ type AttendanceMatch = Pick<FootballMatch,
 export function attendanceActions(match: AttendanceMatch, busy = false) {
   const open = match.status === 'SCHEDULED' && match.attendanceOpen && !busy;
   return {
-    going: open && match.myAttendance !== 'GOING' && match.canJoin,
+    going: open && match.myAttendance !== 'GOING' && match.myAttendance !== 'WAITLISTED' && match.canJoin,
     notGoing: open && match.myAttendance !== 'NOT_GOING'
-      && (match.myAttendance === 'GOING' ? match.canWithdraw : match.signupOpen),
+      && (match.myAttendance === 'GOING' || match.myAttendance === 'WAITLISTED'
+        ? match.canWithdraw : match.signupOpen),
   };
 }
 
