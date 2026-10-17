@@ -16,11 +16,13 @@ import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
 import { BackButton } from '../src/components/back-button';
+import { NativeDateTimeField } from '../src/components/native-date-time-field';
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import {
   ApiRequestError,
+  deleteGroup,
   Group,
   GroupDayOfWeek,
   GroupSchedule,
@@ -30,6 +32,7 @@ import {
   uploadGroupPhoto,
 } from '../src/lib/api';
 import { clearSession, getAccessToken } from '../src/lib/auth-storage';
+import { cancelGroupNotifications } from '../src/lib/notifications';
 import {
   parsePaymentAmount,
   paymentAmountInputValue,
@@ -61,6 +64,9 @@ export default function GroupSettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedConfirmationVisible, setSavedConfirmationVisible] = useState(false);
+  const [deleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deletionError, setDeletionError] = useState<string | null>(null);
 
   const selectedDays = useMemo(
     () => DAYS.filter((day) => times[day.value] !== undefined),
@@ -225,6 +231,24 @@ export default function GroupSettingsScreen() {
     }
   }
 
+  async function confirmDelete() {
+    if (!group || group.role !== 'PRIMARY_ADMIN' || deleting || saving) return;
+    setDeleting(true);
+    setDeletionError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { router.replace('/'); return; }
+      await deleteGroup(token, group.id);
+      await cancelGroupNotifications(group.id).catch(() => undefined);
+      setDeleteConfirmationVisible(false);
+      router.replace('/groups');
+    } catch (exception) {
+      setDeletionError(getErrorMessage(exception, 'Não foi possível excluir o grupo. Tente novamente.'));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (loading) {
     return <ServerLoadingScreen title="Carregando configurações..." message="Preparando os dados do grupo." />;
   }
@@ -316,17 +340,7 @@ export default function GroupSettingsScreen() {
                   {selectedDays.map((day) => (
                     <XStack key={day.value} alignItems="center" gap="$3">
                       <Text color="$onzeInk" flex={1} fontSize={14}>{day.fullLabel}</Text>
-                      <Input
-                        backgroundColor="$onzeSurface"
-                        borderColor="$onzeBorder"
-                        color="$onzeInk"
-                        maxLength={5}
-                        onChangeText={(value) => changeTime(day.value, value)}
-                        placeholder="20:00"
-                        textAlign="center"
-                        value={times[day.value] ?? ''}
-                        width={105}
-                      />
+                      <NativeDateTimeField mode="time" label={`Horário de ${day.fullLabel}`} value={times[day.value] ?? ''} onChange={(value) => changeTime(day.value, value)} width={115} />
                     </XStack>
                   ))}
                 </YStack>
@@ -347,9 +361,36 @@ export default function GroupSettingsScreen() {
                 </AppButton>
               </YStack>
             )}
+
+            {group?.role === 'PRIMARY_ADMIN' ? (
+              <YStack backgroundColor="$onzeSurface" borderColor="$onzeDanger" borderRadius="$6" borderWidth={1} gap="$3" padding="$5">
+                <Text color="$onzeDanger" fontSize={17} fontWeight="900">Excluir grupo</Text>
+                <Text color="$onzeMuted" fontSize={14} lineHeight={20}>
+                  Exclui este grupo para todos os membros, incluindo jogos, rankings e informações financeiras. Essa ação não pode ser desfeita.
+                </Text>
+                <AppButton variant="destructiveOutline" disabled={saving || deleting} onPress={() => {
+                  setDeletionError(null);
+                  setDeleteConfirmationVisible(true);
+                }}>
+                  <Text color="$onzeDanger" fontWeight="800">Excluir grupo</Text>
+                </AppButton>
+              </YStack>
+            ) : null}
           </YStack>
         </ScrollView>
       </KeyboardAvoidingView>
+      <ConfirmActionModal
+        visible={deleteConfirmationVisible}
+        title="Excluir este grupo?"
+        message={`O grupo “${group?.name ?? ''}” e todo o seu histórico de jogos, rankings e informações financeiras serão excluídos para todos. Os membros serão avisados.\n\nEsta ação não pode ser desfeita.${deletionError ? `\n\n${deletionError}` : ''}`}
+        confirmLabel="Excluir grupo"
+        cancelLabel="Manter grupo"
+        destructive
+        loading={deleting}
+        loadingLabel="Excluindo..."
+        onCancel={() => { if (!deleting) setDeleteConfirmationVisible(false); }}
+        onConfirm={() => void confirmDelete()}
+      />
       <ConfirmActionModal
         visible={savedConfirmationVisible}
         title="Configurações salvas"

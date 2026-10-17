@@ -277,6 +277,15 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
+        {!biometricLoginAvailable && biometricCredential && biometricHardwareAvailable ? (
+          <BackButton
+            alignSelf="flex-start"
+            marginHorizontal={20}
+            marginTop={12}
+            accessibilityLabel={`Voltar para ${biometricCredential.displayName || biometricCredential.email}`}
+            onPress={useBiometricAccount}
+          />
+        ) : null}
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1,
@@ -392,12 +401,6 @@ export default function LoginScreen() {
                 </YStack>
               ) : (
                 <>
-                  {biometricCredential && biometricHardwareAvailable ? (
-                    <BackButton
-                      accessibilityLabel={`Voltar para ${biometricCredential.displayName || biometricCredential.email}`}
-                      onPress={useBiometricAccount}
-                    />
-                  ) : null}
 
                   <Input
                     autoCapitalize="none"

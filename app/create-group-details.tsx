@@ -13,6 +13,7 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
+import { NativeDateTimeField } from '../src/components/native-date-time-field';
 import { ConfirmActionModal } from '../src/components/confirm-action-modal';
 
 import { ServerLoadingScreen } from '../src/components/server-loading-screen';
@@ -280,19 +281,7 @@ export default function CreateGroupDetailsScreen() {
                     <Text color="$onzeInk" flex={1} fontSize={14}>
                       {day.fullLabel}
                     </Text>
-                    <Input
-                      backgroundColor="$onzeSurface"
-                      borderColor="$onzeBorder"
-                      color="$onzeInk"
-                      focusStyle={{ borderColor: '$onzeGreen' }}
-                      maxLength={5}
-                      onChangeText={(value) => changeTime(day.value, value)}
-                      placeholder="20:00"
-                      placeholderTextColor="$onzeMuted"
-                      textAlign="center"
-                      value={times[day.value] ?? ''}
-                      width={105}
-                    />
+                    <NativeDateTimeField mode="time" label={`Horário de ${day.fullLabel}`} value={times[day.value] ?? ''} onChange={(value) => changeTime(day.value, value)} width={115} />
                   </XStack>
                 ))}
               </YStack>

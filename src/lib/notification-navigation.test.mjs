@@ -17,3 +17,11 @@ test('mantém notificações comuns na tela normal do jogo', () => {
   );
   assert.equal(matchNotificationDestination({ route: '/live-match' }), null);
 });
+
+test('aviso de grupo excluído abre grupos sem tentar carregar o grupo removido', () => {
+  assert.deepEqual(
+    matchNotificationDestination({ route: '/groups', notificationType: 'GROUP_DELETED', groupId: 'removed' }),
+    { pathname: '/groups' },
+  );
+  assert.equal(matchNotificationDestination({ route: '/groups', notificationType: 'UNKNOWN' }), null);
+});

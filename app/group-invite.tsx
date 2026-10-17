@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Share } from 'react-native';
+import { ScrollView, Share } from 'react-native';
 import { Text, YStack } from 'tamagui';
 
 import { ONZE_COLORS } from '../src/theme/colors';
@@ -114,8 +114,9 @@ export default function GroupInviteScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: ONZE_COLORS.canvas }}>
-      <YStack flex={1} justifyContent="center" padding="$5">
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <YStack gap="$5">
+          <BackButton alignSelf="flex-start" onPress={finish} />
           <YStack gap="$1">
             <Text color="$onzeGreen" fontSize={14} fontWeight="800">
               CONVIDAR JOGADORES
@@ -216,9 +217,8 @@ export default function GroupInviteScreen() {
             </Text>
           ) : null}
 
-          <BackButton onPress={finish} />
         </YStack>
-      </YStack>
+      </ScrollView>
       <ConfirmActionModal
         visible={regenerateConfirmationVisible}
         title="Gerar novo convite?"

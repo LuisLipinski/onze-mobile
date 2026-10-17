@@ -119,6 +119,7 @@ export default function CreateGroupScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <YStack gap="$5" paddingVertical="$4">
+            <BackButton alignSelf="flex-start" onPress={() => router.back()} />
             <YStack gap="$1">
               <Text color="$onzeGreen" fontSize={14} fontWeight="800">ETAPA 1 DE 3</Text>
               <Text color="$onzeInk" fontSize={30} fontWeight="800">Crie seu grupo</Text>
@@ -209,7 +210,6 @@ export default function CreateGroupScreen() {
               </AppButton>
             </YStack>
 
-            <BackButton onPress={() => router.back()} />
           </YStack>
         </ScrollView>
       </KeyboardAvoidingView>

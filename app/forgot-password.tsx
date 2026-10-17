@@ -55,6 +55,9 @@ export default function ForgotPasswordScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
+        <Link href="/" asChild>
+          <BackButton alignSelf="flex-start" marginHorizontal={20} marginTop={12} accessibilityLabel="Voltar para o login" />
+        </Link>
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
           keyboardDismissMode="on-drag"
@@ -112,10 +115,6 @@ export default function ForgotPasswordScreen() {
                 Enviar código
               </Text>
             </AppButton>
-
-            <Link href="/" asChild>
-              <BackButton alignSelf="center" accessibilityLabel="Voltar para o login" />
-            </Link>
           </YStack>
         </ScrollView>
       </KeyboardAvoidingView>

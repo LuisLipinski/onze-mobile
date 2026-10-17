@@ -15,13 +15,12 @@ import { getErrorMessage } from '../src/lib/errors';
 
 import { AppButton } from '../src/components/app-button';
 import { BackButton } from '../src/components/back-button';
+import { NativeDateTimeField } from '../src/components/native-date-time-field';
 
 import { createMatch, MatchModality, MatchType } from '../src/lib/api';
 import { getAccessToken } from '../src/lib/auth-storage';
 import {
-  formatDateInput,
   formatShortDate,
-  formatTimeInput,
   parseBrazilianDate,
   parseTime,
 } from '../src/lib/date-format';
@@ -481,30 +480,10 @@ export default function CreateMatchScreen() {
                 <Text color="$onzeMuted" fontSize={11} fontWeight="900">ENTRAR NA LISTA ATÉ</Text>
                 <XStack gap="$3">
                   <Field flex={1} label="DATA">
-                    <Input
-                      backgroundColor="$onzeSurface"
-                      borderColor="$onzeBorder"
-                      color="$onzeInk"
-                      keyboardType="numeric"
-                      maxLength={10}
-                      onChangeText={(value) => setSignupDeadlineDate(formatDateInput(value))}
-                      placeholder="DD/MM/AAAA"
-                      placeholderTextColor="$onzeMuted"
-                      value={signupDeadlineDate}
-                    />
+                    <NativeDateTimeField mode="date" label="Data limite de inscrição" value={signupDeadlineDate} onChange={setSignupDeadlineDate} />
                   </Field>
                   <Field flex={0.7} label="HORÁRIO">
-                    <Input
-                      backgroundColor="$onzeSurface"
-                      borderColor="$onzeBorder"
-                      color="$onzeInk"
-                      keyboardType="numeric"
-                      maxLength={5}
-                      onChangeText={(value) => setSignupDeadlineTime(formatTimeInput(value))}
-                      placeholder="12:00"
-                      placeholderTextColor="$onzeMuted"
-                      value={signupDeadlineTime}
-                    />
+                    <NativeDateTimeField mode="time" label="Horário limite de inscrição" value={signupDeadlineTime} onChange={setSignupDeadlineTime} />
                   </Field>
                 </XStack>
               </YStack>
@@ -514,30 +493,10 @@ export default function CreateMatchScreen() {
                   <Text color="$onzeMuted" fontSize={11} fontWeight="900">PAGAR ATÉ</Text>
                   <XStack gap="$3">
                     <Field flex={1} label="DATA">
-                      <Input
-                        backgroundColor="$onzeSurface"
-                        borderColor="$onzeBorder"
-                        color="$onzeInk"
-                        keyboardType="numeric"
-                        maxLength={10}
-                        onChangeText={(value) => setPaymentDeadlineDate(formatDateInput(value))}
-                        placeholder="DD/MM/AAAA"
-                        placeholderTextColor="$onzeMuted"
-                        value={paymentDeadlineDate}
-                      />
+                      <NativeDateTimeField mode="date" label="Data limite de pagamento" value={paymentDeadlineDate} onChange={setPaymentDeadlineDate} />
                     </Field>
                     <Field flex={0.7} label="HORÁRIO">
-                      <Input
-                        backgroundColor="$onzeSurface"
-                        borderColor="$onzeBorder"
-                        color="$onzeInk"
-                        keyboardType="numeric"
-                        maxLength={5}
-                        onChangeText={(value) => setPaymentDeadlineTime(formatTimeInput(value))}
-                        placeholder="18:00"
-                        placeholderTextColor="$onzeMuted"
-                        value={paymentDeadlineTime}
-                      />
+                      <NativeDateTimeField mode="time" label="Horário limite de pagamento" value={paymentDeadlineTime} onChange={setPaymentDeadlineTime} />
                     </Field>
                   </XStack>
                   <Text color="$onzeMuted" fontSize={12} lineHeight={18}>
@@ -550,30 +509,10 @@ export default function CreateMatchScreen() {
             <YStack backgroundColor="$onzeSurface" borderColor="$onzeBorder" borderRadius="$6" borderWidth={1} gap="$4" padding="$5">
               <XStack gap="$3">
                 <Field flex={1} label="DATA">
-                  <Input
-                    backgroundColor="$onzeSurface"
-                    borderColor="$onzeBorder"
-                    color="$onzeInk"
-                    keyboardType="numeric"
-                    maxLength={10}
-                    onChangeText={(value) => setDate(formatDateInput(value))}
-                    placeholder="DD/MM/AAAA"
-                    placeholderTextColor="$onzeMuted"
-                    value={date}
-                  />
+                  <NativeDateTimeField mode="date" label="Data do jogo" value={date} onChange={setDate} />
                 </Field>
                 <Field flex={0.7} label="HORÁRIO">
-                  <Input
-                    backgroundColor="$onzeSurface"
-                    borderColor="$onzeBorder"
-                    color="$onzeInk"
-                    keyboardType="numeric"
-                    maxLength={5}
-                    onChangeText={(value) => setTime(formatTimeInput(value))}
-                    placeholder="20:00"
-                    placeholderTextColor="$onzeMuted"
-                    value={time}
-                  />
+                  <NativeDateTimeField mode="time" label="Horário do jogo" value={time} onChange={setTime} />
                 </Field>
               </XStack>
 

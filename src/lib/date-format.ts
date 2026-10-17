@@ -106,3 +106,35 @@ export function formatTimeInput(value: string) {
   if (digits.length <= 2) return digits;
   return `${digits.slice(0, 2)}:${digits.slice(2)}`;
 }
+
+export type DateTimeInputMode = 'date' | 'time';
+
+// Picker dates represent the displayed calendar/clock, not a UTC instant.
+// The form keeps sending these parts with the match's existing time zone.
+export function pickerDateFromInput(value: string, mode: DateTimeInputMode, reference = new Date()) {
+  const date = new Date(reference.getTime());
+  if (mode === 'date') {
+    const parsed = parseBrazilianDate(value);
+    if (parsed) {
+      const [year, month, day] = parsed.split('-').map(Number);
+      date.setFullYear(year, month - 1, day);
+    }
+    date.setHours(12, 0, 0, 0);
+  } else {
+    const parsed = parseTime(value);
+    if (parsed) {
+      const [hours, minutes] = parsed.split(':').map(Number);
+      date.setHours(hours, minutes, 0, 0);
+    } else {
+      date.setSeconds(0, 0);
+    }
+  }
+  return date;
+}
+
+export function pickerInputValue(date: Date, mode: DateTimeInputMode) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return mode === 'date'
+    ? `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`
+    : `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
