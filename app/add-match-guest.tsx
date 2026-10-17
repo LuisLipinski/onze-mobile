@@ -26,10 +26,13 @@ export default function AddMatchGuestScreen() {
   const params = useLocalSearchParams<{
     matchId?: string;
     canEvaluate?: string;
+    goalkeeper?: string;
   }>();
   const canEvaluate = params.canEvaluate === 'true';
   const [name, setName] = useState('');
-  const [primaryPosition, setPrimaryPosition] = useState<PlayerPosition | null>(null);
+  const [primaryPosition, setPrimaryPosition] = useState<PlayerPosition | null>(
+    params.goalkeeper === 'true' ? 'GOALKEEPER' : null,
+  );
   const [secondaryPosition, setSecondaryPosition] = useState<PlayerPosition | null>(null);
   const [wantsSecondary, setWantsSecondary] = useState(false);
   const [picker, setPicker] = useState<'primary' | 'secondary' | null>(null);
@@ -97,7 +100,9 @@ export default function AddMatchGuestScreen() {
           <BackButton alignSelf="flex-start" onPress={() => router.back()} />
           <YStack gap="$1">
             <Text color="$onzeGreen" fontSize={13} fontWeight="900">CONVIDADO DO JOGO</Text>
-            <Text color="$onzeInk" fontSize={28} fontWeight="900">Adicionar jogador</Text>
+            <Text color="$onzeInk" fontSize={28} fontWeight="900">
+              {params.goalkeeper === 'true' ? 'Convidar goleiro' : 'Adicionar jogador'}
+            </Text>
             <Text color="$onzeMuted" fontSize={13} lineHeight={20}>
               Este cadastro vale somente para esta participação e não cria uma conta Onze.
             </Text>

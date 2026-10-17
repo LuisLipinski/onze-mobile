@@ -25,3 +25,10 @@ test('aviso de grupo excluído abre grupos sem tentar carregar o grupo removido'
   );
   assert.equal(matchNotificationDestination({ route: '/groups', notificationType: 'UNKNOWN' }), null);
 });
+
+test('promoção e decisões da lista de espera abrem a partida correspondente', () => {
+  for (const notificationType of ['WAITLIST_PROMOTED', 'WAITLIST_GOALKEEPER_DECISION', 'WAITLIST_GUEST_DECISION']) {
+    assert.deepEqual(matchNotificationDestination({ notificationType, route: '/match', matchId: 'fila-1' }),
+      { pathname: '/match', matchId: 'fila-1' });
+  }
+});
