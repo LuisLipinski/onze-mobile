@@ -11,6 +11,7 @@ import { formatCurrency } from './payment';
 import { ONZE_COLORS } from '../theme/colors';
 
 const PUSH_TOKEN_KEY = 'onze.expoPushToken';
+const NOTIFICATION_PERMISSION_KEY = 'onze.notificationPermissionHandled';
 const MATCHES_CHANNEL_ID = 'matches';
 const LOCAL_REMINDER_SOURCE = 'onze-match-reminder';
 const DAILY_REMINDER_HOUR = 9;
@@ -61,6 +62,8 @@ const ensureNotificationPermission = createNotificationPermission({
   },
   read: () => Notifications.getPermissionsAsync(),
   request: () => Notifications.requestPermissionsAsync(),
+  wasHandled: async () => (await SecureStore.getItemAsync(NOTIFICATION_PERMISSION_KEY)) === '1',
+  markHandled: () => SecureStore.setItemAsync(NOTIFICATION_PERMISSION_KEY, '1'),
 });
 
 async function prepareNotificationPermission() {

@@ -3,15 +3,25 @@ import test from 'node:test';
 
 import { createNotificationPermission } from './notification-permission.ts';
 
-function permissions(status, canAskAgain = true) {
+function decisionStore(initial = false) {
+  let handled = initial;
+  return {
+    wasHandled: async () => handled,
+    markHandled: async () => { handled = true; },
+  };
+}
+
+function permissions(status, canAskAgain = true, alreadyHandled = false) {
   let current = { status, canAskAgain };
   let requests = 0;
-  const ensure = createNotificationPermission({
+  const access = {
+    ...decisionStore(alreadyHandled),
     prepare: async () => {},
     read: async () => current,
     request: async () => { requests++; return current; },
-  });
-  return { ensure, requests: () => requests, change: (next) => { current = next; } };
+  };
+  const ensure = createNotificationPermission(access);
+  return { ensure, restart: () => createNotificationPermission(access), requests: () => requests, change: (next) => { current = next; } };
 }
 
 test('permissão concedida não abre solicitação nativa', async () => {
@@ -21,7 +31,7 @@ test('permissão concedida não abre solicitação nativa', async () => {
 });
 
 test('respeita recusa mesmo quando Android ainda permite perguntar novamente', async () => {
-  const permission = permissions('denied', true);
+  const permission = permissions('denied', true, true);
   for (let refresh = 0; refresh < 4; refresh++) assert.equal(await permission.ensure(), false);
   assert.equal(permission.requests(), 0);
 });
@@ -37,6 +47,7 @@ test('entrada simultânea e retorno do AppState compartilham uma única solicita
   let requests = 0;
   const result = new Promise((resolve) => { finish = resolve; });
   const ensure = createNotificationPermission({
+    ...decisionStore(),
     prepare: async () => {},
     read: async () => ({ status: 'undetermined', canAskAgain: true }),
     request: () => { requests++; return result; },
@@ -55,6 +66,7 @@ test('entrada simultânea e retorno do AppState compartilham uma única solicita
 
 test('aceite inicial libera notificações', async () => {
   const ensure = createNotificationPermission({
+    ...decisionStore(),
     prepare: async () => {},
     read: async () => ({ status: 'undetermined', canAskAgain: true }),
     request: async () => ({ status: 'granted', canAskAgain: true }),
@@ -63,7 +75,7 @@ test('aceite inicial libera notificações', async () => {
 });
 
 test('reconhece permissão habilitada nas configurações após recusa', async () => {
-  const permission = permissions('denied', false);
+  const permission = permissions('denied', false, true);
   assert.equal(await permission.ensure(), false);
   permission.change({ status: 'granted', canAskAgain: true });
   assert.equal(await permission.ensure(), true);
@@ -73,6 +85,7 @@ test('reconhece permissão habilitada nas configurações após recusa', async (
 test('erro ao abrir solicitação não provoca repetição em cada refresh', async () => {
   let requests = 0;
   const ensure = createNotificationPermission({
+    ...decisionStore(),
     prepare: async () => {},
     read: async () => ({ status: 'undetermined', canAskAgain: true }),
     request: async () => { requests++; throw new Error('OS indisponível'); },
@@ -85,6 +98,7 @@ test('erro ao abrir solicitação não provoca repetição em cada refresh', asy
 test('falha temporária de leitura libera a próxima tentativa', async () => {
   let reads = 0;
   const ensure = createNotificationPermission({
+    ...decisionStore(),
     prepare: async () => {},
     read: async () => {
       if (++reads === 1) throw new Error('leitura indisponível');
@@ -94,4 +108,34 @@ test('falha temporária de leitura libera a próxima tentativa', async () => {
   });
   await assert.rejects(ensure(), /leitura indisponível/);
   assert.equal(await ensure(), true);
+});
+
+test('estado inicial denied do Expo Android solicita uma vez e persiste após reiniciar', async () => {
+  const permission = permissions('denied', true);
+  assert.equal(await permission.ensure(), false);
+  assert.equal(permission.requests(), 1);
+  assert.equal(await permission.restart()(), false);
+  assert.equal(permission.requests(), 1);
+});
+
+test('revogação nas configurações após concessão não provoca nova solicitação', async () => {
+  const permission = permissions('granted');
+  assert.equal(await permission.ensure(), true);
+  permission.change({ status: 'denied', canAskAgain: true });
+  assert.equal(await permission.restart()(), false);
+  assert.equal(permission.requests(), 0);
+});
+
+test('falha ao persistir decisão não abre nem repete a atividade de permissão', async () => {
+  let requests = 0;
+  const ensure = createNotificationPermission({
+    prepare: async () => {},
+    read: async () => ({ status: 'denied', canAskAgain: true }),
+    wasHandled: async () => false,
+    markHandled: async () => { throw new Error('armazenamento indisponível'); },
+    request: async () => { requests++; return { status: 'denied', canAskAgain: true }; },
+  });
+  await assert.rejects(ensure(), /armazenamento indisponível/);
+  assert.equal(await ensure(), false);
+  assert.equal(requests, 0);
 });
