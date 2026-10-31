@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 import type { FootballMatch } from './api';
 import { registerPushToken, unregisterPushToken } from './api';
 import { hasPendingCurrentPlayerPayment } from './match-payment';
+import { createNotificationPermission } from './notification-permission';
 import { formatCurrency } from './payment';
 import { ONZE_COLORS } from '../theme/colors';
 
@@ -46,10 +47,9 @@ function getProjectId() {
     ?? null;
 }
 
-async function prepareNotificationPermission() {
-  if (Platform.OS === 'web') return false;
-
-  if (Platform.OS === 'android') {
+const ensureNotificationPermission = createNotificationPermission({
+  prepare: async () => {
+    if (Platform.OS !== 'android') return;
     await Notifications.setNotificationChannelAsync(MATCHES_CHANNEL_ID, {
       name: 'Jogos e placares ao vivo',
       description: 'Avisos de jogos, presença, pagamentos e acontecimentos ao vivo.',
@@ -58,12 +58,14 @@ async function prepareNotificationPermission() {
       lightColor: ONZE_COLORS.green,
       sound: 'default',
     });
-  }
+  },
+  read: () => Notifications.getPermissionsAsync(),
+  request: () => Notifications.requestPermissionsAsync(),
+});
 
-  const current = await Notifications.getPermissionsAsync();
-  if (current.status === 'granted') return true;
-  const requested = await Notifications.requestPermissionsAsync();
-  return requested.status === 'granted';
+async function prepareNotificationPermission() {
+  if (Platform.OS === 'web') return false;
+  return ensureNotificationPermission();
 }
 
 export async function registerNotificationsForSession(
@@ -73,8 +75,9 @@ export async function registerNotificationsForSession(
     return { remoteEnabled: false, permissionGranted: false, reason: 'unsupported' };
   }
 
+  let permissionGranted = false;
   try {
-    const permissionGranted = await prepareNotificationPermission();
+    permissionGranted = await prepareNotificationPermission();
     if (!permissionGranted) {
       return { remoteEnabled: false, permissionGranted: false, reason: 'permission-denied' };
     }
@@ -95,7 +98,7 @@ export async function registerNotificationsForSession(
   } catch {
     return {
       remoteEnabled: false,
-      permissionGranted: true,
+      permissionGranted,
       reason: 'registration-failed',
     };
   }
