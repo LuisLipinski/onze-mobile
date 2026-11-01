@@ -9,13 +9,11 @@ import { ONZE_COLORS } from '../src/theme/colors';
 import { AppButton } from '../src/components/app-button';
 
 import {
-  clearSession,
-  disableBiometricLogin,
-  enableBiometricLogin,
   getAccessToken,
-  getBiometricCredential,
+  getBiometricAccount,
   getStoredCurrentUser,
 } from '../src/lib/auth-storage';
+import { disableBiometricLogin, enableBiometricLogin, signOutSession } from '../src/lib/auth-session';
 import { isBiometricAvailable } from '../src/lib/biometrics';
 import { withGlobalLoading } from '../src/lib/global-loading';
 import { unregisterNotificationsForSession } from '../src/lib/notifications';
@@ -42,7 +40,7 @@ export default function SettingsScreen() {
           const [user, available, credential] = await Promise.all([
             getStoredCurrentUser(),
             isBiometricAvailable().catch(() => false),
-            getBiometricCredential(),
+            getBiometricAccount(),
           ]);
           setDisplayName(user?.displayName ?? '');
           setAccountEmail(user?.email ?? '');
@@ -123,7 +121,7 @@ export default function SettingsScreen() {
           if (token) {
             await unregisterNotificationsForSession(token).catch(() => undefined);
           }
-          await clearSession();
+          await signOutSession();
           router.replace('/');
         },
         {

@@ -18,6 +18,8 @@ export type AuthResponse = {
   tokenType: 'Bearer';
   expiresIn: number;
   user: User;
+  refreshToken: string;
+  refreshExpiresIn: number;
 };
 
 export type GroupRole = 'PRIMARY_ADMIN' | 'ADMIN' | 'MEMBER';
@@ -825,6 +827,24 @@ export function login(email: string, password: string) {
       title: 'Entrando no Onze...',
       message: 'Estamos validando seu e-mail e sua senha.',
     },
+  });
+}
+
+export function renewSession(refreshToken: string) {
+  return request<AuthResponse>('/api/auth/refresh', {
+    method: 'POST', body: JSON.stringify({ refreshToken }), loading: false,
+  });
+}
+
+export function exchangeLegacySession(accessToken: string) {
+  return request<AuthResponse>('/api/auth/sessions/legacy', {
+    method: 'POST', headers: authenticatedHeaders(accessToken), loading: false,
+  });
+}
+
+export function revokeRefreshToken(refreshToken: string) {
+  return request<void>('/api/auth/logout', {
+    method: 'POST', body: JSON.stringify({ refreshToken }), loading: false,
   });
 }
 
