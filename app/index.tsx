@@ -21,17 +21,15 @@ import { ServerLoadingScreen } from '../src/components/server-loading-screen';
 import { ApiRequestError, getCurrentUser, login } from '../src/lib/api';
 import {
   clearSession,
-  disableBiometricLogin,
   getAccessToken,
-  getBiometricCredential,
+  getBiometricAccount,
   getLastLoginEmail,
   getStoredCurrentUser,
-  refreshBiometricCredentialAfterPassword,
-  saveBiometricAccountProfile,
   saveSession,
 } from '../src/lib/auth-storage';
-import type { BiometricCredential } from '../src/lib/auth-storage';
-import { authenticateWithBiometrics, isBiometricAvailable } from '../src/lib/biometrics';
+import type { BiometricAccount } from '../src/lib/auth-storage';
+import { isBiometricAvailable } from '../src/lib/biometrics';
+import { BiometricSessionError, signInWithBiometrics, updateBiometricSessionAfterPassword } from '../src/lib/auth-session';
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
@@ -60,7 +58,7 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [restoringSession, setRestoringSession] = useState(true);
-  const [biometricCredential, setBiometricCredential] = useState<BiometricCredential | null>(null);
+  const [biometricCredential, setBiometricCredential] = useState<BiometricAccount | null>(null);
   const [biometricHardwareAvailable, setBiometricHardwareAvailable] = useState(false);
   const [passwordLoginMode, setPasswordLoginMode] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
@@ -70,30 +68,8 @@ export default function LoginScreen() {
       normalizeEmail(biometricCredential.email) === normalizeEmail(email),
   );
   const biometricLoginAvailable = Boolean(
-    biometricHardwareAvailable && biometricAccountMatchesEmail && !passwordLoginMode,
+    biometricHardwareAvailable && biometricAccountMatchesEmail && biometricCredential?.ready && !passwordLoginMode,
   );
-
-  useEffect(() => {
-    const credential = biometricCredential;
-    if (!credential || credential.displayName) return;
-
-    let active = true;
-    void (async () => {
-      try {
-        const user = await getCurrentUser(credential.accessToken);
-        if (normalizeEmail(user.email) !== normalizeEmail(credential.email)) return;
-
-        const updatedCredential = await saveBiometricAccountProfile(user);
-        if (active && updatedCredential) setBiometricCredential(updatedCredential);
-      } catch {
-        // A conta continua disponível; o nome será atualizado no próximo login válido.
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [biometricCredential]);
 
   const goAfterAuthentication = useCallback(() => {
     if (typeof params.joinCode === 'string' && params.joinCode.trim()) {
@@ -119,13 +95,16 @@ export default function LoginScreen() {
         getAccessToken(),
         getLastLoginEmail(),
         getStoredCurrentUser(),
-        getBiometricCredential(),
+        getBiometricAccount(),
         isBiometricAvailable().catch(() => false),
       ]);
       const initialEmail = storedUser?.email ?? lastLoginEmail ?? credential?.email ?? '';
       setEmail(initialEmail);
       setBiometricCredential(credential);
       setBiometricHardwareAvailable(biometricAvailable);
+      if (credential && !credential.ready && normalizeEmail(initialEmail) === normalizeEmail(credential.email)) {
+        setPasswordLoginMode(true);
+      }
 
       if (!token) return;
 
@@ -163,14 +142,14 @@ export default function LoginScreen() {
   }, [restoreSession]);
 
   async function submit() {
-    if (loading) return;
+    if (loading || biometricLoading) return;
     setError(null);
     setLoading(true);
 
     try {
       const response = await login(email, password);
-      await saveSession(response.accessToken, response.user);
-      await refreshBiometricCredentialAfterPassword(response.accessToken, response.user);
+      await saveSession(response.accessToken, response.user, response.refreshToken);
+      await updateBiometricSessionAfterPassword(response);
       goAfterAuthentication();
     } catch (exception) {
       setError(getErrorMessage(exception, 'Não foi possível entrar.'));
@@ -194,44 +173,22 @@ export default function LoginScreen() {
         return;
       }
 
-      if (!(await isBiometricAvailable())) {
-        await clearSession();
-        setBiometricHardwareAvailable(false);
-        setPasswordLoginMode(true);
-        setError('A biometria não está disponível. Entre com e-mail e senha.');
-        return;
-      }
-
-      const authenticated = await authenticateWithBiometrics();
-      if (!authenticated) {
+      const user = await signInWithBiometrics(credential.email);
+      if (!user) {
         setPasswordLoginMode(true);
         setError('Biometria não confirmada. Você também pode entrar com e-mail e senha.');
         return;
       }
 
-      const user = await getCurrentUser(credential.accessToken);
-      if (normalizeEmail(user.email) !== normalizeEmail(credential.email)) {
-        await Promise.all([disableBiometricLogin(), clearSession()]);
-        setBiometricCredential(null);
-        setPasswordLoginMode(true);
-        setError('O vínculo da biometria não corresponde a esta conta. Entre novamente com sua senha.');
-        return;
-      }
-
-      await saveSession(credential.accessToken, user);
-      await saveBiometricAccountProfile(user);
       goAfterAuthentication();
     } catch (exception) {
-      if (exception instanceof ApiRequestError && exception.status === 401) {
-        await clearSession();
-        setPasswordLoginMode(true);
-        setError('Sua sessão expirou. Entre novamente com e-mail e senha.');
-        return;
+      if (exception instanceof BiometricSessionError) {
+        setPasswordLoginMode(exception.requiresPassword);
+        setBiometricCredential(await getBiometricAccount().catch(() => null));
+        if (exception.reason === 'unavailable') setBiometricHardwareAvailable(false);
       }
-
-      setPasswordLoginMode(true);
       setError(
-        getErrorMessage(exception, 'Não foi possível entrar com biometria. Use e-mail e senha.'),
+        getErrorMessage(exception, 'Não foi possível conectar agora. Tente novamente com sua digital.'),
       );
     } finally {
       setBiometricLoading(false);
@@ -277,7 +234,7 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        {!biometricLoginAvailable && biometricCredential && biometricHardwareAvailable ? (
+        {!biometricLoginAvailable && biometricCredential?.ready && biometricHardwareAvailable ? (
           <BackButton
             alignSelf="flex-start"
             marginHorizontal={20}
@@ -326,6 +283,12 @@ export default function LoginScreen() {
               {params.passwordReset === '1' ? (
                 <Text color="$onzeGreen" fontSize={14} fontWeight="700">
                   Senha alterada com sucesso. Entre com sua nova senha.
+                </Text>
+              ) : null}
+
+              {error ? (
+                <Text color="$onzeDanger" fontSize={14}>
+                  {error}
                 </Text>
               ) : null}
 
@@ -443,12 +406,6 @@ export default function LoginScreen() {
                       Esqueci minha senha
                     </Link>
                   </Text>
-
-                  {error ? (
-                    <Text color="$onzeDanger" fontSize={14}>
-                      {error}
-                    </Text>
-                  ) : null}
 
                   <AppButton
                     variant="primary"
