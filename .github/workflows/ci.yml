@@ -24,7 +24,7 @@ jobs:
       - name: Validate coverage collection and source maps
         run: npm run test:coverage:check
 
-      - name: Unit tests with line and branch coverage
+      - name: Unit and component tests with line and branch coverage
         run: npm run test:coverage
 
       - name: Publish code coverage
@@ -38,6 +38,9 @@ jobs:
 
       - name: TypeScript
         run: npm run typecheck
+
+      - name: Component test TypeScript
+        run: npm run typecheck:components
 
       - name: ESLint
         run: npm run lint

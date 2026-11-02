@@ -51,6 +51,7 @@ export function GlobalLoadingOverlay({ suspended = false }: { suspended?: boolea
       visible={!suspended && loading.visible && shouldShow}
     >
       <View
+        accessible
         accessibilityLabel={loading.title}
         accessibilityLiveRegion="polite"
         accessibilityRole="progressbar"

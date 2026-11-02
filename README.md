@@ -123,19 +123,23 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 
 ## Validação atual
 
-- `Mobile CI`: instala dependências, executa os testes existentes com `npm run test:coverage`, verifica TypeScript/ESLint e publica cobertura HTML/LCOV/JSON de linhas e ramificações. [Escopo e execução da cobertura](docs/coverage.md).
+- `Mobile CI`: instala dependências, executa unidades e componentes com `npm run test:coverage`, verifica TypeScript do app e dos testes, roda ESLint e publica cobertura HTML/LCOV/JSON de linhas e ramificações. [Escopo e execução da cobertura](docs/coverage.md).
 - `Android APK`: executa o prebuild limpo, compila `assembleRelease` para `arm64-v8a` e publica o APK por 14 dias.
 - A integração em `development` passou no [Mobile CI #154](https://github.com/LuisLipinski/onze-mobile/actions/runs/34223392704) e no [Android APK #127](https://github.com/LuisLipinski/onze-mobile/actions/runs/34223392624), que publicou o artifact `onze-development-apk`.
 - O perfil EAS `preview` gera APK de distribuição interna.
 - O controlador do loading global possui cinco testes unitários para concorrência, finalização idempotente e limpeza após sucesso ou erro.
 - As regras locais do perfil esportivo possuem três testes unitários para múltiplas posições, goleiro, validação e rótulos da escala técnica.
-- Testes de componentes e uma suíte E2E Android automatizada ainda não foram implementados.
+- A suíte de componentes usa Jest/Expo e React Native Testing Library com Tamagui real: autenticação, permissões, formulários, pagamentos, lista de espera e controle do jogo. [Cenários e limites da fase 2](docs/component-tests.md).
+- Os E2E HTTP/Android ficam no repositório [onze-automation](https://github.com/LuisLipinski/onze-automation); o acionamento entre repositórios será tratado na fase 3.
 - Configuração Expo, bundle Android e integridade do APK são verificações de entrega; ainda não fazem parte integral do workflow `Mobile CI`.
 
 ```bash
 npm install
 npm test
+npm run test:components -- --runInBand
+npm run test:coverage
 npm run typecheck
+npm run typecheck:components
 npm run lint
 npx expo config --type public
 npx expo export --platform android

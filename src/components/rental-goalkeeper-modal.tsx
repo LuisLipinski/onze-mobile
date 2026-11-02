@@ -67,8 +67,9 @@ export function RentalGoalkeeperModal({
                   borderColor={error ? '$onzeDanger' : '$onzeBorder'}
                   color="$onzeInk"
                   maxLength={120}
+                  disabled={loading}
                   onChangeText={onChangeName}
-                  onSubmitEditing={name.trim() ? onConfirm : undefined}
+                  onSubmitEditing={!loading && name.trim() ? onConfirm : undefined}
                   placeholder="Ex.: Carlos"
                   placeholderTextColor="$onzeMuted"
                   returnKeyType="done"
