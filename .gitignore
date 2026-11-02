@@ -1,6 +1,8 @@
 node_modules/
 .expo/
 dist/
+coverage/
+.coverage-runtime/
 web-build/
 .env
 .env.*

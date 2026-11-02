@@ -123,7 +123,7 @@ A linha funcional foi integrada em `development` pelo [PR #13](https://github.co
 
 ## Validação atual
 
-- `Mobile CI`: instala dependências, executa `npm test`, `npm run typecheck` e `npm run lint`.
+- `Mobile CI`: instala dependências, executa os testes existentes com `npm run test:coverage`, verifica TypeScript/ESLint e publica cobertura HTML/LCOV/JSON de linhas e ramificações. [Escopo e execução da cobertura](docs/coverage.md).
 - `Android APK`: executa o prebuild limpo, compila `assembleRelease` para `arm64-v8a` e publica o APK por 14 dias.
 - A integração em `development` passou no [Mobile CI #154](https://github.com/LuisLipinski/onze-mobile/actions/runs/34223392704) e no [Android APK #127](https://github.com/LuisLipinski/onze-mobile/actions/runs/34223392624), que publicou o artifact `onze-development-apk`.
 - O perfil EAS `preview` gera APK de distribuição interna.
