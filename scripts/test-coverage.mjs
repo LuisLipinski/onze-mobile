@@ -49,7 +49,30 @@ const run = spawnSync(
   },
 );
 if (run.error) throw run.error;
-process.exitCode = run.status ?? 1;
+const unit = await collectCoverage(plan, join(temporary, 'raw'));
+const components = spawnSync(
+  process.execPath,
+  [
+    resolve('node_modules/jest/bin/jest.js'),
+    '--config',
+    'jest.config.cjs',
+    '--runInBand',
+    '--json',
+    '--outputFile',
+    join(output, 'component-test-results.json'),
+  ],
+  {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      ONZE_COVERAGE_MANIFEST: manifestPath,
+      ONZE_COVERAGE_RAW: join(temporary, 'raw'),
+    },
+  },
+);
+if (components.error) throw components.error;
+process.exitCode = run.status === 0 && components.status === 0 ? 0 : 1;
+const componentCoverage = await collectCoverage(plan, join(temporary, 'raw'), 'component-');
 
 // Failed tests retain their failing status. Their counters are useful, but the
 // report explicitly labels that run as partial instead of presenting success.
@@ -85,8 +108,19 @@ const revision = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }
 const metadata = {
   schemaVersion: 1,
   revision,
-  testStatus: run.status === 0 ? 'success' : 'failure',
-  scope: 'Node tests; all production TS/TSX in app and src, including unexecuted files',
+  testStatus: process.exitCode === 0 ? 'success' : 'failure',
+  scope:
+    'Node unit tests and rendered React Native components; all production TS/TSX in app and src',
+  suites: {
+    unit: {
+      status: run.status === 0 ? 'success' : 'failure',
+      ...unit.map.getCoverageSummary().toJSON(),
+    },
+    components: {
+      status: components.status === 0 ? 'success' : 'failure',
+      ...componentCoverage.map.getCoverageSummary().toJSON(),
+    },
+  },
   total: result.map.getCoverageSummary().toJSON(),
   groups,
   files: inventory,
@@ -98,7 +132,7 @@ const summary = [
   '# Mobile: cobertura de codigo',
   '',
   `Testes: \`${metadata.testStatus}\`. Revisao: \`${revision}\`.`,
-  'Suite: os testes Node existentes. Inclui todo app/ e src/, sem importar telas nativas no Node.',
+  'Suites: unidade Node e componentes React Native renderizados. Inclui todo app/ e src/.',
   '',
   '| Metrica | Cobertura | Cobertos / total |',
   '|---|---:|---:|',
@@ -111,6 +145,13 @@ const summary = [
     const metric = metadata.total[key];
     return `| ${label} | ${percentage(metric)} | ${metric.covered} / ${metric.total} |`;
   }),
+  '',
+  '| Suite | Resultado | Linhas | Ramificacoes |',
+  '|---|---|---:|---:|',
+  ...Object.entries(metadata.suites).map(
+    ([name, suite]) =>
+      `| ${name} | ${suite.status} | ${percentage(suite.lines)} | ${percentage(suite.branches)} |`,
+  ),
   '',
   '| Area | Arquivos | Linhas | Ramificacoes |',
   '|---|---:|---:|---:|',

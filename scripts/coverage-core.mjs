@@ -53,9 +53,11 @@ export function coveragePlan(root) {
   return { sources, baseline };
 }
 
-export async function collectCoverage(plan, directory) {
+export async function collectCoverage(plan, directory, prefix = '') {
   const map = coverage.createCoverageMap(structuredClone(plan.baseline));
-  const files = readdirSync(directory).filter((file) => file.endsWith('.json'));
+  const files = readdirSync(directory).filter(
+    (file) => file.startsWith(prefix) && file.endsWith('.json'),
+  );
   if (!files.length) throw new Error('No coverage worker data was written');
   for (const file of files) map.merge(JSON.parse(readFileSync(join(directory, file), 'utf8')));
   if (!map.files().some((file) => map.fileCoverageFor(file).toSummary().statements.covered > 0)) {
