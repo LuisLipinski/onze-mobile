@@ -9,6 +9,8 @@
     "android": "expo start --android",
     "web": "expo start --web",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test src/lib/*.test.mjs",
+    "test:coverage": "node scripts/test-coverage.mjs",
+    "test:coverage:check": "node --test scripts/coverage-core.test.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint app src scripts tamagui.config.ts --max-warnings=0",
     "format": "prettier --write app src scripts tamagui.config.ts eslint.config.cjs",
@@ -45,6 +47,11 @@
     "@types/react": "~19.2.2",
     "eslint": "~9.39.5",
     "eslint-config-expo": "~57.0.2",
+    "istanbul-lib-coverage": "3.2.2",
+    "istanbul-lib-instrument": "6.0.3",
+    "istanbul-lib-report": "3.0.1",
+    "istanbul-lib-source-maps": "5.0.6",
+    "istanbul-reports": "3.2.0",
     "prettier": "^3.9.9",
     "typescript": "~6.0.3"
   }

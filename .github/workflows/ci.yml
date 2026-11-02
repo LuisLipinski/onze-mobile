@@ -21,8 +21,20 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Unit tests
-        run: npm test
+      - name: Validate coverage collection and source maps
+        run: npm run test:coverage:check
+
+      - name: Unit tests with line and branch coverage
+        run: npm run test:coverage
+
+      - name: Publish code coverage
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mobile-code-coverage
+          path: coverage/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: TypeScript
         run: npm run typecheck
