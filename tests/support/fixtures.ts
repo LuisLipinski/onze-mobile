@@ -16,6 +16,7 @@ import type {
   FoulEvent,
   StatisticsTeam,
   LiveMatchSummary,
+  SportsProfile,
 } from '../../src/lib/api';
 
 export const user: User = {
@@ -31,6 +32,19 @@ export const authResponse = (overrides: Partial<AuthResponse> = {}): AuthRespons
   user,
   refreshToken: 's'.repeat(43),
   refreshExpiresIn: 2592000,
+  ...overrides,
+});
+export const sportsProfile = (overrides: Partial<SportsProfile> = {}): SportsProfile => ({
+  membershipId: 'membership-1',
+  userId: user.id,
+  displayName: user.displayName,
+  primaryPosition: 'MIDFIELDER',
+  secondaryPosition: null,
+  positions: ['MIDFIELDER'],
+  canPlayGoalkeeper: false,
+  dominantFoot: 'RIGHT',
+  technicalLevel: 35,
+  complete: true,
   ...overrides,
 });
 export const member = (overrides: Partial<GroupMember> = {}): GroupMember => ({

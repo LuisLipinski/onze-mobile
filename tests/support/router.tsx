@@ -6,6 +6,8 @@ export const navigation = {
   push: jest.fn(),
   dismissTo: jest.fn(),
   back: jest.fn(),
+  setParams: jest.fn(),
+  canGoBack: jest.fn(() => true),
 };
 export const route = { pathname: '/home', params: {} as Record<string, string> };
 export const useRouter = () => navigation;
