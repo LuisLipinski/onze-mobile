@@ -1,18 +1,20 @@
 # Testes de componentes — fase 2
 
-Os testes em `tests/components/` renderizam componentes e seis telas reais com
+Os testes em `tests/components/` renderizam componentes e dez telas reais com
 Jest 29, o preset do Expo 57 e React Native Testing Library 14. O provider, os
 controles Tamagui, o `AppButton`, as regras de negócio, o armazenamento de sessão
 e o cliente HTTP do aplicativo continuam reais. Não há snapshots.
 
-Referência desta fase: **143 casos em 15 suítes de componentes/telas**, além dos
+Referência atual: **229 casos em 19 suítes de componentes/telas**, além dos
 132 testes Node existentes. Os 104 arquivos produtivos permanecem no inventário.
 
-| Escopo                        | Linhas | Ramificações |
-| ----------------------------- | -----: | -----------: |
-| Geral na fase 1               | 12,10% |        9,96% |
-| Geral com a fase 2            | 33,28% |       34,74% |
-| 32 componentes compartilhados | 91,94% |       79,98% |
+| Escopo                               | Linhas | Ramificações |
+| ------------------------------------ | -----: | -----------: |
+| Geral na fase 1                      | 12,10% |        9,96% |
+| Geral na primeira entrega da fase 2  | 33,28% |       34,74% |
+| Geral após ampliar as telas críticas | 57,29% |       57,70% |
+| Arquivos de telas (`app/`)           | 43,42% |       43,94% |
+| 32 componentes compartilhados        | 92,38% |       83,30% |
 
 Os valores são uma referência da implantação da suíte, não uma meta mínima. As
 duas ramificações adicionais no inventário vêm do bloqueio do envio pelo teclado
@@ -46,9 +48,39 @@ dos componentes, assim como antes do build.
 | Disputa por pênaltis     | Dez batedores ordenados, restauração sem apagar edição, gol/perda explícitos, morte súbita, vencedor e espectador                         |
 | Data e hora              | Diálogo Android, descarte, desmontagem, confirmação/cancelamento iOS e máscara web                                                        |
 
+## Ampliação das telas críticas
+
+Foram adicionados 86 casos com as telas, componentes, regras e clientes HTTP
+reais. Os 104 arquivos produtivos e os denominadores de 4.585 linhas e 4.968
+ramificações permanecem iguais aos da primeira entrega da fase 2.
+
+| Suíte                          | Casos | Linhas da tela | Ramificações da tela |
+| ------------------------------ | ----: | -------------: | -------------------: |
+| `create-match-screen.test.tsx` |    18 |         81,14% |               82,32% |
+| `match-screen.test.tsx`        |    25 |         66,08% |               64,42% |
+| `teams-screen.test.tsx`        |    15 |         79,61% |               77,77% |
+| `live-screen.test.tsx`         |    28 |         85,21% |               75,00% |
+
+Criação de partida verifica fuso e prazos, cobrança/PIX, goleiros, modalidade,
+quantidade de times, jogos semanais, tempos e desempates. A tela de partida
+verifica perfil obrigatório, presença e fila, desistência, ações financeiras por
+permissão, confirmação e recusa de pagamento, lembrete, acerto individual ou em
+lote, reposição, aluguel, compartilhamento e início do jogo. Os testes distinguem
+explicitamente cancelar uma ocorrência semanal de encerrar a série.
+
+Escalação verifica geração e distribuição de reservas, posição, troca de time,
+limite do campo e apenas um goleiro em campo. Jogo ao vivo verifica autoria de
+gols/cartões/chutes/faltas, marcação e resolução separadas do pênalti, correções,
+remoções com confirmação, acréscimos, transição de tempos, cobranças da disputa,
+confirmação do vencedor, finalização e reset. O ajuste otimista do placar é
+testado com resposta pendente e falha. A transmissão SSE usa o parser real e
+verifica eventos atrasados, outra partida, retorno ao foreground e sessão 401.
+
 O harness em `tests/support/` controla apenas fronteiras externas: roteador,
 safe area, SecureStore, `fetch`, autenticação biométrica, notificações e seletor
-nativo de data/hora. Uma requisição HTTP não declarada faz o teste falhar; nenhum
+nativo de data/hora. As novas suítes também controlam AppState, o transporte
+EventSource e os recursos nativos de captura/compartilhamento. Uma requisição
+HTTP não declarada faz o teste falhar; nenhum
 teste acessa a API real. As fábricas têm os tipos completos do contrato da API.
 O roteador considera a tela montada como focada e respeita a limpeza do efeito;
 transições reais de foco pertencem ao E2E. Timers e relógio são controlados nos
@@ -56,10 +88,12 @@ casos de loading, cronômetro e abertura.
 
 A cobertura inclui todos os arquivos produtivos, não apenas os importados pela
 suíte. Exercitar todos os componentes compartilhados não implica cobrir todas as
-suas ramificações, todas as 31 telas ou todas as combinações de estado. O HTML e
-o inventário identificam os trechos ainda não exercitados. Telas extensas de
-gestão e acompanhamento do jogo ainda precisam de testes próprios de integração;
-os componentes e suas regras de interação já são verificados isoladamente aqui.
+suas ramificações, todos os 31 arquivos de `app/` ou todas as combinações de estado.
+O HTML e o inventário identificam os trechos ainda não exercitados. As principais
+lacunas restantes incluem perfil esportivo, configuração/administração de grupo,
+rankings/estatísticas e Home. Nas quatro telas ampliadas ainda há caminhos
+secundários sem teste, incluindo envio real de fotos, seleção completa da escala
+de pênaltis na tela e combinações de permissões e estados financeiros.
 
 Estes testes não validam pixels, gesto/toque nativo, diálogo biométrico real,
 entrega de push pelo sistema operacional, teclado do aparelho nem execução
